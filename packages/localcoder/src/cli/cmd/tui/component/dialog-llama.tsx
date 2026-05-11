@@ -10,6 +10,7 @@ import * as LlamaSetup from "@tui/llamacpp-setup"
 import * as Bootstrap from "@/llamacpp/bootstrap"
 import { DialogAlert } from "@tui/ui/dialog-alert"
 import { DialogLlamaConnect } from "./dialog-llama-setup"
+import { formatLlamaStatusLine } from "@tui/util/context-usage"
 
 export function DialogLlama() {
   const toast = useToast()
@@ -26,12 +27,7 @@ export function DialogLlama() {
 
   const cfg = createMemo(() => LlamaServer.getConfig())
   const mtp = createMemo(() => (cfg().modelPath ? LlamaSetup.modelUsesMtp(cfg().modelPath) : false))
-  const statusText = createMemo(() => {
-    const s = status()
-    if (!s) return "Checking..."
-    if (s.running) return `Running · ${s.modelId ?? "unknown model"}${s.managed ? " (managed)" : ""}`
-    return "Not running"
-  })
+  const statusText = createMemo(() => formatLlamaStatusLine(status(), "Checking..."))
 
   async function afterStart(modelId: string) {
     process.env.LLAMACPP_API_URL = cfg().apiUrl

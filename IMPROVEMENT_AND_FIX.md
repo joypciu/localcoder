@@ -67,6 +67,8 @@ Report: `scripts/visual-test/.artifacts/report.html`
 
 **User action:** After changing ctx → `/llama` → **Restart server with saved config** (or re-run setup). Verify status shows `ctx 131072`. 128K on 9B Q6_K needs ample VRAM — use 32768/65536 if OOM.
 
+**TUI ctx mismatch warning:** When saved ctx ≠ running `llama-server -c`, `/llama` status and the session prompt bar show `server ctx N ≠ saved M · /llama restart` (process cmdline probe on Windows/Linux; managed server uses in-process ctx).
+
 ### VS Code + webfetch
 
 | Fix | File |

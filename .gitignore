@@ -40,6 +40,7 @@ coverage/
 .nyc_output/
 .artifacts/
 scripts/visual-test/.artifacts/
+scripts/visual-test/snapshots/**/*.diff.txt
 scripts/e2e/.artifacts/
 packages/app/e2e/playwright-report/
 packages/app/e2e/test-results/

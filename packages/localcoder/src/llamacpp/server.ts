@@ -22,6 +22,92 @@ export type LlamaServerStatus = {
   managed: boolean
   apiUrl: string
   logPath?: string
+  /** Context size from ~/.localcoder/llamacpp.json / LLAMACPP_CTX */
+  configuredCtx: number
+  /** Context from running llama-server (-c), when detectable */
+  runningCtx?: number
+  /** Saved ctx differs from the server process (restart required) */
+  ctxMismatch: boolean
+}
+
+/** Parse `-c` / `--ctx-size` from a process command line. */
+export function parseCtxFromCommandLine(cmdline: string): number | undefined {
+  const tokens =
+    cmdline.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((t) => t.replace(/^"|"$/g, "")) ?? cmdline.trim().split(/\s+/)
+  return parseCtxFromArgv(tokens)
+}
+
+export function parseCtxFromArgv(argv: string[]): number | undefined {
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]!
+    if (arg === "-c" || arg === "--ctx-size") {
+      const n = Number(argv[i + 1])
+      if (Number.isFinite(n) && n > 0) return Math.floor(n)
+    }
+    const eq = arg.match(/^(?:-c|--ctx-size)=(\d+)$/)
+    if (eq) return Number(eq[1])
+  }
+  return undefined
+}
+
+async function findListeningPids(port: number): Promise<number[]> {
+  try {
+    if (process.platform === "win32") {
+      const { stdout } = await execFileAsync("netstat", ["-ano"], { encoding: "utf8", windowsHide: true })
+      const pids = new Set<number>()
+      for (const line of stdout.split(/\r?\n/)) {
+        if (!line.includes(`:${port}`) || !line.includes("LISTENING")) continue
+        const parts = line.trim().split(/\s+/)
+        const pid = Number(parts.at(-1))
+        if (pid > 0) pids.add(pid)
+      }
+      return [...pids]
+    }
+    const { stdout } = await execFileAsync("lsof", ["-ti", `tcp:${port}`], { encoding: "utf8" })
+    return stdout
+      .split(/\s+/)
+      .map((x) => Number(x))
+      .filter((pid) => pid > 0)
+  } catch {
+    return []
+  }
+}
+
+async function readProcessCommandLine(pid: number): Promise<string | undefined> {
+  try {
+    if (process.platform === "win32") {
+      const { stdout } = await execFileAsync(
+        "powershell",
+        [
+          "-NoProfile",
+          "-Command",
+          `(Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}').CommandLine`,
+        ],
+        { encoding: "utf8", windowsHide: true, timeout: 8000 },
+      )
+      const line = stdout.trim()
+      return line || undefined
+    }
+    const { stdout } = await execFileAsync("ps", ["-p", String(pid), "-o", "args="], { encoding: "utf8" })
+    const line = stdout.trim()
+    if (line) return line
+    const raw = await fs.promises.readFile(`/proc/${pid}/cmdline`, "utf8")
+    return raw.split("\0").filter(Boolean).join(" ")
+  } catch {
+    return undefined
+  }
+}
+
+/** Best-effort read of llama-server `-c` for the process listening on `port`. */
+export async function probeRunningServerCtx(port: number): Promise<number | undefined> {
+  if (managed !== undefined && managedCtx !== undefined) return managedCtx
+  for (const pid of await findListeningPids(port)) {
+    const cmd = await readProcessCommandLine(pid)
+    if (!cmd || !/llama-server/i.test(cmd)) continue
+    const ctx = parseCtxFromCommandLine(cmd)
+    if (ctx !== undefined) return ctx
+  }
+  return undefined
 }
 
 let managed: ChildProcess | undefined
@@ -247,12 +333,18 @@ export async function stopIfManaged() {
 export async function status(): Promise<LlamaServerStatus> {
   const cfg = getConfig()
   const probed = await probe(cfg.apiUrl)
+  const configuredCtx = cfg.ctx
+  const runningCtx = probed.ok ? await probeRunningServerCtx(cfg.port) : undefined
+  const ctxMismatch = probed.ok && runningCtx !== undefined && runningCtx !== configuredCtx
   return {
     running: probed.ok,
     modelId: probed.modelId,
     managed: isManaged(),
     apiUrl: cfg.apiUrl,
     logPath,
+    configuredCtx,
+    runningCtx,
+    ctxMismatch,
   }
 }
 

@@ -1,0 +1,10 @@
+---
+description: Git commit attribution for this repository
+alwaysApply: true
+---
+
+# Git commits
+
+- **Never** add `Co-authored-by`, `Co-Authored-By`, or similar trailers for Cursor, Claude, Copilot, or other AI tools.
+- Commits must be authored only as **joypciu** `<usmanjoycse@gmail.com>` (GitHub: @joypciu).
+- Do not run `git commit` unless the user asked; when they do, use a plain message with no AI co-author lines.

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Strip AI co-author trailers so commits stay attributed to the repo owner only.
+MSG_FILE="$1"
+[ -f "$MSG_FILE" ] || exit 0
+tmp="${MSG_FILE}.tmp"
+grep -viE '^Co-Authored-By:' "$MSG_FILE" >"$tmp" || true
+mv "$tmp" "$MSG_FILE"

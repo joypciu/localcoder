@@ -1,6 +1,7 @@
 import type { AssistantMessage } from "@localcoder-ai/sdk/v2"
 import type { Config } from "@/config/config"
 import type { Provider } from "@/provider/provider"
+import type { LlamaServerStatus } from "@/llamacpp/server"
 import { tokenCount, usable } from "@/session/overflow"
 import { Locale } from "@/util/locale"
 
@@ -74,6 +75,21 @@ export function computeContextUsage(input: {
 
 export function isLocalProvider(providerID: string) {
   return providerID === "llamacpp"
+}
+
+export function llamaCtxMismatchHint(status: LlamaServerStatus | undefined): string | undefined {
+  if (!status?.ctxMismatch || status.runningCtx === undefined) return undefined
+  return `server ctx ${Locale.number(status.runningCtx)} ≠ saved ${Locale.number(status.configuredCtx)} · /llama restart`
+}
+
+export function formatLlamaStatusLine(status: LlamaServerStatus | undefined, fallback: string): string {
+  if (!status) return fallback
+  const mismatch = llamaCtxMismatchHint(status)
+  if (mismatch) return mismatch
+  if (status.running) {
+    return `Running · ${status.modelId ?? "model"}${status.managed ? " (managed)" : ""} · ctx ${Locale.number(status.configuredCtx)}`
+  }
+  return fallback
 }
 
 export function formatSessionCost(cost: number, providerID?: string) {

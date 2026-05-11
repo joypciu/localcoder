@@ -11,6 +11,8 @@ import { DialogPrompt } from "@tui/ui/dialog-prompt"
 import { useToast } from "@tui/ui/toast"
 import { useTheme } from "@tui/context/theme"
 import * as LlamaServer from "@tui/llama-server"
+import type { LlamaServerStatus } from "@tui/llama-server"
+import { formatLlamaStatusLine, llamaCtxMismatchHint } from "@tui/util/context-usage"
 
 const LLAMACPP_ID = "llamacpp"
 
@@ -179,17 +181,26 @@ export function DialogLlamaConnect() {
   const toast = useToast()
   const { theme } = useTheme()
   const [loading, setLoading] = createSignal(false)
+  const [serverStatus, setServerStatus] = createSignal<LlamaServerStatus | undefined>()
+
+  const refreshServerStatus = () => {
+    void LlamaServer.status().then(setServerStatus)
+  }
+  refreshServerStatus()
 
   const saved = createMemo(() => LlamaSetup.loadUserLlamaConfig())
   const loaded = createMemo(() => sync.data.provider.find((p) => p.id === LLAMACPP_ID))
   const connected = createMemo(() => Boolean(loaded() && Object.keys(loaded()!.models).length > 0))
 
   const statusLine = createMemo(() => {
+    const mismatch = llamaCtxMismatchHint(serverStatus())
+    if (mismatch) return mismatch
     const cfg = saved()
     if (!cfg.modelPath) return "Not configured — run setup to pick llama.cpp folder and GGUF model"
     const model = path.basename(cfg.modelPath)
     const ctx = cfg.ctx ?? LlamaSetup.defaultContextSize(cfg.modelPath)
-    return connected() ? `Connected · ${model} · ctx ${ctx}` : `Saved · ${model} · ctx ${ctx} · server not running`
+    const base = connected() ? `Connected · ${model} · ctx ${ctx}` : `Saved · ${model} · ctx ${ctx} · server not running`
+    return formatLlamaStatusLine(serverStatus(), base)
   })
 
   async function runWizard(startServer: boolean) {
@@ -270,7 +281,11 @@ export function DialogLlamaConnect() {
         {
           title: connected() ? "Restart server with saved config" : "Start server with saved config",
           value: "start",
-          description: saved().modelPath ? undefined : "Run setup first",
+          description: saved().modelPath
+            ? serverStatus()?.ctxMismatch
+              ? `Apply saved ctx ${saved().ctx ?? LlamaSetup.defaultContextSize(saved().modelPath!)} (server may be on old -c)`
+              : undefined
+            : "Run setup first",
           disabled: loading() || !saved().modelPath,
         },
       ]}

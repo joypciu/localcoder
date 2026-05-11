@@ -53,7 +53,16 @@ import { useArgs } from "@tui/context/args"
 import { Flag } from "@localcoder-ai/core/flag/flag"
 import { WorkspaceLabel, type WorkspaceStatus } from "../workspace-label"
 import { hasLlamaCppProvider } from "../use-connected"
-import { computeContextUsage, contextLevelColor, tokensFromAssistant, formatSessionCost, homeModelHint } from "@tui/util/context-usage"
+import {
+  computeContextUsage,
+  contextLevelColor,
+  tokensFromAssistant,
+  formatSessionCost,
+  homeModelHint,
+  llamaCtxMismatchHint,
+} from "@tui/util/context-usage"
+import * as LlamaServer from "@tui/llama-server"
+import type { LlamaServerStatus } from "@tui/llama-server"
 
 export type PromptProps = {
   sessionID?: string
@@ -353,6 +362,21 @@ export function Prompt(props: PromptProps) {
     return messages.findLast((m): m is UserMessage => m.role === "user")
   })
 
+  const [llamaStatus, setLlamaStatus] = createSignal<LlamaServerStatus | undefined>()
+  createEffect(() => {
+    const model = local.model.current()
+    if (model?.providerID !== "llamacpp") {
+      setLlamaStatus(undefined)
+      return
+    }
+    const refresh = () => {
+      void LlamaServer.status().then(setLlamaStatus)
+    }
+    refresh()
+    const timer = setInterval(refresh, 15_000)
+    onCleanup(() => clearInterval(timer))
+  })
+
   const usage = createMemo(() => {
     if (!props.sessionID) return
     const msg = sync.data.message[props.sessionID] ?? []
@@ -367,11 +391,16 @@ export function Prompt(props: PromptProps) {
     const costTotal = msg.reduce((sum, item) => sum + (item.role === "assistant" ? item.cost : 0), 0)
     const cost = formatSessionCost(costTotal, last.providerID)
     const compacting = sync.session.status(props.sessionID) === "compacting"
+    const llamaCtx =
+      last.providerID === "llamacpp" || local.model.current()?.providerID === "llamacpp"
+        ? llamaCtxMismatchHint(llamaStatus())
+        : undefined
     return {
       ctx,
       cost: cost !== undefined ? money.format(cost) : undefined,
       compacting,
       context: ctx?.short ?? Locale.number(tokens),
+      llamaCtx,
     }
   })
 
@@ -1955,9 +1984,17 @@ export function Prompt(props: PromptProps) {
                   <Switch>
                     <Match when={usage()?.ctx}>
                       {(ctx) => (
-                        <text fg={contextLevelColor(ctx().level, theme)} wrapMode="none">
+                        <text
+                          fg={
+                            usage()?.llamaCtx
+                              ? (theme.warning ?? theme.error ?? theme.textMuted)
+                              : contextLevelColor(ctx().level, theme)
+                          }
+                          wrapMode="none"
+                        >
                           {[
                             usage()?.compacting ? "compacting…" : ctx().detail,
+                            usage()?.llamaCtx,
                             ctx().compactHint && !usage()?.compacting ? "/compact" : undefined,
                             usage()?.cost,
                           ]
