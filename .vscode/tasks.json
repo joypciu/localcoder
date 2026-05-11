@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "localcoder: dev (CLI)",
+      "type": "shell",
+      "command": "bun",
+      "args": ["--conditions", "browser", "./src/index.ts"],
+      "options": {
+        "cwd": "${workspaceFolder}/packages/localcoder"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "localcoder: dev (web UI)",
+      "type": "shell",
+      "command": "bun",
+      "args": ["--conditions", "browser", "./src/index.ts", "ui"],
+      "options": {
+        "cwd": "${workspaceFolder}/packages/localcoder"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

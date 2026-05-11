@@ -24,6 +24,7 @@ import { ExportCommand } from "./cli/cmd/export"
 import { ImportCommand } from "./cli/cmd/import"
 import { AttachCommand } from "./cli/cmd/tui/attach"
 import { TuiThreadCommand } from "./cli/cmd/tui/thread"
+import { SimpleCliCommand } from "./cli/cmd/simple-cli"
 import { AcpCommand } from "./cli/cmd/acp"
 import { EOL } from "os"
 import { WebCommand, UiCommand } from "./cli/cmd/web"
@@ -32,7 +33,6 @@ import { SessionCommand } from "./cli/cmd/session"
 import { DbCommand } from "./cli/cmd/db"
 import path from "path"
 import { Global } from "@localcoder-ai/core/global"
-import { JsonMigration } from "@/storage/json-migration"
 import { Database } from "@/storage/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
@@ -115,8 +115,10 @@ const cli = yargs(args)
       run_id: processMetadata.runID,
     })
 
-    const marker = path.join(Global.Path.data, "localcoder.db")
-    if (!(await Filesystem.exists(marker))) {
+    const storageDir = path.join(Global.Path.data, "storage")
+    const needsJsonMigration =
+      !(await Filesystem.exists(Database.Path)) && (await Filesystem.exists(storageDir))
+    if (needsJsonMigration) {
       const tty = process.stderr.isTTY
       process.stderr.write("Performing one time database migration, may take a few minutes..." + EOL)
       const width = 36
@@ -126,6 +128,7 @@ const cli = yargs(args)
       let last = -1
       if (tty) process.stderr.write("\x1b[?25l")
       try {
+        const { JsonMigration } = await import("@/storage/json-migration")
         await JsonMigration.run(drizzle({ client: Database.Client().$client }), {
           progress: (event) => {
             const percent = Math.floor((event.current / event.total) * 100)
@@ -156,6 +159,7 @@ const cli = yargs(args)
   .completion("completion", "generate shell completion script")
   .command(AcpCommand)
   .command(McpCommand)
+  .command(SimpleCliCommand)
   .command(TuiThreadCommand)
   .command(AttachCommand)
   .command(RunCommand)

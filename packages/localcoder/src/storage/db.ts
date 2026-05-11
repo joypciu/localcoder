@@ -9,7 +9,7 @@ import * as Log from "@localcoder-ai/core/util/log"
 import { NamedError } from "@localcoder-ai/core/util/error"
 import z from "zod"
 import path from "path"
-import { readFileSync, readdirSync, existsSync } from "fs"
+import { createHash } from "crypto"
 import { Flag } from "@localcoder-ai/core/flag/flag"
 import { InstallationChannel } from "@localcoder-ai/core/installation/version"
 import { InstanceState } from "@/effect/instance-state"
@@ -48,44 +48,40 @@ type Client = SQLiteBunDatabase
 
 type Journal = { sql: string; timestamp: number; name: string }[]
 
-// Drizzle's migrate overloads trigger expensive variance checks here; narrow to the journal overload we actually use.
-const migrateFromJournal = migrate as unknown as (db: SQLiteBunDatabase, entries: Journal) => void
+const MIGRATIONS_FOLDER = path.join(import.meta.dirname, "../../migration")
 
-function applyMigrations(db: SQLiteBunDatabase, entries: Journal) {
-  migrateFromJournal(db, entries)
-}
+/** Bundled builds inject SQL journals; Drizzle 1.x migrate() only accepts { migrationsFolder }. */
+function applyBundledMigrations(db: SQLiteBunDatabase, entries: Journal) {
+  db.run(`CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+    id SERIAL PRIMARY KEY,
+    hash text NOT NULL,
+    created_at numeric
+  )`)
 
-function time(tag: string) {
-  const match = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(tag)
-  if (!match) return 0
-  return Date.UTC(
-    Number(match[1]),
-    Number(match[2]) - 1,
-    Number(match[3]),
-    Number(match[4]),
-    Number(match[5]),
-    Number(match[6]),
-  )
-}
+  const last = db.$client
+    .query("SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1")
+    .get() as { created_at: number } | null
+  const lastMillis = last?.created_at ?? 0
 
-function migrations(dir: string): Journal {
-  const dirs = readdirSync(dir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
-
-  const sql = dirs
-    .map((name) => {
-      const file = path.join(dir, name, "migration.sql")
-      if (!existsSync(file)) return
-      return {
-        sql: readFileSync(file, "utf-8"),
-        timestamp: time(name),
-        name,
-      }
-    })
-    .filter(Boolean) as Journal
-
-  return sql.sort((a, b) => a.timestamp - b.timestamp)
+  db.run("BEGIN")
+  try {
+    for (const item of entries) {
+      if (item.timestamp <= lastMillis) continue
+      const stmts = item.sql
+        .split("--> statement-breakpoint")
+        .map((s) => s.trim())
+        .filter(Boolean)
+      for (const stmt of stmts) db.run(stmt)
+      const hash = createHash("sha256").update(item.sql).digest("hex")
+      db.run(
+        `INSERT INTO __drizzle_migrations ("hash", "created_at") VALUES('${hash}', ${item.timestamp})`,
+      )
+    }
+    db.run("COMMIT")
+  } catch (e) {
+    db.run("ROLLBACK")
+    throw e
+  }
 }
 
 export const Client = lazy(() => {
@@ -100,22 +96,14 @@ export const Client = lazy(() => {
   db.run("PRAGMA foreign_keys = ON")
   db.run("PRAGMA wal_checkpoint(PASSIVE)")
 
-  // Apply schema migrations
-  const entries =
-    typeof LOCALCODER_MIGRATIONS !== "undefined"
-      ? LOCALCODER_MIGRATIONS
-      : migrations(path.join(import.meta.dirname, "../../migration"))
-  if (entries.length > 0) {
-    log.info("applying migrations", {
-      count: entries.length,
-      mode: typeof LOCALCODER_MIGRATIONS !== "undefined" ? "bundled" : "dev",
-    })
-    if (Flag.LOCALCODER_SKIP_MIGRATIONS) {
-      for (const item of entries) {
-        item.sql = "select 1;"
-      }
+  if (!Flag.LOCALCODER_SKIP_MIGRATIONS) {
+    if (typeof LOCALCODER_MIGRATIONS !== "undefined") {
+      log.info("applying migrations", { count: LOCALCODER_MIGRATIONS.length, mode: "bundled" })
+      if (LOCALCODER_MIGRATIONS.length > 0) applyBundledMigrations(db, LOCALCODER_MIGRATIONS)
+    } else {
+      log.info("applying migrations", { mode: "dev", folder: MIGRATIONS_FOLDER })
+      migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
     }
-    applyMigrations(db, entries)
   }
 
   return db

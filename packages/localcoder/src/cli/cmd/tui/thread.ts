@@ -78,8 +78,8 @@ export function resolveThreadDirectory(project?: string, envPWD = process.env.PW
 }
 
 export const TuiThreadCommand = cmd({
-  command: "$0 [project]",
-  describe: "start localcoder tui",
+  command: "tui [project]",
+  describe: "start localcoder OpenTUI (legacy fullscreen UI)",
   builder: (yargs) =>
     withNetworkOptions(yargs)
       .positional("project", {
@@ -243,6 +243,12 @@ export const TuiThreadCommand = cmd({
         client.call("checkUpgrade", { directory: cwd }).catch(() => {})
       }, 1000).unref?.()
 
+      if (process.platform === "win32" && !process.env.WT_SESSION && !process.env.LOCALCODER_IN_WT) {
+        process.stderr.write(
+          "LocalCoder TUI: Windows Terminal is recommended. If the screen stays blank, use: bun run --conditions=browser ./src/index.ts ui\n",
+        )
+      }
+
       try {
         await tui({
           url: transport.url,
@@ -264,13 +270,16 @@ export const TuiThreadCommand = cmd({
             fork: args.fork,
           },
         })
+      } catch (error) {
+        UI.error(errorMessage(error))
+        process.exitCode = 1
       } finally {
         await stop()
       }
     } finally {
       unguard?.()
     }
-    process.exit(0)
+    process.exit(process.exitCode ?? 0)
   },
 })
 // scratch

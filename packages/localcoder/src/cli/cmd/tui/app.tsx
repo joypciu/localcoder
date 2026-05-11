@@ -146,7 +146,13 @@ export function tui(input: {
       await TuiPluginRuntime.dispose()
     }
 
-    const renderer = await createCliRenderer(rendererConfig(input.config))
+    let renderer: Awaited<ReturnType<typeof createCliRenderer>>
+    try {
+      renderer = await createCliRenderer(rendererConfig(input.config))
+    } catch (error) {
+      unguard?.()
+      throw error
+    }
     // Prewarm palette before ThemeProvider mounts so `system` theme avoids a first-paint fallback flash.
     void renderer.getPalette({ size: 16 }).catch(() => undefined)
     const mode = (await renderer.waitForThemeMode(1000)) ?? "dark"
@@ -264,7 +270,8 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     toast,
     renderer,
   })
-  const [ready, setReady] = createSignal(false)
+  const [pluginsReady, setPluginsReady] = createSignal(false)
+  const markPluginsReady = () => setPluginsReady(true)
   TuiPluginRuntime.init({
     api,
     config: tuiConfig,
@@ -272,9 +279,13 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     .catch((error) => {
       console.error("Failed to load TUI plugins", error)
     })
-    .finally(() => {
-      setReady(true)
-    })
+    .finally(markPluginsReady)
+
+  // Never leave the screen blank while plugins/bootstrap run (can take several seconds on first launch).
+  onMount(() => {
+    const timeout = setTimeout(markPluginsReady, 3000)
+    onCleanup(() => clearTimeout(timeout))
+  })
 
   useKeyboard((evt) => {
     // Ctrl+C / Ctrl+X: keyboard layer owns copy, cut, and exit
@@ -922,7 +933,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   })
 
   const plugin = createMemo(() => {
-    if (!ready()) return
+    if (!pluginsReady()) return
     if (route.data.type !== "plugin") return
     const render = routeView(route.data.id)
     if (!render) return <PluginRouteMissing id={route.data.id} onHome={() => route.navigate({ type: "home" })} />
@@ -948,23 +959,21 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       <Show when={Flag.LOCALCODER_SHOW_TTFD}>
         <TimeToFirstDraw />
       </Show>
-      <Show when={ready()}>
-        <Switch>
-          <Match when={route.data.type === "home"}>
-            <Home />
-          </Match>
-          <Match when={route.data.type === "new-session"}>
-            <NewSession />
-          </Match>
-          <Match when={route.data.type === "session"}>
-            <Session />
-          </Match>
-        </Switch>
-      </Show>
+      <Switch>
+        <Match when={route.data.type === "home"}>
+          <Home />
+        </Match>
+        <Match when={route.data.type === "new-session"}>
+          <NewSession />
+        </Match>
+        <Match when={route.data.type === "session"}>
+          <Session />
+        </Match>
+      </Switch>
       {plugin()}
       <TypeToFocus />
       <TuiPluginRuntime.Slot name="app" />
-      <StartupLoading ready={ready} />
+      <StartupLoading ready={pluginsReady} />
     </box>
   )
 }
