@@ -81,7 +81,7 @@
       },
       {
         "command": "localcoder.openTerminal",
-        "title": "Open LocalCoder Terminal",
+        "title": "Open LocalCoder CLI (interactive)",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
@@ -89,7 +89,7 @@
       },
       {
         "command": "localcoder.openNewTerminal",
-        "title": "Open LocalCoder in New Tab",
+        "title": "Open LocalCoder CLI in New Tab",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
