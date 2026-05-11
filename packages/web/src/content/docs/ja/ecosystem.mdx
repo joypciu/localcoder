@@ -1,0 +1,78 @@
+---
+title: エコシステム
+description: LocalCoder で構築されたプロジェクトと統合。
+---
+
+LocalCoder に基づいて構築されたコミュニティプロジェクトのコレクション。
+
+:::note
+LocalCoder 関連プロジェクトをこのリストに追加したいですか? PR を送信してください。
+:::
+
+[awesome-localcoder](https://github.com/awesome-localcoder/awesome-localcoder) および [localcoder.cafe](https://localcoder.cafe) もチェックしてください。
+
+---
+
+## プラグイン
+
+| 名前                                                                                               | 説明                                                                                                                 |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| [localcoder-daytona](https://github.com/daytonaio/daytona/tree/main/libs/localcoder-plugin)            | git sync とライブプレビューを使用して、隔離された Daytona サンドボックスで LocalCoder セッションを自動的に実行します。 |
+| [localcoder-helicone-session](https://github.com/H2Shami/localcoder-helicone-session)                  | リクエストのグループ化のために Helicone セッションヘッダーを自動的に挿入する                                         |
+| [localcoder-type-inject](https://github.com/nick-vi/localcoder-type-inject)                            | ルックアップツールを使用して TypeScript/Svelte 型をファイル読み取りに自動挿入する                                    |
+| [localcoder-openai-codex-auth](https://github.com/numman-ali/localcoder-openai-codex-auth)             | API クレジットの代わりに ChatGPT Plus/Pro サブスクリプションを使用する                                               |
+| [localcoder-gemini-auth](https://github.com/jenslys/localcoder-gemini-auth)                            | API 課金の代わりに既存の Gemini プランを使用する                                                                     |
+| [localcoder-antigravity-auth](https://github.com/NoeFabris/localcoder-antigravity-auth)                | API 課金の代わりに Antigravity の無料モデルを使用する                                                                |
+| [localcoder-devcontainers](https://github.com/athal7/localcoder-devcontainers)                         | 浅いクローンと自動割り当てポートを使用したマルチブランチ devcontainer の分離                                         |
+| [localcoder-google-antigravity-auth](https://github.com/shekohex/localcoder-google-antigravity-auth)   | Google Antigravity OAuth プラグイン、Google 検索のサポート、およびより堅牢な API 処理                                |
+| [localcoder-dynamic-context-pruning](https://github.com/Tarquinen/localcoder-dynamic-context-pruning)  | 古いツールの出力を削除してトークンの使用を最適化する                                                                 |
+| [localcoder-vibeguard](https://github.com/inkdust2021/localcoder-vibeguard)                            | LLM 呼び出しの前にシークレット/PII を VibeGuard スタイルのプレースホルダーに編集し、ローカルで復元する               |
+| [localcoder-websearch-cited](https://github.com/ghoulr/localcoder-websearch-cited.git)                 | Google ベースのスタイルでサポートされているプロバイダーにネイティブ Web 検索サポートを追加                           |
+| [localcoder-pty](https://github.com/shekohex/localcoder-pty.git)                                       | AI エージェントが PTY でバックグラウンドプロセスを実行し、インタラクティブな入力を送信できるようにします。           |
+| [localcoder-shell-strategy](https://github.com/JRedeker/localcoder-shell-strategy)                     | 非対話型シェルコマンドの手順 - TTY に依存する操作によるハングの防止                                                  |
+| [localcoder-wakatime](https://github.com/angristan/localcoder-wakatime)                                | wakatime で LocalCoder の使用状況を追跡する                                                                            |
+| [localcoder-md-table-formatter](https://github.com/franlol/localcoder-md-table-formatter/tree/main)    | LLM によって生成された Markdown テーブルをクリーンアップする                                                         |
+| [localcoder-morph-plugin](https://github.com/morphllm/localcoder-morph-plugin)                         | Morph による Fast Apply 編集、WarpGrep コードベース検索、コンテキスト圧縮                                            |
+| [oh-my-localcoder](https://github.com/code-yeongyu/oh-my-localcoder)                                   | バックグラウンドエージェント、事前構築された LSP/AST/MCP ツール、厳選されたエージェント、Claude Code 互換            |
+| [localcoder-notificator](https://github.com/panta82/localcoder-notificator)                            | LocalCoder セッションのデスクトップ通知とサウンドアラート                                                              |
+| [localcoder-notifier](https://github.com/mohak34/localcoder-notifier)                                  | 許可、完了、エラーイベントのデスクトップ通知とサウンドアラート                                                       |
+| [localcoder-zellij-namer](https://github.com/24601/localcoder-zellij-namer)                            | LocalCoder コンテキストに基づいた AI による自動 Zellij セッション命名                                                  |
+| [localcoder-skillful](https://github.com/zenobi-us/localcoder-skillful)                                | LocalCoder エージェントがスキルの検出と挿入を使用してオンデマンドでプロンプトを遅延ロードできるようにする              |
+| [localcoder-supermemory](https://github.com/supermemoryai/localcoder-supermemory)                      | スーパーメモリを使用したセッション間での永続メモリ                                                                   |
+| [@plannotator/localcoder](https://github.com/backnotprop/plannotator/tree/main/apps/localcoder-plugin) | 視覚的な注釈とプライベート/オフライン共有による対話型の計画レビュー                                                  |
+| [@openspoon/subtask2](https://github.com/spoons-and-mirrors/subtask2)                              | LocalCoder/コマンドをきめ細かいフロー制御を備えた強力なオーケストレーションシステムに拡張                              |
+| [localcoder-scheduler](https://github.com/different-ai/localcoder-scheduler)                           | launchd (Mac) または systemd (Linux) を cron 構文で使用して、定期的なジョブをスケジュールする                        |
+| [micode](https://github.com/vtemian/micode)                                                        | 構造化されたブレインストーミング → 計画 → セッション継続性のあるワークフローの実装                                   |
+| [octto](https://github.com/vtemian/octto)                                                          | 複数の質問フォームを使用した AI ブレインストーミング用のインタラクティブなブラウザ UI                                |
+| [localcoder-background-agents](https://github.com/kdcokenny/localcoder-background-agents)              | 非同期委任とコンテキスト永続性を備えた Claude Code スタイルのバックグラウンドエージェント                            |
+| [localcoder-notify](https://github.com/kdcokenny/localcoder-notify)                                    | LocalCoder のネイティブ OS 通知 – タスクがいつ完了したかを知る                                                         |
+| [localcoder-workspace](https://github.com/kdcokenny/localcoder-workspace)                              | バンドルされたマルチエージェントオーケストレーションハーネス – 16 コンポーネント、1 回のインストール                 |
+| [localcoder-worktree](https://github.com/kdcokenny/localcoder-worktree)                                | LocalCoder 用のゼロフリクション Git ワークツリー                                                                       |
+| [localcoder-sentry-monitor](https://github.com/stolinski/localcoder-sentry-monitor)                    | Sentry AI Monitoring を使用して AI エージェントをトレースおよびデバッグする                                          |
+
+---
+
+## プロジェクト
+
+| 名前                                                                                       | 説明                                                                             |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| [kimaki](https://github.com/remorses/kimaki)                                               | SDK 上に構築された LocalCoder セッションを制御する Discord ボット                  |
+| [localcoder.nvim](https://github.com/NickvanDyke/localcoder.nvim)                              | API に基づいて構築された、エディター対応プロンプト用の Neovim プラグイン         |
+| [portal](https://github.com/hosenur/portal)                                                | Tailscale/VPN 上の LocalCoder 向けモバイルファースト Web UI                        |
+| [localcoder plugin template](https://github.com/zenobi-us/localcoder-plugin-template/)         | LocalCoder プラグインを構築するためのテンプレート                                  |
+| [localcoder.nvim](https://github.com/sudo-tee/localcoder.nvim)                                 | Neovim LocalCoder用フロントエンド - ターミナルベースの AI コーディングエージェント |
+| [ai-sdk-provider-localcoder-sdk](https://github.com/ben-vargas/ai-sdk-provider-localcoder-sdk) | @localcoder-ai/sdk 経由で LocalCoder を使用するための Vercel AI SDK プロバイダー     |
+| [OpenChamber](https://github.com/btriapitsyn/openchamber)                                  | LocalCoder 用の Web/デスクトップアプリと VS Code 拡張機能                          |
+| [LocalCoder-Obsidian](https://github.com/mtymek/localcoder-obsidian)                           | Obsidian の UI に LocalCoder を埋め込む Obsidian プラグイン                        |
+| [OpenWork](https://github.com/different-ai/openwork)                                       | LocalCoder を利用した、Claude Cowork に代わるオープンソース                        |
+| [ocx](https://github.com/kdcokenny/ocx)                                                    | 移植可能な独立したプロファイルを備えた LocalCoder 拡張機能マネージャー。           |
+| [CodeNomad](https://github.com/NeuralNomadsAI/CodeNomad)                                   | LocalCoder 用のデスクトップ、Web、モバイル、およびリモートクライアントアプリ       |
+
+---
+
+## エージェント
+
+| 名前                                                              | 説明                                                                           |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [Agentic](https://github.com/Cluster444/agentic)                  | 構造化開発のためのモジュール型 AI エージェントとコマンド                       |
+| [localcoder-agents](https://github.com/darrenhinde/localcoder-agents) | 強化されたワークフローのための構成、プロンプト、エージェント、およびプラグイン |

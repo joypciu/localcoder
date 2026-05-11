@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+build/
+
+# Turbo cache
+.turbo/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Debug & logs
+debug.txt
+*.log
+npm-debug.log*
+bun-debug.log*
+
+# OS
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+
+# TypeScript incremental compilation
+*.tsbuildinfo
+
+# VSCode extension artifacts
+sdks/vscode/*.vsix
+
+# Tauri build output
+packages/desktop/src-tauri/target/
+
+# Test & coverage artifacts
+coverage/
+.nyc_output/
+.artifacts/
+
+# Temporary files
+*.tmp
+*.temp
+
+# LocalCoder runtime state
+.localcoder/cache/
+
+# Electron / desktop
+packages/desktop/out/
+packages/desktop/dist/
+
+# App build
+packages/app/dist/
+packages/web/dist/
+packages/docs/dist/

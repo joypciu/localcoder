@@ -1,0 +1,78 @@
+---
+title: ระบบนิเวศ
+description: โปรเจ็กต์และการผสานรวมที่สร้างด้วย LocalCoder
+---
+
+ชุดโครงการชุมชนที่สร้างขึ้นบน LocalCoder
+
+:::note
+ต้องการเพิ่มโครงการที่เกี่ยวข้องกับ LocalCoder ของคุณลงในรายการนี้หรือไม่ ส่งพีอาร์.
+:::
+
+คุณยังสามารถลองดู [awesome-localcoder](https://github.com/awesome-localcoder/awesome-localcoder) และ [localcoder.cafe](https://localcoder.cafe) ซึ่งเป็นชุมชนที่รวบรวมระบบนิเวศและชุมชนไว้ด้วยกัน
+
+---
+
+## ปลั๊กอิน
+
+| ชื่อ                                                                                               | คำอธิบาย                                                                                                              |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| [localcoder-daytona](https://github.com/daytonaio/daytona/tree/main/libs/localcoder-plugin)            | เรียกใช้เซสชัน LocalCoder โดยอัตโนมัติในแซนด์บ็อกซ์ Daytona ที่แยกออกมาพร้อม git sync และการแสดงตัวอย่างแบบสด           |
+| [localcoder-helicone-session](https://github.com/H2Shami/localcoder-helicone-session)                  | แทรกส่วนหัวเซสชัน Helicone โดยอัตโนมัติสำหรับการจัดกลุ่มคำขอ                                                          |
+| [localcoder-type-inject](https://github.com/nick-vi/localcoder-type-inject)                            | ฉีดประเภท TypeScript/Svelte ลงในไฟล์ที่อ่านโดยอัตโนมัติด้วยเครื่องมือค้นหา                                            |
+| [localcoder-openai-codex-auth](https://github.com/numman-ali/localcoder-openai-codex-auth)             | ใช้การสมัครสมาชิก ChatGPT Plus/Pro แทนเครดิต API                                                                      |
+| [localcoder-gemini-auth](https://github.com/jenslys/localcoder-gemini-auth)                            | ใช้แผน Gemini ที่มีอยู่ของคุณแทนการเรียกเก็บเงิน API                                                                  |
+| [localcoder-antigravity-auth](https://github.com/NoeFabris/localcoder-antigravity-auth)                | ใช้โมเดลฟรีของ Antigravity แทนการเรียกเก็บเงิน API                                                                    |
+| [localcoder-devcontainers](https://github.com/athal7/localcoder-devcontainers)                         | การแยกคอนเทนเนอร์ Devcontainer แบบหลายสาขาพร้อมโคลนแบบตื้นและพอร์ตที่กำหนดอัตโนมัติ                                   |
+| [localcoder-google-antigravity-auth](https://github.com/shekohex/localcoder-google-antigravity-auth)   | ปลั๊กอิน Google Antigravity OAuth พร้อมรองรับ Google Search และการจัดการ API ที่แข็งแกร่งยิ่งขึ้น                     |
+| [localcoder-dynamic-context-pruning](https://github.com/Tarquinen/localcoder-dynamic-context-pruning)  | ปรับการใช้โทเค็นให้เหมาะสมโดยการตัดเอาท์พุตของเครื่องมือที่ล้าสมัย                                                    |
+| [localcoder-vibeguard](https://github.com/inkdust2021/localcoder-vibeguard)                            | ปกปิดความลับ/PII เป็นตัวยึดตำแหน่งแบบ VibeGuard ก่อนการเรียก LLM และกู้คืนในเครื่อง                                   |
+| [localcoder-websearch-cited](https://github.com/ghoulr/localcoder-websearch-cited.git)                 | เพิ่มการสนับสนุนการค้นหาเว็บแบบเนทีฟสำหรับผู้ให้บริการที่รองรับด้วยรูปแบบที่มีเหตุผลของ Google                        |
+| [localcoder-pty](https://github.com/shekohex/localcoder-pty.git)                                       | ช่วยให้ตัวแทน AI สามารถเรียกใช้กระบวนการเบื้องหลังใน PTY และส่งข้อมูลเชิงโต้ตอบให้พวกเขาได้                           |
+| [localcoder-shell-strategy](https://github.com/JRedeker/localcoder-shell-strategy)                     | คำแนะนำสำหรับคำสั่ง shell แบบไม่โต้ตอบ - ป้องกันการแฮงค์จากการดำเนินการที่ขึ้นอยู่กับ TTY                             |
+| [localcoder-wakatime](https://github.com/angristan/localcoder-wakatime)                                | ติดตามการใช้งาน LocalCoder ด้วย Wakatime                                                                                |
+| [localcoder-md-table-formatter](https://github.com/franlol/localcoder-md-table-formatter/tree/main)    | ทำความสะอาดตาราง Markdown ที่ผลิตโดย LLM                                                                              |
+| [localcoder-morph-plugin](https://github.com/morphllm/localcoder-morph-plugin)                         | การแก้ไข Fast Apply, การค้นหาโค้ดเบส WarpGrep และการบีบอัดบริบทผ่าน Morph                                             |
+| [oh-my-localcoder](https://github.com/code-yeongyu/oh-my-localcoder)                                   | ตัวแทนเบื้องหลัง, เครื่องมือ LSP/AST/MCP ที่สร้างไว้ล่วงหน้า, ตัวแทนที่ได้รับการดูแลจัดการ, เข้ากันได้กับ Claude Code |
+| [localcoder-notificator](https://github.com/panta82/localcoder-notificator)                            | การแจ้งเตือนบนเดสก์ท็อปและเสียงเตือนสำหรับเซสชัน LocalCoder                                                             |
+| [localcoder-notifier](https://github.com/mohak34/localcoder-notifier)                                  | การแจ้งเตือนบนเดสก์ท็อปและเสียงเตือนสำหรับการอนุญาต การดำเนินการเสร็จสิ้น และเหตุการณ์ข้อผิดพลาด                      |
+| [localcoder-zellij-namer](https://github.com/24601/localcoder-zellij-namer)                            | การตั้งชื่อเซสชัน Zellij อัตโนมัติที่ขับเคลื่อนด้วย AI ตามบริบทของ LocalCoder                                           |
+| [localcoder-skillful](https://github.com/zenobi-us/localcoder-skillful)                                | อนุญาตให้ตัวแทน LocalCoder โหลดแบบ Lazy Load ตามความต้องการพร้อมการค้นพบทักษะและการแทรก                                 |
+| [localcoder-supermemory](https://github.com/supermemoryai/localcoder-supermemory)                      | หน่วยความจำถาวรตลอดเซสชันโดยใช้ Supermemory                                                                           |
+| [@plannotator/localcoder](https://github.com/backnotprop/plannotator/tree/main/apps/localcoder-plugin) | การตรวจสอบแผนเชิงโต้ตอบพร้อมคำอธิบายประกอบแบบภาพและการแชร์ส่วนตัว/offline                                             |
+| [@openspoon/subtask2](https://github.com/spoons-and-mirrors/subtask2)                              | ขยาย localcoder /commands ไปสู่ระบบการประสานที่มีประสิทธิภาพพร้อมการควบคุมโฟลว์แบบละเอียด                               |
+| [localcoder-scheduler](https://github.com/different-ai/localcoder-scheduler)                           | กำหนดเวลางานที่เกิดซ้ำโดยใช้ launchd (Mac) หรือ systemd (Linux) ด้วยไวยากรณ์ cron                                     |
+| [micode](https://github.com/vtemian/micode)                                                        | ระดมความคิดอย่างมีโครงสร้าง → วางแผน → นำเวิร์กโฟลว์ไปใช้ด้วยความต่อเนื่องของเซสชัน                                   |
+| [octto](https://github.com/vtemian/octto)                                                          | UI เบราว์เซอร์แบบโต้ตอบสำหรับการระดมความคิด AI ด้วยแบบฟอร์มคำถามหลายข้อ                                               |
+| [localcoder-background-agents](https://github.com/kdcokenny/localcoder-background-agents)              | เอเจนต์พื้นหลังสไตล์ Claude Code พร้อมการมอบหมายแบบอะซิงก์และการคงอยู่ของบริบท                                        |
+| [localcoder-notify](https://github.com/kdcokenny/localcoder-notify)                                    | การแจ้งเตือนระบบปฏิบัติการดั้งเดิมสำหรับ LocalCoder – ทราบเมื่องานเสร็จสมบูรณ์                                          |
+| [localcoder-workspace](https://github.com/kdcokenny/localcoder-workspace)                              | ชุดสายรัดประสานหลายเอเจนต์ที่ให้มา – ส่วนประกอบ 16 ชิ้น ติดตั้งเพียงครั้งเดียว                                        |
+| [localcoder-worktree](https://github.com/kdcokenny/localcoder-worktree)                                | เวิร์กทรีคอมไพล์ไร้แรงเสียดทานสำหรับ LocalCoder                                                                         |
+| [localcoder-sentry-monitor](https://github.com/stolinski/localcoder-sentry-monitor)                    | ติดตามและแก้ไขข้อบกพร่องเอเจนต์ AI ของคุณด้วย Sentry AI Monitoring                                                    |
+
+---
+
+## โครงการ
+
+| ชื่อ                                                                                       | คำอธิบาย                                                                  |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| [kimaki](https://github.com/remorses/kimaki)                                               | บอท Discord เพื่อควบคุมเซสชัน LocalCoder สร้างขึ้นบน SDK                    |
+| [localcoder.nvim](https://github.com/NickvanDyke/localcoder.nvim)                              | ปลั๊กอิน Neovim สำหรับข้อความแจ้งที่ทราบโดยบรรณาธิการ ซึ่งสร้างขึ้นบน API |
+| [portal](https://github.com/hosenur/portal)                                                | UI เว็บบนมือถือเป็นครั้งแรกสำหรับ LocalCoder บน Tailscale/VPN               |
+| [localcoder plugin template](https://github.com/zenobi-us/localcoder-plugin-template/)         | เทมเพลตสำหรับสร้างปลั๊กอิน LocalCoder                                       |
+| [localcoder.nvim](https://github.com/sudo-tee/localcoder.nvim)                                 | ส่วนหน้า Neovim สำหรับ localcoder - เอเจนต์การเข้ารหัส AI ที่ใช้ terminal   |
+| [ai-sdk-provider-localcoder-sdk](https://github.com/ben-vargas/ai-sdk-provider-localcoder-sdk) | ผู้ให้บริการ Vercel AI SDK สำหรับการใช้งาน LocalCoder ผ่าน @localcoder-ai/sdk |
+| [OpenChamber](https://github.com/btriapitsyn/openchamber)                                  | แอพเว็บ / เดสก์ท็อปและส่วนขยาย VS Code สำหรับ LocalCoder                    |
+| [LocalCoder-Obsidian](https://github.com/mtymek/localcoder-obsidian)                           | ปลั๊กอิน Obsidian ที่ฝัง LocalCoder ไว้ใน UI ของ Obsidian                   |
+| [OpenWork](https://github.com/different-ai/openwork)                                       | ทางเลือกโอเพ่นซอร์สแทน Claude Cowork ซึ่งขับเคลื่อนโดย LocalCoder           |
+| [ocx](https://github.com/kdcokenny/ocx)                                                    | ตัวจัดการส่วนขยาย LocalCoder พร้อมโปรไฟล์แบบพกพาและแยกส่วน                  |
+| [CodeNomad](https://github.com/NeuralNomadsAI/CodeNomad)                                   | แอปเดสก์ท็อป เว็บ มือถือ และไคลเอ็นต์ระยะไกลสำหรับ LocalCoder               |
+
+---
+
+## ตัวแทน
+
+| ชื่อ                                                              | คำอธิบาย                                                                 |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| [Agentic](https://github.com/Cluster444/agentic)                  | เอเจนต์ AI แบบแยกส่วนและคำสั่งสำหรับการพัฒนาแบบมีโครงสร้าง               |
+| [localcoder-agents](https://github.com/darrenhinde/localcoder-agents) | กำหนดค่า พรอมต์ เอเจนต์ และปลั๊กอินสำหรับเวิร์กโฟลว์ที่ได้รับการปรับปรุง |

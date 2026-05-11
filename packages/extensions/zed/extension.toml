@@ -1,0 +1,36 @@
+id = "localcoder"
+name = "LocalCoder"
+description = "The open source coding agent."
+version = "1.14.37"
+schema_version = 1
+authors = ["Anomaly"]
+repository = "https://github.com/anomalyco/localcoder"
+
+[agent_servers.localcoder]
+name = "LocalCoder"
+icon = "./icons/localcoder.svg"
+
+[agent_servers.localcoder.targets.darwin-aarch64]
+archive = "https://github.com/anomalyco/localcoder/releases/download/v1.14.37/localcoder-darwin-arm64.zip"
+cmd = "./localcoder"
+args = ["acp"]
+
+[agent_servers.localcoder.targets.darwin-x86_64]
+archive = "https://github.com/anomalyco/localcoder/releases/download/v1.14.37/localcoder-darwin-x64.zip"
+cmd = "./localcoder"
+args = ["acp"]
+
+[agent_servers.localcoder.targets.linux-aarch64]
+archive = "https://github.com/anomalyco/localcoder/releases/download/v1.14.37/localcoder-linux-arm64.tar.gz"
+cmd = "./localcoder"
+args = ["acp"]
+
+[agent_servers.localcoder.targets.linux-x86_64]
+archive = "https://github.com/anomalyco/localcoder/releases/download/v1.14.37/localcoder-linux-x64.tar.gz"
+cmd = "./localcoder"
+args = ["acp"]
+
+[agent_servers.localcoder.targets.windows-x86_64]
+archive = "https://github.com/anomalyco/localcoder/releases/download/v1.14.37/localcoder-windows-x64.zip"
+cmd = "./localcoder.exe"
+args = ["acp"]

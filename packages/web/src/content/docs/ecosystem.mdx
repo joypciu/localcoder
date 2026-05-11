@@ -1,0 +1,81 @@
+---
+title: Ecosystem
+description: Projects and integrations built with LocalCoder.
+---
+
+A collection of community projects built on LocalCoder.
+
+:::note
+Want to add your LocalCoder related project to this list? Submit a PR.
+:::
+
+You can also check out [awesome-localcoder](https://github.com/awesome-localcoder/awesome-localcoder) and [localcoder.cafe](https://localcoder.cafe), a community that aggregates the ecosystem and community.
+
+---
+
+## Plugins
+
+| Name                                                                                               | Description                                                                                       |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| [localcoder-daytona](https://github.com/daytonaio/daytona/tree/main/libs/localcoder-plugin)            | Automatically run LocalCoder sessions in isolated Daytona sandboxes with git sync and live previews |
+| [localcoder-helicone-session](https://github.com/H2Shami/localcoder-helicone-session)                  | Automatically inject Helicone session headers for request grouping                                |
+| [localcoder-type-inject](https://github.com/nick-vi/localcoder-type-inject)                            | Auto-inject TypeScript/Svelte types into file reads with lookup tools                             |
+| [localcoder-openai-codex-auth](https://github.com/numman-ali/localcoder-openai-codex-auth)             | Use your ChatGPT Plus/Pro subscription instead of API credits                                     |
+| [localcoder-gemini-auth](https://github.com/jenslys/localcoder-gemini-auth)                            | Use your existing Gemini plan instead of API billing                                              |
+| [localcoder-antigravity-auth](https://github.com/NoeFabris/localcoder-antigravity-auth)                | Use Antigravity's free models instead of API billing                                              |
+| [localcoder-devcontainers](https://github.com/athal7/localcoder-devcontainers)                         | Multi-branch devcontainer isolation with shallow clones and auto-assigned ports                   |
+| [localcoder-google-antigravity-auth](https://github.com/shekohex/localcoder-google-antigravity-auth)   | Google Antigravity OAuth Plugin, with support for Google Search, and more robust API handling     |
+| [localcoder-dynamic-context-pruning](https://github.com/Tarquinen/localcoder-dynamic-context-pruning)  | Optimize token usage by pruning obsolete tool outputs                                             |
+| [localcoder-vibeguard](https://github.com/inkdust2021/localcoder-vibeguard)                            | Redact secrets/PII into VibeGuard-style placeholders before LLM calls; restore locally            |
+| [localcoder-websearch-cited](https://github.com/ghoulr/localcoder-websearch-cited.git)                 | Add native websearch support for supported providers with Google grounded style                   |
+| [localcoder-pty](https://github.com/shekohex/localcoder-pty.git)                                       | Enables AI agents to run background processes in a PTY, send interactive input to them.           |
+| [localcoder-shell-strategy](https://github.com/JRedeker/localcoder-shell-strategy)                     | Instructions for non-interactive shell commands - prevents hangs from TTY-dependent operations    |
+| [localcoder-wakatime](https://github.com/angristan/localcoder-wakatime)                                | Track LocalCoder usage with Wakatime                                                                |
+| [localcoder-md-table-formatter](https://github.com/franlol/localcoder-md-table-formatter/tree/main)    | Clean up markdown tables produced by LLMs                                                         |
+| [localcoder-morph-fast-apply](https://github.com/JRedeker/localcoder-morph-fast-apply)                 | 10x faster code editing with Morph Fast Apply API and lazy edit markers                           |
+| [localcoder-morph-plugin](https://github.com/morphllm/localcoder-morph-plugin)                         | Fast Apply editing, WarpGrep codebase search, and context compaction via Morph                    |
+| [oh-my-localcoder](https://github.com/code-yeongyu/oh-my-localcoder)                                   | Background agents, pre-built LSP/AST/MCP tools, curated agents, Claude Code compatible            |
+| [localcoder-notificator](https://github.com/panta82/localcoder-notificator)                            | Desktop notifications and sound alerts for LocalCoder sessions                                      |
+| [localcoder-notifier](https://github.com/mohak34/localcoder-notifier)                                  | Desktop notifications and sound alerts for permission, completion, and error events               |
+| [localcoder-zellij-namer](https://github.com/24601/localcoder-zellij-namer)                            | AI-powered automatic Zellij session naming based on LocalCoder context                              |
+| [localcoder-skillful](https://github.com/zenobi-us/localcoder-skillful)                                | Allow LocalCoder agents to lazy load prompts on demand with skill discovery and injection           |
+| [localcoder-supermemory](https://github.com/supermemoryai/localcoder-supermemory)                      | Persistent memory across sessions using Supermemory                                               |
+| [@plannotator/localcoder](https://github.com/backnotprop/plannotator/tree/main/apps/localcoder-plugin) | Interactive plan review with visual annotation and private/offline sharing                        |
+| [@openspoon/subtask2](https://github.com/spoons-and-mirrors/subtask2)                              | Extend localcoder /commands into a powerful orchestration system with granular flow control         |
+| [localcoder-scheduler](https://github.com/different-ai/localcoder-scheduler)                           | Schedule recurring jobs using launchd (Mac) or systemd (Linux) with cron syntax                   |
+| [localcoder-conductor](https://github.com/derekbar90/localcoder-conductor)                             | Protocol-Driven Workflow: Automation of the Context -> Spec -> Plan -> Implement lifecycle.       |
+| [micode](https://github.com/vtemian/micode)                                                        | Structured Brainstorm → Plan → Implement workflow with session continuity                         |
+| [octto](https://github.com/vtemian/octto)                                                          | Interactive browser UI for AI brainstorming with multi-question forms                             |
+| [localcoder-background-agents](https://github.com/kdcokenny/localcoder-background-agents)              | Claude Code-style background agents with async delegation and context persistence                 |
+| [localcoder-notify](https://github.com/kdcokenny/localcoder-notify)                                    | Native OS notifications for LocalCoder – know when tasks complete                                   |
+| [localcoder-workspace](https://github.com/kdcokenny/localcoder-workspace)                              | Bundled multi-agent orchestration harness – 16 components, one install                            |
+| [localcoder-worktree](https://github.com/kdcokenny/localcoder-worktree)                                | Zero-friction git worktrees for LocalCoder                                                          |
+| [localcoder-sentry-monitor](https://github.com/stolinski/localcoder-sentry-monitor)                    | Trace and debug your AI agents with Sentry AI Monitoring                                          |
+| [localcoder-firecrawl](https://github.com/firecrawl/localcoder-firecrawl)                              | Web scraping, crawling, and search via the Firecrawl CLI                                          |
+
+---
+
+## Projects
+
+| Name                                                                                       | Description                                                      |
+| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| [kimaki](https://github.com/remorses/kimaki)                                               | Discord bot to control LocalCoder sessions, built on the SDK       |
+| [localcoder.nvim](https://github.com/NickvanDyke/localcoder.nvim)                              | Neovim plugin for editor-aware prompts, built on the API         |
+| [portal](https://github.com/hosenur/portal)                                                | Mobile-first web UI for LocalCoder over Tailscale/VPN              |
+| [localcoder plugin template](https://github.com/zenobi-us/localcoder-plugin-template/)         | Template for building LocalCoder plugins                           |
+| [localcoder.nvim](https://github.com/sudo-tee/localcoder.nvim)                                 | Neovim frontend for localcoder - a terminal-based AI coding agent  |
+| [ai-sdk-provider-localcoder-sdk](https://github.com/ben-vargas/ai-sdk-provider-localcoder-sdk) | Vercel AI SDK provider for using LocalCoder via @localcoder-ai/sdk   |
+| [OpenChamber](https://github.com/btriapitsyn/openchamber)                                  | Web / Desktop App and VS Code Extension for LocalCoder             |
+| [LocalCoder-Obsidian](https://github.com/mtymek/localcoder-obsidian)                           | Obsidian plugin that embeds LocalCoder in Obsidian's UI            |
+| [OpenWork](https://github.com/different-ai/openwork)                                       | An open-source alternative to Claude Cowork, powered by LocalCoder |
+| [ocx](https://github.com/kdcokenny/ocx)                                                    | LocalCoder extension manager with portable, isolated profiles.     |
+| [CodeNomad](https://github.com/NeuralNomadsAI/CodeNomad)                                   | Desktop, Web, Mobile and Remote Client App for LocalCoder          |
+
+---
+
+## Agents
+
+| Name                                                              | Description                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------------ |
+| [Agentic](https://github.com/Cluster444/agentic)                  | Modular AI agents and commands for structured development    |
+| [localcoder-agents](https://github.com/darrenhinde/localcoder-agents) | Configs, prompts, agents, and plugins for enhanced workflows |

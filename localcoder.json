@@ -1,0 +1,8 @@
+{
+  "instructions": [
+    "BASIC_INSTRUCTIONS.md",
+    "LOCALCODER_INSTRUCTIONS.md"
+  ],
+  "model": "anthropic/claude-3-5-sonnet-20241022",
+  "apiBaseUrl": "https://api.anthropic.com"
+}

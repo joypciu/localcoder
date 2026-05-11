@@ -1,0 +1,727 @@
+---
+title: CLI
+description: LocalCoder CLI options and commands.
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components"
+
+The LocalCoder CLI by default starts the [TUI](/docs/tui) when run without any arguments.
+
+```bash
+localcoder
+```
+
+But it also accepts commands as documented on this page. This allows you to interact with LocalCoder programmatically.
+
+```bash
+localcoder run "Explain how closures work in JavaScript"
+```
+
+---
+
+### tui
+
+Start the LocalCoder terminal user interface.
+
+```bash
+localcoder [project]
+```
+
+#### Flags
+
+| Flag                                        | Short | Description                                                             |
+| ------------------------------------------- | ----- | ----------------------------------------------------------------------- |
+| <nobr><code>{"--continue"}</code></nobr>    | `-c`  | Continue the last session                                               |
+| <nobr><code>{"--session"}</code></nobr>     | `-s`  | Session ID to continue                                                  |
+| <nobr><code>{"--fork"}</code></nobr>        |       | Fork the session when continuing (use with `--continue` or `--session`) |
+| <nobr><code>{"--prompt"}</code></nobr>      |       | Prompt to use                                                           |
+| <nobr><code>{"--model"}</code></nobr>       | `-m`  | Model to use in the form of provider/model                              |
+| <nobr><code>{"--agent"}</code></nobr>       |       | Agent to use                                                            |
+| <nobr><code>{"--port"}</code></nobr>        |       | Port to listen on                                                       |
+| <nobr><code>{"--hostname"}</code></nobr>    |       | Hostname to listen on                                                   |
+| <nobr><code>{"--mdns"}</code></nobr>        |       | Enable mDNS discovery                                                   |
+| <nobr><code>{"--mdns-domain"}</code></nobr> |       | Custom mDNS domain name                                                 |
+| <nobr><code>{"--cors"}</code></nobr>        |       | Additional browser origin(s) to allow CORS                              |
+
+---
+
+## Commands
+
+The LocalCoder CLI also has the following commands.
+
+---
+
+### agent
+
+Manage agents for LocalCoder.
+
+```bash
+localcoder agent [command]
+```
+
+---
+
+### attach
+
+Attach a terminal to an already running LocalCoder backend server started via `serve` or `web` commands.
+
+```bash
+localcoder attach [url]
+```
+
+This allows using the TUI with a remote LocalCoder backend. For example:
+
+```bash
+# Start the backend server for web/mobile access
+localcoder web --port 4096 --hostname 0.0.0.0
+
+# In another terminal, attach the TUI to the running backend
+localcoder attach http://10.20.30.40:4096
+```
+
+#### Flags
+
+| Flag                                     | Short | Description                                                                |
+| ---------------------------------------- | ----- | -------------------------------------------------------------------------- |
+| <nobr><code>{"--dir"}</code></nobr>      |       | Working directory to start TUI in                                          |
+| <nobr><code>{"--continue"}</code></nobr> | `-c`  | Continue the last session                                                  |
+| <nobr><code>{"--session"}</code></nobr>  | `-s`  | Session ID to continue                                                     |
+| <nobr><code>{"--fork"}</code></nobr>     |       | Fork the session when continuing (use with `--continue` or `--session`)    |
+| <nobr><code>{"--password"}</code></nobr> | `-p`  | Basic auth password (defaults to `LOCALCODER_SERVER_PASSWORD`)               |
+| <nobr><code>{"--username"}</code></nobr> | `-u`  | Basic auth username (defaults to `LOCALCODER_SERVER_USERNAME` or `localcoder`) |
+
+---
+
+#### create
+
+Create a new agent with custom configuration.
+
+```bash
+localcoder agent create
+```
+
+This command will guide you through creating a new agent with a custom system prompt and permission configuration. Anything you don't allow is denied in the generated agent's frontmatter.
+
+#### Flags
+
+| Flag                                        | Short | Description                                                                                                                                                                                                                |
+| ------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <nobr><code>{"--path"}</code></nobr>        |       | Directory to write the agent file to (defaults to global or `.localcoder/agent` based on the prompt)                                                                                                                         |
+| <nobr><code>{"--description"}</code></nobr> |       | What the agent should do                                                                                                                                                                                                   |
+| <nobr><code>{"--mode"}</code></nobr>        |       | Agent mode: `all`, `primary`, or `subagent`                                                                                                                                                                                |
+| <nobr><code>{"--permissions"}</code></nobr> |       | Comma-separated list of permissions to allow (default: all). Available: `bash`, `read`, `edit`, `glob`, `grep`, `webfetch`, `task`, `todowrite`, `websearch`, `lsp`, `skill`. Anything omitted is denied. Alias: `--tools` |
+| <nobr><code>{"--model"}</code></nobr>       | `-m`  | Model to use, in `provider/model` format                                                                                                                                                                                   |
+
+Passing all of `--path`, `--description`, `--mode`, and `--permissions` runs the command non-interactively.
+
+---
+
+#### list
+
+List all available agents.
+
+```bash
+localcoder agent list
+```
+
+---
+
+### auth
+
+Command to manage credentials and login for providers.
+
+```bash
+localcoder auth [command]
+```
+
+---
+
+#### login
+
+LocalCoder is powered by the provider list at [Models.dev](https://models.dev), so you can use `localcoder auth login` to configure API keys for any provider you'd like to use. This is stored in `~/.local/share/localcoder/auth.json`.
+
+```bash
+localcoder auth login
+```
+
+When LocalCoder starts up it loads the providers from the credentials file. And if there are any keys defined in your environments or a `.env` file in your project.
+
+##### Flags
+
+| Flag                                     | Short | Description                                          |
+| ---------------------------------------- | ----- | ---------------------------------------------------- |
+| <nobr><code>{"--provider"}</code></nobr> | `-p`  | Provider ID or name to log in to                     |
+| <nobr><code>{"--method"}</code></nobr>   | `-m`  | Login method label to use, skipping method selection |
+
+---
+
+#### list
+
+Lists all the authenticated providers as stored in the credentials file.
+
+```bash
+localcoder auth list
+```
+
+Or the short version.
+
+```bash
+localcoder auth ls
+```
+
+---
+
+#### logout
+
+Logs you out of a provider by clearing it from the credentials file.
+
+```bash
+localcoder auth logout
+```
+
+---
+
+### github
+
+Manage the GitHub agent for repository automation.
+
+```bash
+localcoder github [command]
+```
+
+---
+
+#### install
+
+Install the GitHub agent in your repository.
+
+```bash
+localcoder github install
+```
+
+This sets up the necessary GitHub Actions workflow and guides you through the configuration process. [Learn more](/docs/github).
+
+---
+
+#### run
+
+Run the GitHub agent. This is typically used in GitHub Actions.
+
+```bash
+localcoder github run
+```
+
+##### Flags
+
+| Flag                                  | Description                            |
+| ------------------------------------- | -------------------------------------- |
+| <nobr><code>{"--event"}</code></nobr> | GitHub mock event to run the agent for |
+| <nobr><code>{"--token"}</code></nobr> | GitHub personal access token           |
+
+---
+
+### mcp
+
+Manage Model Context Protocol servers.
+
+```bash
+localcoder mcp [command]
+```
+
+---
+
+#### add
+
+Add an MCP server to your configuration.
+
+```bash
+localcoder mcp add
+```
+
+This command will guide you through adding either a local or remote MCP server.
+
+---
+
+#### list
+
+List all configured MCP servers and their connection status.
+
+```bash
+localcoder mcp list
+```
+
+Or use the short version.
+
+```bash
+localcoder mcp ls
+```
+
+---
+
+#### auth
+
+Authenticate with an OAuth-enabled MCP server.
+
+```bash
+localcoder mcp auth [name]
+```
+
+If you don't provide a server name, you'll be prompted to select from available OAuth-capable servers.
+
+You can also list OAuth-capable servers and their authentication status.
+
+```bash
+localcoder mcp auth list
+```
+
+Or use the short version.
+
+```bash
+localcoder mcp auth ls
+```
+
+---
+
+#### logout
+
+Remove OAuth credentials for an MCP server.
+
+```bash
+localcoder mcp logout [name]
+```
+
+---
+
+#### debug
+
+Debug OAuth connection issues for an MCP server.
+
+```bash
+localcoder mcp debug <name>
+```
+
+---
+
+### models
+
+List all available models from configured providers.
+
+```bash
+localcoder models [provider]
+```
+
+This command displays all models available across your configured providers in the format `provider/model`.
+
+This is useful for figuring out the exact model name to use in [your config](/docs/config/).
+
+You can optionally pass a provider ID to filter models by that provider.
+
+```bash
+localcoder models anthropic
+```
+
+#### Flags
+
+| Flag                                    | Description                                                  |
+| --------------------------------------- | ------------------------------------------------------------ |
+| <nobr><code>{"--refresh"}</code></nobr> | Refresh the models cache from models.dev                     |
+| <nobr><code>{"--verbose"}</code></nobr> | Use more verbose model output (includes metadata like costs) |
+
+Use the `--refresh` flag to update the cached model list. This is useful when new models have been added to a provider and you want to see them in LocalCoder.
+
+```bash
+localcoder models --refresh
+```
+
+---
+
+### run
+
+Run localcoder in non-interactive mode by passing a prompt directly.
+
+```bash
+localcoder run [message..]
+```
+
+This is useful for scripting, automation, or when you want a quick answer without launching the full TUI. For example.
+
+```bash "localcoder run"
+localcoder run Explain the use of context in Go
+```
+
+You can also attach to a running `localcoder serve` instance to avoid MCP server cold boot times on every run:
+
+```bash
+# Start a headless server in one terminal
+localcoder serve
+
+# In another terminal, run commands that attach to it
+localcoder run --attach http://localhost:4096 "Explain async/await in JavaScript"
+```
+
+#### Flags
+
+| Flag                                                         | Short | Description                                                                |
+| ------------------------------------------------------------ | ----- | -------------------------------------------------------------------------- |
+| <nobr><code>{"--command"}</code></nobr>                      |       | The command to run, use message for args                                   |
+| <nobr><code>{"--continue"}</code></nobr>                     | `-c`  | Continue the last session                                                  |
+| <nobr><code>{"--session"}</code></nobr>                      | `-s`  | Session ID to continue                                                     |
+| <nobr><code>{"--fork"}</code></nobr>                         |       | Fork the session when continuing (use with `--continue` or `--session`)    |
+| <nobr><code>{"--share"}</code></nobr>                        |       | Share the session                                                          |
+| <nobr><code>{"--model"}</code></nobr>                        | `-m`  | Model to use in the form of provider/model                                 |
+| <nobr><code>{"--agent"}</code></nobr>                        |       | Agent to use                                                               |
+| <nobr><code>{"--file"}</code></nobr>                         | `-f`  | File(s) to attach to message                                               |
+| <nobr><code>{"--format"}</code></nobr>                       |       | Format: default (formatted) or json (raw JSON events)                      |
+| <nobr><code>{"--title"}</code></nobr>                        |       | Title for the session (uses truncated prompt if no value provided)         |
+| <nobr><code>{"--attach"}</code></nobr>                       |       | Attach to a running localcoder server (e.g., http://localhost:4096)          |
+| <nobr><code>{"--password"}</code></nobr>                     | `-p`  | Basic auth password (defaults to `LOCALCODER_SERVER_PASSWORD`)               |
+| <nobr><code>{"--username"}</code></nobr>                     | `-u`  | Basic auth username (defaults to `LOCALCODER_SERVER_USERNAME` or `localcoder`) |
+| <nobr><code>{"--dir"}</code></nobr>                          |       | Directory to run in, or path on the remote server when attaching           |
+| <nobr><code>{"--port"}</code></nobr>                         |       | Port for the local server (defaults to random port)                        |
+| <nobr><code>{"--variant"}</code></nobr>                      |       | Model variant (provider-specific reasoning effort)                         |
+| <nobr><code>{"--thinking"}</code></nobr>                     |       | Show thinking blocks                                                       |
+| <nobr><code>{"--dangerously-skip-permissions"}</code></nobr> |       | Auto-approve permissions that are not explicitly denied (dangerous!)       |
+
+---
+
+### serve
+
+Start a headless LocalCoder server for API access. Check out the [server docs](/docs/server) for the full HTTP interface.
+
+```bash
+localcoder serve
+```
+
+This starts an HTTP server that provides API access to localcoder functionality without the TUI interface. Set `LOCALCODER_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `localcoder`).
+
+#### Flags
+
+| Flag                                        | Description                                |
+| ------------------------------------------- | ------------------------------------------ |
+| <nobr><code>{"--port"}</code></nobr>        | Port to listen on                          |
+| <nobr><code>{"--hostname"}</code></nobr>    | Hostname to listen on                      |
+| <nobr><code>{"--mdns"}</code></nobr>        | Enable mDNS discovery                      |
+| <nobr><code>{"--mdns-domain"}</code></nobr> | Custom mDNS domain name                    |
+| <nobr><code>{"--cors"}</code></nobr>        | Additional browser origin(s) to allow CORS |
+
+---
+
+### session
+
+Manage LocalCoder sessions.
+
+```bash
+localcoder session [command]
+```
+
+---
+
+#### list
+
+List all LocalCoder sessions.
+
+```bash
+localcoder session list
+```
+
+##### Flags
+
+| Flag                                      | Short | Description                          |
+| ----------------------------------------- | ----- | ------------------------------------ |
+| <nobr><code>{"--max-count"}</code></nobr> | `-n`  | Limit to N most recent sessions      |
+| <nobr><code>{"--format"}</code></nobr>    |       | Output format: table or json (table) |
+
+---
+
+#### delete
+
+Delete an LocalCoder session.
+
+```bash
+localcoder session delete <sessionID>
+```
+
+---
+
+### stats
+
+Show token usage and cost statistics for your LocalCoder sessions.
+
+```bash
+localcoder stats
+```
+
+#### Flags
+
+| Flag                                    | Description                                                                 |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| <nobr><code>{"--days"}</code></nobr>    | Show stats for the last N days (all time)                                   |
+| <nobr><code>{"--tools"}</code></nobr>   | Number of tools to show (all)                                               |
+| <nobr><code>{"--models"}</code></nobr>  | Show model usage breakdown (hidden by default). Pass a number to show top N |
+| <nobr><code>{"--project"}</code></nobr> | Filter by project (all projects, empty string: current project)             |
+
+---
+
+### export
+
+Export session data as JSON.
+
+```bash
+localcoder export [sessionID]
+```
+
+If you don't provide a session ID, you'll be prompted to select from available sessions.
+
+#### Flags
+
+| Flag                                     | Description                           |
+| ---------------------------------------- | ------------------------------------- |
+| <nobr><code>{"--sanitize"}</code></nobr> | Redact sensitive transcript/file data |
+
+---
+
+### import
+
+Import session data from a JSON file or LocalCoder share URL.
+
+```bash
+localcoder import <file>
+```
+
+You can import from a local file or an LocalCoder share URL.
+
+```bash
+localcoder import session.json
+localcoder import https://opncd.ai/s/abc123
+```
+
+---
+
+### web
+
+Start a headless LocalCoder server with a web interface.
+
+```bash
+localcoder web
+```
+
+This starts an HTTP server and opens a web browser to access LocalCoder through a web interface. Set `LOCALCODER_SERVER_PASSWORD` to enable HTTP basic auth (username defaults to `localcoder`).
+
+#### Flags
+
+| Flag                                        | Description                                |
+| ------------------------------------------- | ------------------------------------------ |
+| <nobr><code>{"--port"}</code></nobr>        | Port to listen on                          |
+| <nobr><code>{"--hostname"}</code></nobr>    | Hostname to listen on                      |
+| <nobr><code>{"--mdns"}</code></nobr>        | Enable mDNS discovery                      |
+| <nobr><code>{"--mdns-domain"}</code></nobr> | Custom mDNS domain name                    |
+| <nobr><code>{"--cors"}</code></nobr>        | Additional browser origin(s) to allow CORS |
+
+---
+
+### acp
+
+Start an ACP (Agent Client Protocol) server.
+
+```bash
+localcoder acp
+```
+
+This command starts an ACP server that communicates via stdin/stdout using nd-JSON.
+
+#### Flags
+
+| Flag                                        | Description                                |
+| ------------------------------------------- | ------------------------------------------ |
+| <nobr><code>{"--cwd"}</code></nobr>         | Working directory                          |
+| <nobr><code>{"--port"}</code></nobr>        | Port to listen on                          |
+| <nobr><code>{"--hostname"}</code></nobr>    | Hostname to listen on                      |
+| <nobr><code>{"--mdns"}</code></nobr>        | Enable mDNS discovery                      |
+| <nobr><code>{"--mdns-domain"}</code></nobr> | Custom mDNS domain name                    |
+| <nobr><code>{"--cors"}</code></nobr>        | Additional browser origin(s) to allow CORS |
+
+---
+
+### plugin
+
+Install a plugin and update your config.
+
+```bash
+localcoder plugin <module>
+```
+
+Or use the alias.
+
+```bash
+localcoder plug <module>
+```
+
+#### Flags
+
+| Flag                                   | Short | Description                     |
+| -------------------------------------- | ----- | ------------------------------- |
+| <nobr><code>{"--global"}</code></nobr> | `-g`  | Install in global config        |
+| <nobr><code>{"--force"}</code></nobr>  | `-f`  | Replace existing plugin version |
+
+---
+
+### pr
+
+Fetch and checkout a GitHub PR branch, then run LocalCoder.
+
+```bash
+localcoder pr <number>
+```
+
+---
+
+### db
+
+Database tools.
+
+```bash
+localcoder db [query]
+```
+
+#### Flags
+
+| Flag                                   | Description                    |
+| -------------------------------------- | ------------------------------ |
+| <nobr><code>{"--format"}</code></nobr> | Output format: `json` or `tsv` |
+
+---
+
+#### path
+
+Print the database path.
+
+```bash
+localcoder db path
+```
+
+---
+
+### debug
+
+Debugging and troubleshooting tools.
+
+```bash
+localcoder debug [command]
+```
+
+---
+
+### uninstall
+
+Uninstall LocalCoder and remove all related files.
+
+```bash
+localcoder uninstall
+```
+
+#### Flags
+
+| Flag                                        | Short | Description                                 |
+| ------------------------------------------- | ----- | ------------------------------------------- |
+| <nobr><code>{"--keep-config"}</code></nobr> | `-c`  | Keep configuration files                    |
+| <nobr><code>{"--keep-data"}</code></nobr>   | `-d`  | Keep session data and snapshots             |
+| <nobr><code>{"--dry-run"}</code></nobr>     |       | Show what would be removed without removing |
+| <nobr><code>{"--force"}</code></nobr>       | `-f`  | Skip confirmation prompts                   |
+
+---
+
+### upgrade
+
+Updates localcoder to the latest version or a specific version.
+
+```bash
+localcoder upgrade [target]
+```
+
+To upgrade to the latest version.
+
+```bash
+localcoder upgrade
+```
+
+To upgrade to a specific version.
+
+```bash
+localcoder upgrade v0.1.48
+```
+
+#### Flags
+
+| Flag                                   | Short | Description                                                       |
+| -------------------------------------- | ----- | ----------------------------------------------------------------- |
+| <nobr><code>{"--method"}</code></nobr> | `-m`  | The installation method that was used; curl, npm, pnpm, bun, brew |
+
+---
+
+## Global Flags
+
+The localcoder CLI takes the following global flags.
+
+| Flag                                       | Short | Description                          |
+| ------------------------------------------ | ----- | ------------------------------------ |
+| <nobr><code>{"--help"}</code></nobr>       | `-h`  | Display help                         |
+| <nobr><code>{"--version"}</code></nobr>    | `-v`  | Print version number                 |
+| <nobr><code>{"--print-logs"}</code></nobr> |       | Print logs to stderr                 |
+| <nobr><code>{"--log-level"}</code></nobr>  |       | Log level (DEBUG, INFO, WARN, ERROR) |
+| <nobr><code>{"--pure"}</code></nobr>       |       | Run without external plugins         |
+
+---
+
+## Environment variables
+
+LocalCoder can be configured using environment variables.
+
+| Variable                              | Type    | Description                                       |
+| ------------------------------------- | ------- | ------------------------------------------------- |
+| `LOCALCODER_AUTO_SHARE`                 | boolean | Automatically share sessions                      |
+| `LOCALCODER_GIT_BASH_PATH`              | string  | Path to Git Bash executable on Windows            |
+| `LOCALCODER_CONFIG`                     | string  | Path to config file                               |
+| `LOCALCODER_TUI_CONFIG`                 | string  | Path to TUI config file                           |
+| `LOCALCODER_CONFIG_DIR`                 | string  | Path to config directory                          |
+| `LOCALCODER_CONFIG_CONTENT`             | string  | Inline json config content                        |
+| `LOCALCODER_DISABLE_AUTOUPDATE`         | boolean | Disable automatic update checks                   |
+| `LOCALCODER_DISABLE_PRUNE`              | boolean | Disable pruning of old data                       |
+| `LOCALCODER_DISABLE_TERMINAL_TITLE`     | boolean | Disable automatic terminal title updates          |
+| `LOCALCODER_PERMISSION`                 | string  | Inlined json permissions config                   |
+| `LOCALCODER_DISABLE_DEFAULT_PLUGINS`    | boolean | Disable default plugins                           |
+| `LOCALCODER_DISABLE_LSP_DOWNLOAD`       | boolean | Disable automatic LSP server downloads            |
+| `LOCALCODER_ENABLE_EXPERIMENTAL_MODELS` | boolean | Enable experimental models                        |
+| `LOCALCODER_DISABLE_AUTOCOMPACT`        | boolean | Disable automatic context compaction              |
+| `LOCALCODER_DISABLE_CLAUDE_CODE`        | boolean | Disable reading from `.claude` (prompt + skills)  |
+| `LOCALCODER_DISABLE_CLAUDE_CODE_PROMPT` | boolean | Disable reading `~/.claude/CLAUDE.md`             |
+| `LOCALCODER_DISABLE_CLAUDE_CODE_SKILLS` | boolean | Disable loading `.claude/skills`                  |
+| `LOCALCODER_DISABLE_MODELS_FETCH`       | boolean | Disable fetching models from remote sources       |
+| `LOCALCODER_DISABLE_MOUSE`              | boolean | Disable mouse capture in the TUI                  |
+| `LOCALCODER_FAKE_VCS`                   | string  | Fake VCS provider for testing purposes            |
+| `LOCALCODER_CLIENT`                     | string  | Client identifier (defaults to `cli`)             |
+| `LOCALCODER_ENABLE_EXA`                 | boolean | Enable Exa web search tools                       |
+| `LOCALCODER_SERVER_PASSWORD`            | string  | Enable basic auth for `serve`/`web`               |
+| `LOCALCODER_SERVER_USERNAME`            | string  | Override basic auth username (default `localcoder`) |
+| `LOCALCODER_MODELS_URL`                 | string  | Custom URL for fetching models configuration      |
+
+---
+
+### Experimental
+
+These environment variables enable experimental features that may change or be removed.
+
+| Variable                                        | Type    | Description                             |
+| ----------------------------------------------- | ------- | --------------------------------------- |
+| `LOCALCODER_EXPERIMENTAL`                         | boolean | Enable all experimental features        |
+| `LOCALCODER_EXPERIMENTAL_ICON_DISCOVERY`          | boolean | Enable icon discovery                   |
+| `LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`  | boolean | Disable copy on select in TUI           |
+| `LOCALCODER_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS` | number  | Default timeout for bash commands in ms |
+| `LOCALCODER_EXPERIMENTAL_OUTPUT_TOKEN_MAX`        | number  | Max output tokens for LLM responses     |
+| `LOCALCODER_EXPERIMENTAL_FILEWATCHER`             | boolean | Enable file watcher for entire dir      |
+| `LOCALCODER_EXPERIMENTAL_OXFMT`                   | boolean | Enable oxfmt formatter                  |
+| `LOCALCODER_EXPERIMENTAL_LSP_TOOL`                | boolean | Enable experimental LSP tool            |
+| `LOCALCODER_EXPERIMENTAL_DISABLE_FILEWATCHER`     | boolean | Disable file watcher                    |
+| `LOCALCODER_EXPERIMENTAL_EXA`                     | boolean | Enable experimental Exa features        |
+| `LOCALCODER_EXPERIMENTAL_LSP_TY`                  | boolean | Enable TY LSP for python files          |
+| `LOCALCODER_EXPERIMENTAL_MARKDOWN`                | boolean | Enable experimental markdown features   |
+| `LOCALCODER_EXPERIMENTAL_PLAN_MODE`               | boolean | Enable plan mode                        |

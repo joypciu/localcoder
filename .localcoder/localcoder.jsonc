@@ -1,0 +1,14 @@
+{
+  "$schema": "https://localcoder.ai/config.json",
+  "provider": {},
+  "permission": {
+    "edit": {
+      "packages/localcoder/migration/*": "deny",
+    },
+  },
+  "mcp": {},
+  "tools": {
+    "github-triage": false,
+    "github-pr-search": false,
+  },
+}
