@@ -65,7 +65,7 @@
     "@tanstack/solid-query": "5.100.14",
     "@thisbeyond/solid-dnd": "0.7.5",
     "diff": "9.0.0",
-    "effect": "3.21.2",
+    "effect": "catalog:",
     "fuzzysort": "3.1.0",
     "ghostty-web": "github:anomalyco/ghostty-web#main",
     "luxon": "3.7.2",

@@ -39,21 +39,15 @@ function validateCredential<A, E, R>(
 }
 
 function decodeCredential(input: string) {
-  return Encoding.decodeBase64String(input)
-    .asEffect()
-    .pipe(
-      Effect.match({
-        onFailure: emptyCredential,
-        onSuccess: (header) => {
-          const parts = header.split(":")
-          if (parts.length !== 2) return emptyCredential()
-          return {
-            username: parts[0],
-            password: Redacted.make(parts[1]),
-          }
-        },
-      }),
-    )
+  const result = Encoding.decodeBase64String(input)
+  if (result._tag === "Failure") return Effect.succeed(emptyCredential())
+  const header = result.success
+  const parts = header.split(":")
+  if (parts.length !== 2) return Effect.succeed(emptyCredential())
+  return Effect.succeed({
+    username: parts[0],
+    password: Redacted.make(parts[1]),
+  })
 }
 
 function credentialFromRequest(request: HttpServerRequest.HttpServerRequest) {
