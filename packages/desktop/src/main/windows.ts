@@ -123,7 +123,9 @@ export function createMainWindow() {
   })
 
   state.manage(win)
-  loadWindow(win, "index.html")
+  const page =
+    typeof __LOCALCODER_LEGACY_UI__ !== "undefined" && __LOCALCODER_LEGACY_UI__ ? "index.html" : "shell.html"
+  loadWindow(win, page)
   wireZoom(win)
 
   win.once("ready-to-show", () => {

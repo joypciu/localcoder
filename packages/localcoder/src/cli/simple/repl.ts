@@ -13,6 +13,7 @@ import {
   runShellCommand,
   type CommandEnv,
 } from "./commands"
+import { banner, hint, section } from "./display"
 
 export type ReplConfig = {
   directory: string
@@ -77,11 +78,12 @@ export async function runRepl(config: ReplConfig) {
   UI.println(UI.logo())
   UI.empty()
   UI.println(UI.Style.TEXT_DIM + `LocalCoder CLI · ${config.directory}` + UI.Style.TEXT_NORMAL)
-  UI.println(
-    UI.Style.TEXT_DIM +
-      "Message the agent · /help · !shell · @files · Ctrl+C cancel turn" +
-      UI.Style.TEXT_NORMAL,
-  )
+  banner([
+    "Message the agent · /help · !shell · @files",
+    "Ctrl+C cancel turn · /permissions cycle ask/accept/reject",
+  ])
+  section("Quick start")
+  hint("/status", "/model", "/sessions", "/resume <id>", "/new")
   UI.empty()
 
   const rl = readline.createInterface({ input, output, terminal: true })

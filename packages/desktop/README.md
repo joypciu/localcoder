@@ -21,7 +21,20 @@ User data: `%APPDATA%\ai.localcoder.desktop\`
 | **llama.cpp** | Pick folder with `llama-server`, pick `.gguf`, set context size | Saves config, starts server, registers provider |
 | **Cloud** | Paste API key (OpenRouter, etc.) | Stores in auth, lists models |
 
-### UI highlights
+### UI (default: desktop-shell)
+
+Windows builds use **`@localcoder-ai/desktop-shell`** — a small Solid.js UI on the LocalCoder SDK (sessions, streaming chat, tools). No legacy OpenCode web-app shell unless you opt in:
+
+```powershell
+$env:LOCALCODER_LEGACY_UI = "1"
+bun run build
+```
+
+- Session sidebar, model picker, composer (Enter send / Shift+Enter newline)
+- SDK event stream for live assistant output and tool lines
+- Legacy full IDE UI: set `LOCALCODER_LEGACY_UI=1` at build time
+
+### UI highlights (legacy IDE)
 
 - Cursor-style default theme, flat IDE layout
 - **Undo change** on each Write/Edit/Patch tool

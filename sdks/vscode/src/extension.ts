@@ -280,7 +280,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   async function openTerminal() {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384;
     const terminal = vscode.window.createTerminal({
       name: TERMINAL_NAME,
       iconPath: {
@@ -289,40 +288,20 @@ export async function activate(context: vscode.ExtensionContext) {
       },
       location: { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
       env: {
-        _EXTENSION_LOCALCODER_PORT: port.toString(),
         LOCALCODER_CALLER: "vscode",
       },
     });
 
     terminal.show();
     const projectArg = workspaceFolder ? ` "${workspaceFolder}"` : "";
-    terminal.sendText(`${cmd}${projectArg} --port ${port}`);
+    terminal.sendText(`${cmd}${projectArg}`);
 
     const fileRef = getActiveFile();
     if (!fileRef) { return; }
 
-    let tries = 10;
-    let connected = false;
-    do {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      try { await fetch(`http://localhost:${port}/app`); connected = true; break; } catch {}
-      tries--;
-    } while (tries > 0);
-
-    if (connected) {
-      await appendPrompt(port, `In ${fileRef}`, workspaceFolder);
-      terminal.show();
-    }
-  }
-
-  async function appendPrompt(port: number, text: string, directory?: string) {
-    const url = new URL(`http://localhost:${port}/tui/append-prompt`);
-    if (directory) { url.searchParams.set("directory", directory); }
-    await fetch(url.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    terminal.sendText(fileRef);
+    terminal.show();
   }
 
   function getActiveFile() {

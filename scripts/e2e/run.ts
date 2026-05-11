@@ -63,6 +63,7 @@ import {
 } from "./steps/vscode"
 import { stepDesktopExeLaunch, stepPlaywrightApp } from "./steps/playwright"
 import { stepVisualSmoke, stepVisualStandard } from "./steps/visual"
+import { stepCliSimpleDevHelp, stepCliSimpleExeHelp } from "./steps/cli-simple"
 
 async function runTier(tier: E2eTier) {
   process.env.LOCALCODER_EXPERIMENTAL_EVENT_SYSTEM ??= "1"
@@ -95,6 +96,7 @@ async function runTier(tier: E2eTier) {
     await run("visual-smoke", "Visual: TUI + VS Code webview regression", stepVisualSmoke)
 
     if (tier === "smoke") {
+      await run("cli-simple-dev", "CLI: simple REPL default (dev --help)", stepCliSimpleDevHelp)
       if (hasExe) {
         await run("cli-version", "CLI: --version", stepCliVersion)
         await run("cli-invalid-model", "CLI: invalid model fail-fast", stepCliInvalidModelFailFast)
@@ -148,9 +150,11 @@ async function runTier(tier: E2eTier) {
       } else {
         skipStep("vscode-backend-live", "VS Code: backend-live smoke", "E2E_SKIP_VSCODE_LIVE=1", results)
       }
-      await run("vscode-electron", "VS Code: Electron integration (test:all)", stepVscodeElectron)
-      await run("visual-standard", "Visual: TUI + webview + app regression", stepVisualStandard)
-      await run("desktop", "Windows: desktop artifact check", stepDesktopArtifacts)
+    await run("vscode-electron", "VS Code: Electron integration (test:all)", stepVscodeElectron)
+    await run("cli-simple-dev", "CLI: simple REPL default (dev --help)", stepCliSimpleDevHelp)
+    await run("cli-simple-exe", "CLI: simple REPL (--help on built exe)", stepCliSimpleExeHelp)
+    await run("visual-standard", "Visual: TUI + webview + app regression", stepVisualStandard)
+    await run("desktop", "Windows: desktop artifact check", stepDesktopArtifacts)
       if (!envFlag("E2E_SKIP_PLAYWRIGHT")) {
         await run("playwright", "Desktop UI: Playwright app smoke", stepPlaywrightApp)
       } else {

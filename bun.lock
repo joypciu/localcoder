@@ -240,6 +240,7 @@
       "devDependencies": {
         "@actions/artifact": "4.0.0",
         "@localcoder-ai/app": "workspace:*",
+        "@localcoder-ai/desktop-shell": "workspace:*",
         "@localcoder-ai/ui": "workspace:*",
         "@lydell/node-pty": "catalog:",
         "@sentry/solid": "catalog:",
@@ -259,6 +260,7 @@
         "sury": "11.0.0-alpha.4",
         "typescript": "~5.6.2",
         "vite": "catalog:",
+        "vite-plugin-solid": "2.11.12",
         "zod-openapi": "5.4.6",
       },
       "optionalDependencies": {
@@ -268,6 +270,19 @@
         "@lydell/node-pty-linux-x64": "1.2.0-beta.10",
         "@lydell/node-pty-win32-arm64": "1.2.0-beta.10",
         "@lydell/node-pty-win32-x64": "1.2.0-beta.10",
+      },
+    },
+    "packages/desktop-shell": {
+      "name": "@localcoder-ai/desktop-shell",
+      "version": "0.1.0",
+      "dependencies": {
+        "@localcoder-ai/sdk": "workspace:*",
+        "solid-js": "catalog:",
+      },
+      "devDependencies": {
+        "@types/bun": "catalog:",
+        "@typescript/native-preview": "catalog:",
+        "typescript": "catalog:",
       },
     },
     "packages/enterprise": {
@@ -1356,6 +1371,8 @@
     "@localcoder-ai/core": ["@localcoder-ai/core@workspace:packages/core"],
 
     "@localcoder-ai/desktop": ["@localcoder-ai/desktop@workspace:packages/desktop"],
+
+    "@localcoder-ai/desktop-shell": ["@localcoder-ai/desktop-shell@workspace:packages/desktop-shell"],
 
     "@localcoder-ai/enterprise": ["@localcoder-ai/enterprise@workspace:packages/enterprise"],
 
