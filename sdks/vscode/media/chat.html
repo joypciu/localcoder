@@ -175,6 +175,18 @@ html,body{height:100%;overflow:hidden;font-family:var(--ff);font-size:13px;backg
 .task-progress{display:flex;align-items:center;gap:8px;padding:8px 0}
 .spinner{width:14px;height:14px;border:2px solid var(--bg3);border-top-color:var(--a);border-radius:50%;animation:spin 1s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ========== CHANGES BAR (undo) ========== */
+.changes-bar{display:flex;align-items:center;gap:10px;margin-top:8px;padding:8px 12px;background:rgba(163,102,255,.08);border:1px solid rgba(163,102,255,.25);border-radius:8px;font-size:12px;flex-wrap:wrap;animation:fadeIn .2s ease-out}
+.changes-bar-info{display:flex;align-items:center;gap:8px;flex:1;min-width:0;flex-wrap:wrap}
+.changes-bar-count{font-weight:600;color:#a366ff;white-space:nowrap}
+.changes-files{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+.changes-file-chip{background:rgba(163,102,255,.15);border:1px solid rgba(163,102,255,.2);border-radius:4px;padding:1px 7px;font-size:11px;color:var(--fg2);font-family:var(--ffm);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;cursor:default}
+.changes-file-chip .chip-icon{font-size:10px}
+.changes-bar-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-revert{background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.4);color:#e74c3c;padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;transition:all .15s;font-family:var(--ff)}
+.btn-revert:hover{background:rgba(231,76,60,.3);border-color:var(--err);color:#fff}
+.btn-revert:disabled{opacity:.4;cursor:not-allowed}
+.changes-done{color:var(--ok);font-size:12px;font-weight:600;padding:4px 8px}
 </style>
 </head>
 <body>
@@ -226,6 +238,8 @@ var vsc = acquireVsCodeApi();
 /* ── State ──────────────────────────────────────────────────────────────── */
 var S = { ready:false, busy:false, session:null, messages:[], streamTurn:null, streamAccum:'' };
 var toolCallStore = {}; // id → tool object
+// files modified in the current turn: { path, type:'created'|'modified' }
+var currentTurnFiles = [];
 
 /* ── DOM refs ────────────────────────────────────────────────────────────── */
 var $msgs  = document.getElementById('msgs');
@@ -701,7 +715,7 @@ function doSend() {
   $inp.value = ''; $inp.style.height = 'auto';
   setBusy(true);
   var id = uid();
-  S.streamTurn = id; S.streamAccum = ''; toolCallStore = {};
+  S.streamTurn = id; S.streamAccum = ''; toolCallStore = {}; currentTurnFiles = [];
   addAsst(id);
   post({ type: 'sendMessage', text: text, sessionId: S.session, history: S.messages.slice(0, -1), files: [] });
 }
@@ -788,6 +802,14 @@ window.addEventListener('message', function (e) {
       var tc = m.tool || {};
       var tcid = tc.id || ('tc-' + Date.now());
       toolCallStore[tcid] = { id: tcid, name: tc.name, input: tc.input, status: 'running' };
+      // Track write operations for undo summary
+      var WRITE_NAMES = ['Edit','Write','edit','write','edit_file','write_file'];
+      if (WRITE_NAMES.indexOf(tc.name) >= 0 && tc.input) {
+        var fp = tc.input.file_path || tc.input.path || tc.input.filename;
+        if (fp && !currentTurnFiles.some(function(f){ return f.path === fp; })) {
+          currentTurnFiles.push({ path: fp, type: 'modified' });
+        }
+      }
       if (S.streamTurn) {
         var tturn = document.getElementById('t-' + S.streamTurn);
         if (tturn) {
@@ -816,8 +838,27 @@ window.addEventListener('message', function (e) {
         var msg2 = m.message || {};
         var allTools = Object.values(toolCallStore);
         renderTurn(stid, msg2.content || S.streamAccum, msg2.agent, msg2.model, msg2.tokens, msg2.error, allTools.length ? allTools : msg2.toolCalls, msg2.reasoning);
+        // Show changes bar if files were modified
+        if (m.canUndo && currentTurnFiles.length > 0) {
+          showChangesBar(stid, currentTurnFiles.slice());
+        }
       }
       toolCallStore = {}; break;
+
+    case 'undone': {
+      // Replace the revert button with a "Reverted" confirmation
+      var bar = document.getElementById('changes-bar-' + S.session);
+      if (!bar) {
+        // Find the last changes bar
+        var bars = document.querySelectorAll('.changes-bar');
+        if (bars.length) { bar = bars[bars.length - 1]; }
+      }
+      if (bar) {
+        bar.innerHTML = '<span class="changes-done">✓ Reverted ' + (m.count || 0) + ' file' + (m.count !== 1 ? 's' : '') + '</span>';
+        setTimeout(function() { if (bar.parentNode) { bar.parentNode.removeChild(bar); } }, 2500);
+      }
+      break;
+    }
 
     case 'error':
       addErrGlobal(m.message);
@@ -866,6 +907,52 @@ document.getElementById('st').addEventListener('click', function () {
   var dbg = document.getElementById('dbg');
   dbg.style.display = dbg.style.display === 'none' ? 'block' : 'none';
 });
+
+/* ── Changes bar (undo UI) ───────────────────────────────────────────────── */
+function showChangesBar(turnId, files) {
+  var turn = document.getElementById('t-' + turnId);
+  if (!turn) { return; }
+
+  var barId = 'chbar-' + turnId;
+  var existing = document.getElementById(barId);
+  if (existing) { existing.parentNode.removeChild(existing); }
+
+  var chips = files.map(function(f) {
+    // Show only the last 2 path segments for readability
+    var parts = f.path.replace(/\\/g, '/').split('/');
+    var label = parts.length > 2 ? '…/' + parts.slice(-2).join('/') : f.path;
+    var icon = f.type === 'created' ? '🆕' : '✏️';
+    return '<span class="changes-file-chip" title="' + esc(f.path) + '">'
+      + '<span class="chip-icon">' + icon + '</span>' + esc(label) + '</span>';
+  }).join('');
+
+  var count = files.length;
+  var summary = count + ' file' + (count !== 1 ? 's' : '') + ' modified';
+
+  var bar = document.createElement('div');
+  bar.className = 'changes-bar';
+  bar.id = barId;
+  bar.innerHTML =
+    '<div class="changes-bar-info">'
+      + '<span class="changes-bar-count">✏️ ' + summary + '</span>'
+      + '<div class="changes-files">' + chips + '</div>'
+    + '</div>'
+    + '<div class="changes-bar-actions">'
+      + '<button class="btn-revert" onclick="doRevert(\'' + barId + '\',this)">↩ Revert all</button>'
+    + '</div>';
+
+  // Insert after turn-actions
+  var actions = turn.querySelector('.turn-actions');
+  if (actions) { turn.insertBefore(bar, actions.nextSibling || null); }
+  else { turn.appendChild(bar); }
+  scroll();
+}
+
+window.doRevert = function(barId, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Reverting…';
+  post({ type: 'undoLastTurn' });
+};
 
 function wiresugs() {
   document.querySelectorAll('.sug-btn').forEach(function (btn) {

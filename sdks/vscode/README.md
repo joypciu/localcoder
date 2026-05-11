@@ -1,15 +1,18 @@
-# localcoder VS Code Extension
+# LocalCoder VS Code Extension
 
 A VS Code chat panel for localcoder — the open source AI coding agent.
 
 ## Features
 
+- **Activity Bar Icon** — click the LocalCoder icon in the sidebar to open the chat panel, just like GitHub Copilot or Claude Code
 - **Chat Panel** — Full-featured chat UI with inline Markdown rendering, syntax-highlighted code blocks, copy buttons, and smooth streaming
 - **Tool Call Visualization** — Real-time collapsible cards for every tool the agent runs (Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Agent…) with formatted input/output
 - **Diff Rendering** — Edit tool outputs show unified diffs with green/red highlights
 - **Shell Output** — Bash/shell tool outputs color stdout in teal and stderr in red
 - **Thinking Blocks** — Collapsible reasoning sections (Claude-style) for models that expose chain-of-thought
-- **Multi-Backend** — Switch between the localcoder local agent and any OpenAI-compatible API (OpenAI, OpenRouter, llama.cpp, Ollama, etc.)
+- **Undo Last Changes** — After each AI response a changes bar shows which files were created or modified, with a "↩ Revert all" button to restore them (no git required, goes through VS Code's native undo stack)
+- **Multi-Backend** — Switch between the localcoder local agent and any OpenAI-compatible API (OpenAI, Groq, Gemini, llama.cpp, Ollama, etc.)
+- **First-Run Wizard** — On first open, a QuickPick helps you configure a free provider (Gemini, Groq, or Ollama) with zero friction
 - **Session Management** — Browse and reload previous conversations from the header dropdown
 - **Active File Context** — The current file and selection are surfaced as context hints while you type
 - **Terminal TUI** — Traditional terminal-based localcoder interface alongside the chat panel
@@ -18,7 +21,7 @@ A VS Code chat panel for localcoder — the open source AI coding agent.
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Shift+L` | Open / focus chat panel |
+| `Ctrl+Shift+L` | Open / focus chat panel (floating tab) |
 | `Ctrl+Esc` | Open localcoder terminal |
 | `Ctrl+Shift+Esc` | New localcoder terminal tab |
 | `Ctrl+Alt+K` | Insert active filepath into terminal |
@@ -29,9 +32,19 @@ A VS Code chat panel for localcoder — the open source AI coding agent.
 2. `cd sdks/vscode && bun install`
 3. Press `F5` to launch the Extension Development Host
 4. In the new window open any project folder
-5. Press `Ctrl+Shift+L` to open the chat panel
+5. Click the **LocalCoder icon** in the Activity Bar (left sidebar) to open the chat
 
 ## Configuration
+
+### First-Run Setup
+
+The extension shows a setup wizard on first activation. Choose from:
+
+- **Google Gemini (Free)** — `https://generativelanguage.googleapis.com/v1beta/openai` — get a key at aistudio.google.com
+- **Groq (Free)** — `https://api.groq.com/openai/v1` — get a key at console.groq.com
+- **Ollama (Local, no key needed)** — `http://localhost:11434/v1`
+- **Any OpenAI-compatible endpoint** — enter your own URL and key
+- **localcoder Backend** — uses the bundled local agent (requires Bun)
 
 ### localcoder Backend (default)
 
@@ -42,18 +55,30 @@ Starts a local `localcoder` server automatically on a random port with auto-gene
 1. Open the chat panel
 2. Select **OpenAI** from the backend dropdown
 3. Click **⚙** → configure:
-   - **Endpoint** — `https://api.openai.com/v1`, `https://openrouter.ai/api/v1`, `http://localhost:8080/v1`, etc.
+   - **Endpoint** — `https://api.openai.com/v1`, `https://openrouter.ai/api/v1`, `http://localhost:11434/v1`, etc.
    - **Model** — e.g. `gpt-4o`, `claude-3-5-sonnet-20241022`, `llama3`
    - **API Key** — your provider key
 4. Click **Save** — settings persist across VS Code sessions
+
+## Undo File Changes
+
+After each AI response, a **changes bar** appears showing every file that was created or modified during that turn. Click **↩ Revert all** to restore all files to their state before the response. The revert uses VS Code's own workspace edit API — it shows up in the normal Ctrl+Z undo history, and no git repository is required.
+
+## CLI Keyboard Shortcuts (TUI)
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+Enter` or `Ctrl+J` | Insert newline in prompt (Shift+Enter alternative — most terminals cannot distinguish Shift+Enter from plain Enter) |
+| `<leader>u` (usually `\u`) | Undo last message + revert file changes |
+| `<leader>r` | Redo (un-revert) |
 
 ## Architecture
 
 ```
 sdks/vscode/
 ├── src/
-│   ├── extension.ts          Entry point — registers commands, manages terminals
-│   ├── chat-panel.ts         Webview ↔ backend bridge (message router)
+│   ├── extension.ts          Entry point — registers commands, manages terminals, first-run wizard
+│   ├── chat-panel.ts         Webview ↔ backend bridge (sidebar + panel providers, undo snapshots)
 │   └── backends/
 │       ├── types.ts          ChatBackend interface, ChatMessage, ToolCall types
 │       ├── localcoder.ts     Local server backend (spawn → health → SSE → API)
@@ -84,6 +109,19 @@ bun run test           # compile-tests + vscode-test (requires VS Code installed
 ```
 
 Tests live in `src/test/suite/` and cover all six tool categories: read/glob, write/edit, shell, agent delegation, multi-turn conversation, and search tools.
+
+## Publishing to VS Code Marketplace
+
+1. Create a publisher account at marketplace.visualstudio.com/manage
+2. Generate a Personal Access Token (Full access, Marketplace: Manage)
+3. Update `publisher` in `package.json` to match your publisher ID
+4. Run:
+   ```bash
+   cd sdks/vscode
+   npx vsce login <publisher-id>
+   npx vsce publish
+   ```
+5. Or package only: `npx vsce package` → produces a `.vsix` file you can install locally
 
 ## Debugging
 

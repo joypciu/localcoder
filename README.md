@@ -43,15 +43,18 @@ bun run --cwd packages/localcoder start
 A sidebar chat panel for VS Code with real-time tool call visualization.
 
 **Features:**
+- Activity Bar icon — click to open the chat panel in the sidebar (like GitHub Copilot or Claude Code)
 - Full Markdown rendering with syntax-highlighted code blocks
 - Collapsible tool cards (Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Agent…)
 - Diff view for file edits, shell stdout/stderr coloring, reasoning blocks
+- **Undo last changes** — after each AI response, see which files changed and revert them with one click (no git required)
 - Switch between the localcoder local agent and any OpenAI-compatible API
-- Session history, active file context, message copy/rating
+- First-run setup wizard — picks a free provider (Gemini, Groq, Ollama) on first open
+- Session history and active file context
 
-**Open the panel:** `Ctrl+Shift+L` (Windows/Linux) or `Cmd+Shift+L` (macOS)
+**Open the panel:** Click the LocalCoder icon in the Activity Bar, or `Ctrl+Shift+L` (Windows/Linux) / `Cmd+Shift+L` (macOS)
 
-See `sdks/vscode/README.md` for setup and development instructions.
+See `sdks/vscode/README.md` for setup, publishing, and development instructions.
 
 ---
 
@@ -68,11 +71,38 @@ A **general** sub-agent handles complex searches and multi-step tasks internally
 
 ---
 
+## CLI Keyboard Shortcuts (TUI)
+
+| Shortcut | Action |
+|---|---|
+| `Enter` | Send message |
+| `Ctrl+Enter` or `Ctrl+J` | Insert newline (Shift+Enter alternative — most terminals can't distinguish Shift+Enter from Enter) |
+| `<leader>u` (usually `\u`) | Undo last message + revert all file changes it made |
+| `<leader>r` | Redo (un-revert) |
+| `Tab` | Switch between agents |
+
+---
+
+## Undo / Revert
+
+### VS Code Extension
+After every AI response that modifies files, a **changes bar** appears in the chat showing which files were created or updated. Click **↩ Revert all** to restore them. No git needed — uses VS Code's native undo stack.
+
+### CLI (TUI)
+Press `<leader>u` (usually `\u`) to undo the last message and revert all file changes it made. The CLI uses its own snapshot system to track file states per turn.
+
+---
+
 ## Providers
 
 LocalCoder works with any provider supported by the Vercel AI SDK:
 
 Anthropic · OpenAI · Google Gemini · Amazon Bedrock · Azure OpenAI · Cohere · Mistral · xAI · Groq · Together AI · Fireworks · Perplexity · DeepSeek · Ollama · llama.cpp · and more.
+
+**Free options to get started:**
+- Google Gemini Flash — free tier at aistudio.google.com
+- Groq — free tier at console.groq.com
+- Ollama — fully local, no API key needed
 
 See `packages/localcoder/README.md` for model configuration details.
 
@@ -123,3 +153,7 @@ The core capability is similar. The differences:
 - Built-in LSP support
 - Terminal-first TUI
 - Client/server architecture — run LocalCoder on a remote machine and drive it from a mobile app or web browser
+
+**Does Shift+Enter work for inserting newlines in the terminal?**
+
+Most terminal emulators send the same byte sequence for Shift+Enter and plain Enter, so they can't be distinguished. Use `Ctrl+Enter` or `Ctrl+J` instead — both insert a newline in the TUI prompt.
