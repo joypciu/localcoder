@@ -1,34 +1,64 @@
 {
   "name": "localcoder",
-  "displayName": "localcoder",
-  "description": "localcoder for VS Code",
-  "version": "1.14.37",
-  "publisher": "sst-dev",
+  "displayName": "LocalCoder",
+  "description": "AI coding agent — chat, tool calls, file edits, and terminal TUI in VS Code",
+  "version": "1.0.0",
+  "publisher": "joypciu",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anomalyco/localcoder"
+    "url": "https://github.com/joypciu/localcoder"
   },
   "license": "MIT",
   "icon": "images/icon.png",
   "galleryBanner": {
-    "color": "#000000",
+    "color": "#0d0d0d",
     "theme": "dark"
   },
   "engines": {
     "vscode": "^1.94.0"
   },
   "categories": [
+    "AI",
+    "Chat",
     "Other"
+  ],
+  "keywords": [
+    "ai",
+    "agent",
+    "coding",
+    "chat",
+    "llm",
+    "openai",
+    "anthropic",
+    "localcoder"
   ],
   "activationEvents": [
     "onCommand:localcoder.openChat"
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "localcoder-sidebar",
+          "title": "LocalCoder",
+          "icon": "images/button-dark.svg"
+        }
+      ]
+    },
+    "views": {
+      "localcoder-sidebar": [
+        {
+          "id": "localcoder.chatView",
+          "name": "LocalCoder",
+          "type": "webview"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "localcoder.openChat",
-        "title": "Open localcoder Chat",
+        "title": "Open LocalCoder Chat",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
@@ -36,7 +66,7 @@
       },
       {
         "command": "localcoder.openTerminal",
-        "title": "Open localcoder",
+        "title": "Open LocalCoder Terminal",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
@@ -44,7 +74,7 @@
       },
       {
         "command": "localcoder.openNewTerminal",
-        "title": "Open localcoder in new tab",
+        "title": "Open LocalCoder in New Tab",
         "icon": {
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
@@ -52,7 +82,7 @@
       },
       {
         "command": "localcoder.addFilepathToTerminal",
-        "title": "Add Filepath to Terminal"
+        "title": "LocalCoder: Insert Active Filepath"
       }
     ],
     "menus": {
@@ -70,35 +100,23 @@
     "keybindings": [
       {
         "command": "localcoder.openChat",
-        "title": "Open localcoder Chat",
-        "key": "cmd+shift+l",
-        "mac": "cmd+shift+l",
-        "win": "ctrl+shift+l",
-        "linux": "ctrl+shift+l"
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l"
       },
       {
         "command": "localcoder.openTerminal",
-        "title": "Run localcoder",
-        "key": "cmd+escape",
-        "mac": "cmd+escape",
-        "win": "ctrl+escape",
-        "linux": "ctrl+escape"
+        "key": "ctrl+escape",
+        "mac": "cmd+escape"
       },
       {
         "command": "localcoder.openNewTerminal",
-        "title": "Run localcoder",
-        "key": "cmd+shift+escape",
-        "mac": "cmd+shift+escape",
-        "win": "ctrl+shift+escape",
-        "linux": "ctrl+shift+escape"
+        "key": "ctrl+shift+escape",
+        "mac": "cmd+shift+escape"
       },
       {
         "command": "localcoder.addFilepathToTerminal",
-        "title": "localcoder: Insert At-Mentioned",
-        "key": "cmd+alt+k",
-        "mac": "cmd+alt+k",
-        "win": "ctrl+alt+K",
-        "linux": "ctrl+alt+K"
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k"
       }
     ]
   },
@@ -125,6 +143,7 @@
     "esbuild": "^0.25.3",
     "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.0.0"
   }
 }
