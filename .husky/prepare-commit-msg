@@ -1,0 +1,8 @@
+#!/bin/sh
+. "$(dirname "$0")/_/h"
+# Strip AI co-author trailers (Cursor/Claude/Copilot).
+MSG_FILE="$1"
+[ -f "$MSG_FILE" ] || exit 0
+tmp="${MSG_FILE}.tmp"
+grep -viE '^Co-Authored-By:' "$MSG_FILE" >"$tmp" || true
+mv "$tmp" "$MSG_FILE"

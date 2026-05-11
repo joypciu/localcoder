@@ -1,0 +1,8 @@
+#!/bin/sh
+. "$(dirname "$0")/_/h"
+# Strip co-author lines added after prepare-commit-msg (e.g. by IDE).
+MSG_FILE="$1"
+[ -f "$MSG_FILE" ] || exit 0
+tmp="${MSG_FILE}.tmp"
+grep -viE '^Co-Authored-By:' "$MSG_FILE" >"$tmp" || true
+mv "$tmp" "$MSG_FILE"

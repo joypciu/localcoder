@@ -1,0 +1,20 @@
+---
+description: Dependency and package version policy for LocalCoder
+alwaysApply: true
+---
+
+# Dependencies — always use latest
+
+When adding or bumping npm dependencies in this monorepo:
+
+1. **Prefer latest stable** from the registry — do not pin to old minors unless a breaking change blocks upgrade (document why in the PR/commit).
+2. **Workspace catalog** (`package.json` → `workspaces.catalog`): add shared deps to the catalog at their latest version; packages reference `catalog:`.
+3. **After dependency changes**: run `bun install` from repo root, then `bun turbo typecheck` (or the relevant package tests).
+4. **Exceptions** (keep pinned until upstream fixes):
+   - `patchedDependencies` in root `package.json`
+   - `@solidjs/start` git URL if no stable npm release matches
+   - `drizzle-kit` / `drizzle-orm` beta pairs — bump both together to matching beta tags
+5. **Runtime**: Bun **v1.3.14+** (`packageManager` in root `package.json`). Upgrade CLI: `bun upgrade`.
+6. **Bulk upgrade**: `bun scripts/bump-catalog.ts` then `bun install` then `bun update --latest --recursive` from repo root.
+
+Do not add `Co-authored-by` trailers in commits; author is **joypciu** only.

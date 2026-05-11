@@ -14,9 +14,9 @@
     }
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
-    "@tsconfig/node22": "22.0.2",
-    "@types/node": "catalog:",
-    "cloudflare": "5.2.0"
+    "@cloudflare/workers-types": "4.20260530.1",
+    "@tsconfig/node22": "22.0.5",
+    "@types/node": "25.9.1",
+    "cloudflare": "6.3.0"
   }
 }

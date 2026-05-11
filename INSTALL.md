@@ -24,7 +24,7 @@ On Windows, `postinstall` copies the native `.exe` next to the launcher.
 
 ## From source (monorepo)
 
-Requires [Bun](https://bun.sh).
+Requires [Bun](https://bun.sh) **v1.3.14+** (`bun upgrade` if older).
 
 ```bash
 git clone https://github.com/joypciu/localcoder.git
