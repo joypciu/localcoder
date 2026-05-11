@@ -183,8 +183,120 @@ body,
   font-size: 12px;
   color: var(--text-dim);
   border-left: 2px solid var(--accent-dim);
-  padding-left: 10px;
+  padding: 8px 10px;
   margin: 6px 0;
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+}
+
+.lc-tool-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--text);
+}
+
+.lc-tool-icon {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.lc-tool-detail,
+.lc-diff {
+  margin: 8px 0 0;
+  padding: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg-base);
+  border-radius: 6px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.lc-diff {
+  border: 1px solid var(--border);
+  color: var(--success);
+}
+
+.lc-permission {
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+}
+
+.lc-permission-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--accent);
+}
+
+.lc-permission-body {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.lc-permission-kind {
+  color: var(--text);
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.lc-permission-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lc-markdown {
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.lc-markdown h1,
+.lc-markdown h2,
+.lc-markdown h3 {
+  margin: 0.6em 0 0.3em;
+  font-size: 1.05em;
+}
+
+.lc-markdown p {
+  margin: 0.4em 0;
+}
+
+.lc-markdown ul {
+  margin: 0.4em 0;
+  padding-left: 1.2em;
+}
+
+.lc-markdown code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: var(--bg-elevated);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.lc-markdown pre {
+  background: var(--bg-elevated);
+  padding: 8px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+
+.lc-markdown pre code {
+  background: none;
+  padding: 0;
+}
+
+.lc-user-text {
+  margin: 0;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .lc-composer {

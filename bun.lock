@@ -278,12 +278,16 @@
       "version": "0.1.0",
       "dependencies": {
         "@localcoder-ai/sdk": "workspace:*",
+        "marked": "catalog:",
         "solid-js": "catalog:",
       },
       "devDependencies": {
+        "@playwright/test": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native-preview": "catalog:",
         "typescript": "catalog:",
+        "vite": "catalog:",
+        "vite-plugin-solid": "2.11.12",
       },
     },
     "packages/enterprise": {

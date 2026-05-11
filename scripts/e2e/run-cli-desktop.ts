@@ -25,6 +25,7 @@ import {
 } from "./steps/cli-desktop"
 import { stepCliVersion, stepCliInvalidModelFailFast, stepCliSessionSearch } from "./steps/cli"
 import { stepDesktopExeLaunch } from "./steps/playwright"
+import { stepPlaywrightShell } from "./steps/shell-playwright"
 
 async function main() {
   if (process.platform !== "win32") {
@@ -65,6 +66,7 @@ async function main() {
     }
 
     await run("desktop-exe-check", "Desktop: LocalCoder.exe artifact", stepDesktopExeShellAsset)
+    await run("shell-playwright", "Desktop-shell: Playwright UI (mock)", stepPlaywrightShell)
 
     if (fs.existsSync(DESKTOP_EXE) && !envFlag("E2E_SKIP_DESKTOP_LAUNCH")) {
       await run("desktop-launch", "Desktop: headed exe smoke", stepDesktopExeLaunch)

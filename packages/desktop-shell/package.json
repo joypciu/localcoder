@@ -10,15 +10,22 @@
     "./styles.css": "./src/styles.css"
   },
   "scripts": {
-    "typecheck": "tsgo --noEmit"
+    "typecheck": "tsgo --noEmit",
+    "e2e:dev": "vite --config vite.e2e.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@localcoder-ai/sdk": "workspace:*",
+    "marked": "catalog:",
     "solid-js": "catalog:"
   },
   "devDependencies": {
+    "@playwright/test": "catalog:",
     "@types/bun": "catalog:",
     "@typescript/native-preview": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-solid": "2.11.12"
   }
 }

@@ -21,6 +21,7 @@
         "e2e:full": "bun run scripts/e2e/run.ts --tier=full",
         "e2e:windows": "bun run scripts/e2e/run.ts --tier=standard",
         "e2e:cli-desktop": "bun run scripts/e2e/run-cli-desktop.ts",
+        "e2e:shell": "bun run --cwd packages/desktop-shell test:e2e",
         "visual-test": "bun run scripts/visual-test/run.ts",
         "visual-test:update": "bun run scripts/visual-test/run.ts --update",
         "build:win-gui": "bun run --cwd packages/localcoder build:win-standalone",
