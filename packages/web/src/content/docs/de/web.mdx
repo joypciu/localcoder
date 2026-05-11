@@ -1,0 +1,142 @@
+---
+title: Web
+description: Verwenden Sie LocalCoder in Ihrem Browser.
+---
+
+LocalCoder kann als Webanwendung in Ihrem Browser ausgeführt werden und bietet das gleiche leistungsstarke KI-Codierungserlebnis, ohne dass ein Terminal erforderlich ist.
+
+![LocalCoder Web – Neue Sitzung](../../../assets/web/web-homepage-new-session.png)
+
+## Erste Schritte
+
+Starten Sie die Weboberfläche, indem Sie Folgendes ausführen:
+
+```bash
+localcoder web
+```
+
+Dadurch wird ein lokaler Server auf `127.0.0.1` mit einem zufällig verfügbaren Port gestartet und LocalCoder automatisch in Ihrem Standardbrowser geöffnet.
+
+:::caution
+Wenn `LOCALCODER_SERVER_PASSWORD` nicht gesetzt ist, ist der Server ungesichert. Dies ist für den lokalen Gebrauch in Ordnung, sollte aber für den Netzwerkzugriff eingestellt werden.
+:::
+
+:::tip[Windows-Nutzer]
+Um die beste Erfahrung zu erzielen, führen Sie `localcoder web` über [WSL](/docs/windows-wsl) und nicht über PowerShell aus. Dies gewährleistet den ordnungsgemäßen Zugriff auf das Dateisystem und die Terminalintegration.
+:::
+
+---
+
+## Konfiguration
+
+Sie können den Webserver mithilfe von Befehlszeilen-Flags oder in Ihrer [Konfigurationsdatei](/docs/config) konfigurieren.
+
+### Port
+
+Standardmäßig wählt LocalCoder einen verfügbaren Port aus. Sie können einen Port angeben:
+
+```bash
+localcoder web --port 4096
+```
+
+### Hostname
+
+Standardmäßig bindet der Server an `127.0.0.1` (nur localhost). So machen Sie LocalCoder in Ihrem Netzwerk zugänglich:
+
+```bash
+localcoder web --hostname 0.0.0.0
+```
+
+Bei Verwendung von `0.0.0.0` zeigt LocalCoder sowohl lokale als auch Netzwerkadressen an:
+
+```
+  Local access:       http://localhost:4096
+  Network access:     http://192.168.1.100:4096
+```
+
+### mDNS-Erkennung
+
+Aktivieren Sie mDNS, um Ihren Server im lokalen Netzwerk erkennbar zu machen:
+
+```bash
+localcoder web --mdns
+```
+
+Dadurch wird der Hostname automatisch auf `0.0.0.0` gesetzt und der Server als `localcoder.local` angekündigt.
+
+Sie können den mDNS-Domänennamen anpassen, um mehrere Instanzen im selben Netzwerk auszuführen:
+
+```bash
+localcoder web --mdns --mdns-domain myproject.local
+```
+
+### CORS
+
+So erlauben Sie zusätzliche Domänen für CORS (nützlich für benutzerdefinierte Frontends):
+
+```bash
+localcoder web --cors https://example.com
+```
+
+### Authentifizierung
+
+Um den Zugriff zu schützen, legen Sie mithilfe der Umgebungsvariablen `LOCALCODER_SERVER_PASSWORD` ein Passwort fest:
+
+```bash
+LOCALCODER_SERVER_PASSWORD=secret localcoder web
+```
+
+Der Benutzername ist standardmäßig `localcoder`, kann aber mit `LOCALCODER_SERVER_USERNAME` geändert werden.
+
+---
+
+## Verwenden der Weboberfläche
+
+Nach dem Start bietet die Weboberfläche Zugriff auf Ihre LocalCoder-Sitzungen.
+
+### Sitzungen
+
+Zeigen Sie Ihre Sitzungen auf der Startseite an und verwalten Sie sie. Sie können aktive Sitzungen sehen und neue starten.
+
+![LocalCoder Web – Aktive Sitzung](../../../assets/web/web-homepage-active-session.png)
+
+### Serverstatus
+
+Klicken Sie auf „Server anzeigen“, um verbundene Server und deren Status anzuzeigen.
+
+![LocalCoder Web – Siehe Server](../../../assets/web/web-homepage-see-servers.png)
+
+---
+
+## Anschließen eines Terminals
+
+Sie können eine Terminal-TUI an einen laufenden Webserver anschließen:
+
+```bash
+# Start the web server
+localcoder web --port 4096
+
+# In another terminal, attach the TUI
+localcoder attach http://localhost:4096
+```
+
+Dadurch können Sie sowohl die Weboberfläche als auch das Terminal gleichzeitig verwenden und dieselben Sitzungen und denselben Status teilen.
+
+---
+
+## Konfigurationsdatei
+
+Sie können Servereinstellungen auch in Ihrer `localcoder.json`-Konfigurationsdatei konfigurieren:
+
+```json
+{
+  "server": {
+    "port": 4096,
+    "hostname": "0.0.0.0",
+    "mdns": true,
+    "cors": ["https://example.com"]
+  }
+}
+```
+
+Befehlszeilenflags haben Vorrang vor Konfigurationsdateieinstellungen.

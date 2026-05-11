@@ -1,0 +1,213 @@
+.scratch-app {
+  height: 100dvh;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-rows: 42px minmax(0, 1fr) 28px;
+  background: #f7f8fa;
+  color: #1d2433;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.scratch-menubar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-bottom: 1px solid #d9dee8;
+  background: #ffffff;
+}
+
+.scratch-title {
+  font-weight: 650;
+  font-size: 13px;
+  margin-right: 12px;
+}
+
+.scratch-button,
+.scratch-tab,
+.scratch-input {
+  border: 1px solid #cfd6e3;
+  background: #ffffff;
+  color: #1d2433;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.scratch-button {
+  height: 28px;
+  padding: 0 10px;
+}
+
+.scratch-button:hover,
+.scratch-tab:hover {
+  background: #eef3f8;
+}
+
+.scratch-button:active {
+  background: #dfe8f2;
+}
+
+.scratch-sidebar {
+  grid-row: 2;
+  border-right: 1px solid #d9dee8;
+  background: #eef2f7;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scratch-sidebar-head {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 650;
+  border-bottom: 1px solid #d9dee8;
+}
+
+.scratch-tab-list {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 8px;
+  gap: 4px;
+}
+
+.scratch-tab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 8px;
+  text-align: left;
+}
+
+.scratch-tab[data-active="true"] {
+  background: #dcecff;
+  border-color: #8bb9ee;
+}
+
+.scratch-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scratch-tab-mark {
+  font-size: 15px;
+  color: #2f6fad;
+}
+
+.scratch-main {
+  grid-row: 2;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 38px minmax(0, 1fr);
+}
+
+.scratch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid #d9dee8;
+  background: #fdfefe;
+}
+
+.scratch-input {
+  height: 28px;
+  padding: 0 9px;
+  min-width: 120px;
+}
+
+.scratch-editor-wrap {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  background: #ffffff;
+}
+
+.scratch-lines {
+  overflow: hidden;
+  padding: 12px 8px;
+  background: #f3f5f8;
+  border-right: 1px solid #e2e6ee;
+  color: #718096;
+  font: 13px/1.55 "Cascadia Mono", "Consolas", monospace;
+  text-align: right;
+  user-select: none;
+}
+
+.scratch-editor {
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  resize: none;
+  padding: 12px 14px;
+  background: #ffffff;
+  color: #111827;
+  font: 13px/1.55 "Cascadia Mono", "Consolas", monospace;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.scratch-editor::selection {
+  background: #b8d8ff;
+}
+
+.scratch-status {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  border-top: 1px solid #d9dee8;
+  background: #ffffff;
+  color: #4b5563;
+  font-size: 12px;
+}
+
+.scratch-menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 168px;
+  padding: 5px;
+  border: 1px solid #bbc6d6;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgb(15 23 42 / 18%);
+}
+
+.scratch-menu button {
+  width: 100%;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  border-radius: 5px;
+  text-align: left;
+  padding: 0 8px;
+  font-size: 12px;
+  color: #1d2433;
+}
+
+.scratch-menu button:hover {
+  background: #eef3f8;
+}
+
+@media (max-width: 760px) {
+  .scratch-app {
+    grid-template-columns: 1fr;
+  }
+
+  .scratch-sidebar {
+    display: none;
+  }
+}
