@@ -4,6 +4,8 @@ export type ReplContext = {
   directory: string
   sessionID?: string
   continueSession: boolean
+  /** Last selected provider (provider/model uses providerID/modelID) */
+  providerID?: string
   model?: string
   agent?: string
   thinking: boolean

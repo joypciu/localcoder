@@ -13,7 +13,10 @@ import {
   runShellCommand,
   type CommandEnv,
 } from "./commands"
-import { banner, hint, section } from "./display"
+import { banner, hint } from "./display"
+import { parseModelRef } from "./provider-pick"
+import { fetchProviderList } from "./provider-pick"
+import { printFirstRunHint } from "./setup-commands"
 
 export type ReplConfig = {
   directory: string
@@ -42,11 +45,13 @@ async function defaultModel(sdk: ReturnType<typeof createInProcessClient>) {
 }
 
 function statusLine(ctx: ReplContext) {
+  const ref = ctx.model ? parseModelRef(ctx.model) : undefined
+  const modelLabel = ref ? `${ref.providerID}/${ref.modelID}` : (ctx.model ?? "model?")
   const parts = [
-    ctx.model ?? "model?",
-    ctx.agent ?? "agent",
-    `session:${shortSession(ctx.sessionID)}`,
-    `perms:${ctx.permissionMode[0]}`,
+    modelLabel,
+    ctx.agent ?? "build",
+    shortSession(ctx.sessionID),
+    ctx.permissionMode.slice(0, 4),
     ctx.thinking ? "think" : "",
   ].filter(Boolean)
   return UI.Style.TEXT_DIM + parts.join(" · ") + UI.Style.TEXT_NORMAL
@@ -66,35 +71,62 @@ export async function runRepl(config: ReplConfig) {
     variant: undefined,
   }
 
+  let connectedCount = 0
   if (!ctx.model) {
     try {
       ctx.model = await defaultModel(sdk)
+      const ref = ctx.model ? parseModelRef(ctx.model) : undefined
+      if (ref) ctx.providerID = ref.providerID
     } catch {
-      // pick via /model
+      // pick via /providers and /model
     }
+  }
+  try {
+    const data = await fetchProviderList(sdk)
+    connectedCount = data?.connected.length ?? 0
+    printFirstRunHint(!!ctx.model, connectedCount)
+  } catch {
+    // non-fatal
   }
 
   UI.empty()
   UI.println(UI.logo())
   UI.empty()
-  UI.println(UI.Style.TEXT_DIM + `LocalCoder CLI · ${config.directory}` + UI.Style.TEXT_NORMAL)
+  UI.println(UI.Style.TEXT_DIM + `LocalCoder · ${config.directory}` + UI.Style.TEXT_NORMAL)
   banner([
     "Message the agent · /help · !shell · @files",
-    "Ctrl+C cancel turn · /permissions cycle ask/accept/reject",
+    "/connect or /providers then /model · Ctrl+C stops the current turn",
   ])
-  section("Quick start")
-  hint("/status", "/model", "/sessions", "/resume <id>", "/new")
+  hint("/connect", "/providers", "/model", "/context", "/sessions")
   UI.empty()
 
-  const rl = readline.createInterface({ input, output, terminal: true })
+  const rl = readline.createInterface({ input, output, terminal: true, history: [] as string[] })
   let turnAbort: AbortController | undefined
   let forkNext = config.fork ?? false
+  let exiting = false
 
   const env: CommandEnv = {
     sdk,
     ctx,
     ask: (p) => rl.question(p),
   }
+
+  const abortActiveTurn = () => {
+    turnAbort?.abort()
+    if (ctx.sessionID) void sdk.session.abort({ sessionID: ctx.sessionID }).catch(() => {})
+    UI.println(UI.Style.TEXT_WARNING + "Turn cancelled." + UI.Style.TEXT_NORMAL)
+  }
+
+  const onSigint = () => {
+    if (exiting) return
+    if (turnAbort) {
+      abortActiveTurn()
+      return
+    }
+    exiting = true
+    rl.close()
+  }
+  process.on("SIGINT", onSigint)
 
   const runAgentTurn = async (input: {
     text: string
@@ -143,7 +175,7 @@ export async function runRepl(config: ReplConfig) {
       UI.println(statusLine(ctx))
       let line: string
       try {
-        line = await rl.question(UI.Style.TEXT_HIGHLIGHT + "❯ " + UI.Style.TEXT_NORMAL)
+        line = await rl.question(UI.Style.TEXT_HIGHLIGHT + "› " + UI.Style.TEXT_NORMAL)
       } catch {
         break
       }
@@ -154,10 +186,7 @@ export async function runRepl(config: ReplConfig) {
       if (parsed.kind === "slash") {
         const result = await handleSlashCommand(parsed.command, parsed.args, env)
         if (result === "exit") break
-        if (result === "abort-turn") {
-          turnAbort?.abort()
-          if (ctx.sessionID) await sdk.session.abort({ sessionID: ctx.sessionID }).catch(() => {})
-        }
+        if (result === "abort-turn") abortActiveTurn()
         if (result === "continue") {
           if (parsed.command === "fork") forkNext = true
           continue
@@ -185,6 +214,8 @@ export async function runRepl(config: ReplConfig) {
       await runAgentTurn({ text: parsed.text })
     }
   } finally {
+    exiting = true
+    process.off("SIGINT", onSigint)
     rl.close()
     cancel()
   }

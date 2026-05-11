@@ -129,6 +129,8 @@ export type ReplyInput = Schema.Schema.Type<typeof ReplyInput>
 
 export interface Interface {
   readonly ask: (input: AskInput) => Effect.Effect<void, Error>
+  /** Publish a permission prompt without blocking (E2E / UI integration). */
+  readonly enqueue: (input: AskInput) => Effect.Effect<Request>
   readonly reply: (input: ReplyInput) => Effect.Effect<void>
   readonly list: () => Effect.Effect<ReadonlyArray<Request>>
 }
@@ -213,6 +215,26 @@ export const layer = Layer.effect(
       )
     })
 
+    const enqueue = Effect.fn("Permission.enqueue")(function* (input: AskInput) {
+      const { pending } = yield* InstanceState.get(state)
+      const { ruleset, ...request } = input
+      void ruleset
+      const id = request.id ?? PermissionID.ascending()
+      const info = Schema.decodeUnknownSync(Request)({
+        id,
+        sessionID: request.sessionID,
+        permission: request.permission,
+        patterns: request.patterns,
+        metadata: request.metadata,
+        always: request.always,
+        tool: request.tool,
+      })
+      const deferred = yield* Deferred.make<void, RejectedError | CorrectedError>()
+      pending.set(id, { info, deferred })
+      yield* bus.publish(Event.Asked, info)
+      return info
+    })
+
     const reply = Effect.fn("Permission.reply")(function* (input: ReplyInput) {
       const { approved, pending } = yield* InstanceState.get(state)
       const existing = pending.get(input.requestID)
@@ -276,7 +298,7 @@ export const layer = Layer.effect(
       return Array.from(pending.values(), (item) => item.info)
     })
 
-    return Service.of({ ask, reply, list })
+    return Service.of({ ask, reply, list, enqueue })
   }),
 )
 

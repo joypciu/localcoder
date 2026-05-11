@@ -7,8 +7,7 @@ import { toolDisplay } from "./lib/tool-display"
 
 export type ShellAppProps = {
   server: ShellServer
-  /** Offline Playwright preview — skips SDK, shows sample UI */
-  mock?: boolean
+  initialSessionID?: string
 }
 
 type ChatLine =
@@ -36,119 +35,136 @@ function partsToLines(parts: Part[], role: "user" | "assistant"): ChatLine[] {
   return out
 }
 
-const MOCK_SESSION: Session = {
-  id: "mock-session-1",
-  slug: "sample-chat",
-  projectID: "mock-project",
-  directory: "C:\\dev\\project",
-  title: "Sample chat",
-  version: "1",
-  time: { created: Date.now(), updated: Date.now() },
-}
-
 export function ShellApp(props: ShellAppProps) {
-  const mock = () => props.mock === true
   const directory = () => props.server.directory
-  const sdk = createMemo(() => (mock() ? null : createShellSdk(props.server)))
-  const [sessions, setSessions] = createSignal<Session[]>(mock() ? [MOCK_SESSION] : [])
-  const [sessionID, setSessionID] = createSignal<string | undefined>(mock() ? MOCK_SESSION.id : undefined)
-  const [lines, setLines] = createSignal<ChatLine[]>(
-    mock()
-      ? [
-          { kind: "text", role: "user", text: "Explain this repo", id: "u1" },
-          {
-            kind: "text",
-            role: "assistant",
-            text: "## LocalCoder\n\nA **local-first** coding agent.\n\n- Sessions sidebar\n- Tool + diff view\n- Permission prompts",
-            id: "a1",
-          },
-          { kind: "tool", id: "t1", icon: "←", title: "Edit README.md", diff: "+ LocalCoder shell UI" },
-        ]
-      : [],
-  )
+  const sdk = createMemo(() => createShellSdk(props.server))
+  const [sessions, setSessions] = createSignal<Session[]>([])
+  const [sessionID, setSessionID] = createSignal<string | undefined>(props.initialSessionID)
+  const [lines, setLines] = createSignal<ChatLine[]>([])
   const [draft, setDraft] = createSignal("")
   const [busy, setBusy] = createSignal(false)
   const [error, setError] = createSignal<string | undefined>()
-  const [models, setModels] = createSignal<string[]>(mock() ? ["llama.cpp/local"] : [])
-  const [model, setModel] = createSignal<string | undefined>(mock() ? "llama.cpp/local" : undefined)
-  const [agent, setAgent] = createSignal<string | undefined>(mock() ? "build" : undefined)
-  const [permission, setPermission] = createSignal<PermissionRequest | null>(
-    mock()
-      ? {
-          id: "perm-mock",
-          sessionID: MOCK_SESSION.id,
-          permission: "bash",
-          patterns: ["npm test"],
-          metadata: {},
-          always: [],
-        }
-      : null,
-  )
-  const [showPermission, setShowPermission] = createSignal(mock())
+  const [models, setModels] = createSignal<string[]>([])
+  const [model, setModel] = createSignal<string | undefined>()
+  const [agent, setAgent] = createSignal<string | undefined>()
+  const [agents, setAgents] = createSignal<{ name: string; description?: string }[]>([])
+  const [permission, setPermission] = createSignal<PermissionRequest | null>(null)
+  const [showPermission, setShowPermission] = createSignal(false)
   const [permMode, setPermMode] = createSignal<"interactive" | "accept" | "reject">("interactive")
 
+  let alive = true
+  onCleanup(() => {
+    alive = false
+  })
+
+  const normDir = (d: string) => d.replace(/\\/g, "/").toLowerCase()
+
   const refreshSessions = async () => {
-    const client = sdk()
-    if (!client) return
-    const list = await client.session.list({ directory: directory() })
-    const data = (list.data ?? []).filter((s) => !s.parentID)
-    setSessions(data)
-    if (!sessionID() && data[0]) setSessionID(data[0].id)
+    try {
+      const client = sdk()
+      const dir = directory()
+      const list = await client.session.list({ directory: dir })
+      if (!alive) return
+      let data = (list.data ?? []).filter((s) => !s.parentID)
+      if (data.length === 0) {
+        const all = await client.session.list()
+        if (!alive) return
+        const want = normDir(dir)
+        data = (all.data ?? []).filter((s) => !s.parentID && normDir(s.directory) === want)
+      }
+      setSessions(data)
+      const initial = props.initialSessionID
+      if (initial && data.some((s) => s.id === initial)) {
+        setSessionID(initial)
+      } else if (!sessionID() && data[0]) {
+        setSessionID(data[0].id)
+      } else if (initial && !sessionID()) {
+        setSessionID(initial)
+      }
+    } catch (e) {
+      if (!alive) return
+      setError(e instanceof Error ? e.message : String(e))
+    }
   }
 
   const loadMessages = async (id: string) => {
-    const client = sdk()
-    if (!client) return
-    const res = await client.session.messages({ sessionID: id, directory: directory() })
-    const rows = res.data ?? []
-    const merged: ChatLine[] = []
-    for (const row of rows) {
-      if (row.info.role !== "user" && row.info.role !== "assistant") continue
-      const role = row.info.role === "user" ? "user" : "assistant"
-      merged.push(...partsToLines(row.parts, role))
+    try {
+      const client = sdk()
+      const res = await client.session.messages({ sessionID: id, directory: directory() })
+      if (!alive) return
+      const rows = res.data ?? []
+      const merged: ChatLine[] = []
+      for (const row of rows) {
+        if (row.info.role !== "user" && row.info.role !== "assistant") continue
+        const role = row.info.role === "user" ? "user" : "assistant"
+        merged.push(...partsToLines(row.parts, role))
+      }
+      setLines(merged)
+    } catch (e) {
+      if (!alive) return
+      setError(e instanceof Error ? e.message : String(e))
     }
-    setLines(merged)
   }
 
   const refreshProviders = async () => {
-    const client = sdk()
-    if (!client) return
-    const list = await client.provider.list()
-    const data = list.data
-    if (!data) return
-    const opts: string[] = []
-    for (const p of data.all) {
-      for (const id of Object.keys(p.models)) {
-        opts.push(`${p.id}/${id}`)
-      }
-    }
-    setModels(opts)
-    if (!model()) {
-      for (const pid of data.connected) {
-        const mid = data.default[pid]
-        if (mid) {
-          setModel(`${pid}/${mid}`)
-          break
+    try {
+      const client = sdk()
+      const list = await client.provider.list()
+      if (!alive) return
+      const data = list.data
+      if (!data) return
+      const connected = new Set(data.connected)
+      const opts: string[] = []
+      for (const p of data.all) {
+        if (!connected.has(p.id)) continue
+        for (const id of Object.keys(p.models)) {
+          opts.push(`${p.id}/${id}`)
         }
       }
+      setModels(opts)
+      if (!model()) {
+        for (const pid of data.connected) {
+          const mid = data.default[pid]
+          if (mid) {
+            setModel(`${pid}/${mid}`)
+            break
+          }
+        }
+        if (!model() && opts[0]) setModel(opts[0])
+      }
+    } catch (e) {
+      if (!alive) return
+      setError(e instanceof Error ? e.message : String(e))
     }
   }
 
+  const defaultAgents = () => [
+    { name: "build", description: "Default agent — runs tools with configured permissions" },
+    { name: "plan", description: "Plan mode — no file edits" },
+  ]
+
   const refreshAgents = async () => {
-    const client = sdk()
-    if (!client) return
-    const agents = await client.app.agents()
-    const first = (agents.data ?? []).find((a) => a.mode !== "subagent")
-    if (first && !agent()) setAgent(first.name)
+    try {
+      const client = sdk()
+      const res = await client.app.agents()
+      if (!alive) return
+      const list = (res.data ?? []).filter((a) => a.mode !== "subagent")
+      const opts =
+        list.length > 0
+          ? list.map((a) => ({ name: a.name, description: a.description }))
+          : defaultAgents()
+      setAgents(opts)
+      if (!agent()) setAgent(opts[0]?.name ?? "build")
+    } catch {
+      if (!alive) return
+      const opts = defaultAgents()
+      setAgents(opts)
+      if (!agent()) setAgent("build")
+    }
   }
 
   const replyPermission = async (reply: "once" | "always" | "reject") => {
     const req = permission()
-    if (mock()) {
-      setShowPermission(false)
-      setPermission(null)
-      return
-    }
     const client = sdk()
     if (!req || !client) return
     await client.permission.reply({ requestID: req.id, reply })
@@ -157,29 +173,39 @@ export function ShellApp(props: ShellAppProps) {
   }
 
   onMount(() => {
-    if (!mock()) return
-    ;(window as { __lcDismissPermission?: () => void }).__lcDismissPermission = () => {
-      setShowPermission(false)
-      setPermission(null)
-    }
+    void (async () => {
+      await refreshSessions()
+      if (!alive) return
+      const initial = props.initialSessionID
+      if (sessions().length === 0 && initial) {
+        setSessions([
+          {
+            id: initial,
+            slug: "e2e",
+            projectID: "global",
+            directory: directory(),
+            title: "Shell E2E",
+            version: "0",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        ])
+        setSessionID(initial)
+      }
+      await refreshProviders()
+      if (!alive) return
+      await refreshAgents()
+    })()
   })
 
   createEffect(() => {
-    if (mock()) return
-    void refreshSessions()
-    void refreshProviders()
-    void refreshAgents()
-  })
-
-  createEffect(() => {
-    if (mock()) return
     const id = sessionID()
     if (!id) return
-    void loadMessages(id)
+    void (async () => {
+      await loadMessages(id)
+    })()
   })
 
   createEffect(() => {
-    if (mock()) return
     const id = sessionID()
     if (!id) return
 
@@ -188,7 +214,6 @@ export function ShellApp(props: ShellAppProps) {
 
     const run = async () => {
       const client = sdk()
-      if (!client) return
       const events = await client.event.subscribe({ directory: directory() }, { signal: abort.signal })
       for await (const event of events.stream) {
         if (event.type === "message.part.updated") {
@@ -276,13 +301,7 @@ export function ShellApp(props: ShellAppProps) {
   })
 
   const newSession = async () => {
-    if (mock()) {
-      setSessionID(MOCK_SESSION.id)
-      setLines([])
-      return
-    }
     const client = sdk()
-    if (!client) return
     const created = await client.session.create({ title: "New chat", directory: directory() })
     const id = created.data?.id
     if (!id) return
@@ -291,31 +310,15 @@ export function ShellApp(props: ShellAppProps) {
     await refreshSessions()
   }
 
-  const draftText = () => {
-    if (mock() && typeof document !== "undefined") {
-      const el = document.querySelector('[data-testid="composer-input"]') as HTMLTextAreaElement | null
-      const v = el?.value.trim()
-      if (v) return v
-    }
-    return draft().trim()
-  }
-
   const send = async () => {
-    const text = draftText()
+    const text = draft().trim()
     if (!text || busy()) return
-    if (mock()) {
-      setDraft("")
-      const id = `local-${Date.now()}`
-      setLines([...lines(), { kind: "text", role: "user", text, id }])
-      return
-    }
     setError(undefined)
     setDraft("")
     setBusy(true)
 
     let id = sessionID()
     const client = sdk()
-    if (!client) return
 
     if (!id) {
       const created = await client.session.create({ title: text.slice(0, 48), directory: directory() })
@@ -350,9 +353,8 @@ export function ShellApp(props: ShellAppProps) {
 
   const abortTurn = async () => {
     const id = sessionID()
-    if (!id || mock()) return
+    if (!id) return
     const client = sdk()
-    if (!client) return
     await client.session.abort({ sessionID: id }).catch(() => {})
     setBusy(false)
   }
@@ -375,12 +377,28 @@ export function ShellApp(props: ShellAppProps) {
           {shortDir()}
         </span>
         <select
+          data-testid="agent-select"
+          value={agent() ?? "build"}
+          onChange={(e) => setAgent(e.currentTarget.value)}
+          title="Agent"
+        >
+          <For each={agents().length > 0 ? agents() : defaultAgents()}>
+            {(a) => (
+              <option value={a.name}>
+                {a.description ? `${a.name} — ${a.description}` : a.name}
+              </option>
+            )}
+          </For>
+        </select>
+        <select
           data-testid="model-select"
           value={model() ?? ""}
           onChange={(e) => setModel(e.currentTarget.value)}
-          title="Model"
-          disabled={mock()}
+          title="Model (connected providers only)"
         >
+          <Show when={models().length === 0}>
+            <option value="">No connected providers</option>
+          </Show>
           <For each={models()}>{(m) => <option value={m}>{m}</option>}</For>
         </select>
         <button
@@ -429,7 +447,14 @@ export function ShellApp(props: ShellAppProps) {
 
         <div class="lc-messages" data-testid="message-list">
           <Show when={lines().length === 0}>
-            <div class="lc-empty">Ask anything about your project. Tools run on the local server.</div>
+            <div class="lc-empty" data-testid="empty-state">
+              <p>Ask anything about your project. Tools run on the local server.</p>
+              <Show when={models().length === 0}>
+                <p class="lc-empty-hint">
+                  Connect a provider in the CLI (<code>localcoder</code> → <code>/connect</code>) or VS Code, then refresh.
+                </p>
+              </Show>
+            </div>
           </Show>
           <For each={lines()}>
             {(line) =>
@@ -465,7 +490,7 @@ export function ShellApp(props: ShellAppProps) {
         </Show>
 
         <div class="lc-status" data-testid="shell-status">
-          {busy() ? "Agent working…" : mock() ? "Preview mode" : "Ready"}
+          {busy() ? "Agent working…" : "Ready"}
         </div>
 
         <div class="lc-composer" data-testid="composer">
@@ -480,24 +505,13 @@ export function ShellApp(props: ShellAppProps) {
                 void send()
               }
             }}
-            disabled={busy() && !mock()}
+            disabled={busy()}
           />
           <div class="lc-composer-actions">
-            <button
-              type="button"
-              data-testid="send-btn"
-              disabled={(busy() && !mock()) || (!mock() && !draft().trim())}
-              onClick={() => void send()}
-            >
+            <button type="button" data-testid="send-btn" disabled={busy() || !draft().trim()} onClick={() => void send()}>
               Send
             </button>
-            <button
-              type="button"
-              class="secondary"
-              data-testid="stop-btn"
-              disabled={!busy() || mock()}
-              onClick={() => void abortTurn()}
-            >
+            <button type="button" class="secondary" data-testid="stop-btn" disabled={!busy()} onClick={() => void abortTurn()}>
               Stop
             </button>
           </div>

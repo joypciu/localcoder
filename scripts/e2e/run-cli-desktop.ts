@@ -15,7 +15,12 @@ import { envFlag } from "./lib/env"
 import { EXE, DESKTOP_EXE } from "./lib/paths"
 import { log, printReport, runStep, skipStep, type StepResult } from "./lib/runner"
 import { stepBuildCli } from "./steps/cli"
-import { stepCliSimpleDevHelp, stepCliSimpleExeHelp } from "./steps/cli-simple"
+import {
+  stepCliSimpleDevHelp,
+  stepCliSimpleDevVersion,
+  stepCliSimpleExeHelp,
+  stepCliSimpleExeVersion,
+} from "./steps/cli-simple"
 import {
   stepCliDevRunFailFast,
   stepCliExeSmoke,
@@ -43,6 +48,7 @@ async function main() {
   try {
     await run("shell-typecheck", "Desktop-shell: typecheck", stepDesktopShellTypecheck)
     await run("cli-simple-dev", "CLI: dev --help", stepCliSimpleDevHelp)
+    await run("cli-simple-dev-version", "CLI: dev --version", stepCliSimpleDevVersion)
     await run("cli-dev-run-fail", "CLI: dev run invalid model fail-fast", stepCliDevRunFailFast)
 
     if (!envFlag("E2E_SKIP_BUILD")) {
@@ -54,6 +60,7 @@ async function main() {
     if (fs.existsSync(EXE) || !envFlag("E2E_SKIP_BUILD")) {
       await run("cli-version", "CLI: --version", stepCliVersion)
       await run("cli-simple-exe", "CLI: exe --help", stepCliSimpleExeHelp)
+      await run("cli-simple-exe-version", "CLI: exe --version", stepCliSimpleExeVersion)
       await run("cli-invalid", "CLI: invalid model fail-fast", stepCliInvalidModelFailFast)
       await run("cli-session", "CLI: session search", stepCliSessionSearch)
       await run("cli-exe-smoke", "CLI: version + run smoke", stepCliExeSmoke)
@@ -66,7 +73,7 @@ async function main() {
     }
 
     await run("desktop-exe-check", "Desktop: LocalCoder.exe artifact", stepDesktopExeShellAsset)
-    await run("shell-playwright", "Desktop-shell: Playwright UI (mock)", stepPlaywrightShell)
+    await run("shell-playwright", "Desktop-shell: Playwright UI (live sidecar)", stepPlaywrightShell)
 
     if (fs.existsSync(DESKTOP_EXE) && !envFlag("E2E_SKIP_DESKTOP_LAUNCH")) {
       await run("desktop-launch", "Desktop: headed exe smoke", stepDesktopExeLaunch)

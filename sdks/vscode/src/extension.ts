@@ -6,6 +6,7 @@ import { registerDiffReview } from "./diff-review";
 import { runLlamaSetupWizard, setLlamaContextSize } from "./llama-setup";
 import { configureCloudProvider, pickAndConfigureCloudProvider, CLOUD_PROVIDER_PRESETS } from "./provider-setup";
 import { showLocalcoderCommandPalette } from "./command-palette";
+import { resolveLocalcoderCliLaunch } from "./resolve-cli";
 
 async function configureLlamaCpp(ctx: vscode.ExtensionContext): Promise<boolean> {
   const ok = await runLlamaSetupWizard();
@@ -18,9 +19,6 @@ async function configureLlamaCpp(ctx: vscode.ExtensionContext): Promise<boolean>
 const TERMINAL_NAME = "localcoder";
 
 export async function activate(context: vscode.ExtensionContext) {
-  const localcoderDir = path.resolve(context.extensionPath, "..", "..", "packages", "localcoder");
-  const cmd = `bun run --cwd "${localcoderDir}" --conditions=browser src/index.ts`;
-
   // Sidebar chat (Activity Bar icon) — primary entry point
   registerInlineActions(context);
   const reviewRefresh = registerDiffReview(context);
@@ -44,7 +42,9 @@ export async function activate(context: vscode.ExtensionContext) {
       await openTerminal();
     }),
     vscode.commands.registerCommand("localcoder.openTerminal", async () => {
-      const existingTerminal = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME);
+      const existingTerminal = vscode.window.terminals.find(
+        (t) => t.name === TERMINAL_NAME || t.name.toLowerCase().includes("localcoder"),
+      );
       if (existingTerminal) { existingTerminal.show(); return; }
       await openTerminal();
     }),
@@ -87,7 +87,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!fileRef) { return; }
       const terminal = vscode.window.activeTerminal;
       if (!terminal) { return; }
-      if (terminal.name === TERMINAL_NAME) {
+      if (terminal.name === TERMINAL_NAME || terminal.name.toLowerCase().includes("localcoder")) {
         terminal.sendText(fileRef, false);
         terminal.show();
       }
@@ -277,6 +277,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   async function openTerminal() {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const launch = await resolveLocalcoderCliLaunch(context.extensionPath, workspaceFolder);
     const terminal = vscode.window.createTerminal({
       name: TERMINAL_NAME,
       iconPath: {
@@ -290,13 +291,12 @@ export async function activate(context: vscode.ExtensionContext) {
     });
 
     terminal.show();
-    const projectArg = workspaceFolder ? ` "${workspaceFolder}"` : "";
-    terminal.sendText(`${cmd}${projectArg}`);
+    terminal.sendText(launch.line);
 
     const fileRef = getActiveFile();
     if (!fileRef) { return; }
 
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await new Promise((resolve) => setTimeout(resolve, launch.mode === "exe" ? 800 : 2000));
     terminal.sendText(fileRef);
     terminal.show();
   }

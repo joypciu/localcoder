@@ -13,6 +13,7 @@
     "typecheck": "tsgo --noEmit",
     "e2e:dev": "vite --config vite.e2e.config.ts",
     "test:e2e": "playwright test",
+    "test:e2e:live": "playwright test",
     "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {

@@ -30,8 +30,9 @@ $env:LOCALCODER_LEGACY_UI = "1"
 bun run build
 ```
 
-- Session sidebar, model picker, composer (Enter send / Shift+Enter newline)
-- SDK event stream for live assistant output and tool lines
+- Session sidebar, model picker (connected providers only), composer (Enter send / Shift+Enter newline)
+- SDK event stream for live assistant output, tool lines, and permission prompts
+- E2E: `cd packages/desktop-shell && bun run test:e2e` — Playwright against live `localcoder serve` (no mock UI)
 - Legacy full IDE UI: set `LOCALCODER_LEGACY_UI=1` at build time
 
 ### UI highlights (legacy IDE)

@@ -371,4 +371,16 @@ body,
   color: var(--text-dim);
   margin: auto;
   text-align: center;
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+.lc-empty-hint {
+  margin-top: 12px;
+  font-size: 0.9em;
+}
+
+.lc-empty-hint code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
 }

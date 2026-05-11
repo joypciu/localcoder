@@ -11,7 +11,7 @@ Runs in your terminal, edits your code, uses your tools — with an optional des
 - **llama.cpp** — pick any folder with `llama-server`, any `.gguf`, context size, and thinking mode; LocalCoder starts the server for you
 - **Portable Windows app** — `LocalCoder-*-portable.exe` via `bun run build:win-standalone` (~2–4 min)
 - **VS Code** — sidebar chat, live streaming, undo per turn/file, first-run provider wizard
-- **CLI** — fail-fast on invalid models, faster `run` progress output, global install via npm
+- **CLI** — simple text REPL by default; `/providers` and `/model` (connected providers only); `localcoder tui` for legacy TUI
 
 See [IMPROVEMENT_AND_FIX.md](IMPROVEMENT_AND_FIX.md) · Install: [INSTALL.md](INSTALL.md)
 
@@ -23,6 +23,7 @@ bun run visual-test:update   # refresh baselines after intentional UI changes
 bun run e2e:smoke        # ~30–60s — compile + unit + visual-smoke + CLI smoke (no llama)
 bun run e2e              # ~2–4 min — standard: CLI + llama + agent + VS Code + visual-standard
 bun run e2e:full         # ~10–30 min — portable build, headed exe, live llama VS Code E2E
+bun run e2e:shell        # desktop-shell Playwright vs live `localcoder serve` (no mock UI)
 ```
 
 Set `LOCALCODER_LLAMACPP_DIR` / `LOCALCODER_LLAMACPP_MODEL` if paths differ, or run `localcoder llamacpp setup` once. Use `E2E_SKIP_BUILD=1`, `E2E_SKIP_VISUAL=1`, `E2E_SKIP_LLAMA=1` to skip steps.
@@ -70,7 +71,8 @@ bun run --cwd packages/localcoder dev
 
 | Surface | Best for |
 |---------|----------|
-| **CLI / TUI** | Terminal-first workflow, remote server, scripting |
+| **CLI** (default) | Simple text REPL — `/providers`, `/model`, `!shell`, `@files` |
+| **CLI TUI** (`localcoder tui`) | Full-screen terminal UI (legacy OpenTUI) |
 | **Desktop** | Rich UI, llama.cpp wizard, no terminal required |
 | **VS Code** | In-editor chat, diff view, selection context |
 | **Web UI** | Browser client when `localcoder serve` is running |

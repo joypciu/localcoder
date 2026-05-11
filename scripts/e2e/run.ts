@@ -63,7 +63,12 @@ import {
 } from "./steps/vscode"
 import { stepDesktopExeLaunch, stepPlaywrightApp } from "./steps/playwright"
 import { stepVisualSmoke, stepVisualStandard } from "./steps/visual"
-import { stepCliSimpleDevHelp, stepCliSimpleExeHelp } from "./steps/cli-simple"
+import {
+  stepCliSimpleDevHelp,
+  stepCliSimpleDevVersion,
+  stepCliSimpleExeHelp,
+  stepCliSimpleExeVersion,
+} from "./steps/cli-simple"
 import { stepPlaywrightShell } from "./steps/shell-playwright"
 
 async function runTier(tier: E2eTier) {
@@ -98,7 +103,8 @@ async function runTier(tier: E2eTier) {
 
     if (tier === "smoke") {
       await run("cli-simple-dev", "CLI: simple REPL default (dev --help)", stepCliSimpleDevHelp)
-      await run("shell-playwright", "Desktop-shell: Playwright UI (mock)", stepPlaywrightShell)
+      await run("cli-simple-dev-version", "CLI: dev --version", stepCliSimpleDevVersion)
+      await run("shell-playwright", "Desktop-shell: Playwright UI (live sidecar)", stepPlaywrightShell)
       if (hasExe) {
         await run("cli-version", "CLI: --version", stepCliVersion)
         await run("cli-invalid-model", "CLI: invalid model fail-fast", stepCliInvalidModelFailFast)
@@ -154,10 +160,16 @@ async function runTier(tier: E2eTier) {
       }
       await run("vscode-electron", "VS Code: Electron integration (test:all)", stepVscodeElectron)
       await run("cli-simple-dev", "CLI: simple REPL default (dev --help)", stepCliSimpleDevHelp)
+      await run("cli-simple-dev-version", "CLI: dev --version", stepCliSimpleDevVersion)
       await run("cli-simple-exe", "CLI: simple REPL (--help on built exe)", stepCliSimpleExeHelp)
+      if (hasExe) {
+        await run("cli-simple-exe-version", "CLI: exe --version", stepCliSimpleExeVersion)
+      } else {
+        skipStep("cli-simple-exe-version", "CLI: exe --version", "no localcoder.exe", results)
+      }
       await run("visual-standard", "Visual: TUI + webview + app regression", stepVisualStandard)
       await run("desktop", "Windows: desktop artifact check", stepDesktopArtifacts)
-      await run("shell-playwright", "Desktop-shell: Playwright UI (mock)", stepPlaywrightShell)
+      await run("shell-playwright", "Desktop-shell: Playwright UI (live sidecar)", stepPlaywrightShell)
       if (!envFlag("E2E_SKIP_PLAYWRIGHT")) {
         await run("playwright", "Desktop UI: Playwright app smoke", stepPlaywrightApp)
       } else {

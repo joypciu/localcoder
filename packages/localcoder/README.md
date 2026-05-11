@@ -2,6 +2,29 @@
 
 Core package: terminal agent, HTTP server, agent loop, storage, llama.cpp integration.
 
+## Simple CLI (default)
+
+```bash
+localcoder                    # text REPL in cwd
+localcoder /path/to/project
+localcoder tui                # legacy full-screen TUI
+```
+
+| Command | Description |
+|---------|-------------|
+| `/connect` | llama.cpp setup or cloud `providers login` |
+| `/llama` | llamacpp status / setup / start / stop |
+| `/providers` or `/connectors` | List providers; pick a connected one |
+| `/model [provider/model]` | Pick a model (connected providers only) |
+| `/agent [name]` | Pick agent (build, plan, …) |
+| `/context` | Token usage for the active session |
+| `/sessions`, `/resume`, `/fork`, `/compact` | Session management |
+| `/permissions` | Cycle ask → accept → reject |
+| `!cmd` | Run a shell command locally |
+| `@file` | Attach files to the next message |
+
+Ctrl+C aborts the current turn (second Ctrl+C exits).
+
 ## Development
 
 ```bash

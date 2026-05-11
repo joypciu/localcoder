@@ -34,3 +34,25 @@ export async function stepCliSimpleExeHelp(): Promise<string> {
   }
   return "exe help ok"
 }
+
+export async function stepCliSimpleDevVersion(): Promise<string> {
+  const { code, stdout, stderr } = await runCmd(BUN, [
+    "run",
+    "--conditions=browser",
+    "./src/index.ts",
+    "--version",
+  ], { cwd: PKG, timeoutMs: 60_000 })
+  const out = `${stdout}\n${stderr}`.trim()
+  if (code !== 0) throw new Error(`simple CLI --version exited ${code}`)
+  if (!out || out.length < 3) throw new Error("empty --version output")
+  return `dev version ${out.split(/\r?\n/)[0]}`
+}
+
+export async function stepCliSimpleExeVersion(): Promise<string> {
+  if (!fs.existsSync(EXE)) throw new Error(`missing ${EXE}`)
+  const { code, stdout, stderr } = await runCmd(EXE, ["--version"], { timeoutMs: 30_000 })
+  const out = `${stdout}\n${stderr}`.trim()
+  if (code !== 0) throw new Error(`exe --version exited ${code}`)
+  if (!out) throw new Error("empty exe --version")
+  return `exe version ${out.split(/\r?\n/)[0]}`
+}

@@ -49,6 +49,8 @@ Change anytime via Settings (⚙) → **Set up llama.cpp** or **Connect cloud pr
 | `Ctrl+Esc` | Open LocalCoder terminal |
 | `Ctrl+Shift+Esc` | New terminal tab |
 
+**Terminal** (`Ctrl+Esc`) launches the default **text CLI** (`localcoder` REPL), not TUI. Resolution order: `localcoder.exe` on PATH or beside the extension → `localcoder.packagePath` + `bun` dev tree.
+
 ## Quick start
 
 1. Clone [localcoder](https://github.com/joypciu/localcoder)
