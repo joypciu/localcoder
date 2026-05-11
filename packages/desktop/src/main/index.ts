@@ -50,8 +50,8 @@ import {
   setBackgroundColor,
   setDockIcon,
 } from "./windows"
-import { drizzle } from "drizzle-orm/node-sqlite/driver"
 import type { Server } from "virtual:localcoder-server"
+import { loadLocalcoderServer } from "./load-server"
 import { migrate } from "./migrate"
 
 const initEmitter = new EventEmitter()
@@ -172,8 +172,8 @@ async function initialize() {
     })
 
     if (needsMigration) {
-      const { Database, JsonMigration } = await import("virtual:localcoder-server")
-      await JsonMigration.run(drizzle({ client: Database.Client().$client }), {
+      const { Database, JsonMigration } = await loadLocalcoderServer()
+      await JsonMigration.run(Database.Client(), {
         progress: (event: { current: number; total: number }) => {
           const percent = Math.round(event.current / event.total) * 100
           initEmitter.emit("sqlite", { type: "InProgress", value: percent })

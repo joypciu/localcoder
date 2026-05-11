@@ -3,6 +3,7 @@ import { defineConfig } from "electron-vite"
 import appPlugin from "@localcoder-ai/app/vite"
 import solid from "vite-plugin-solid"
 import * as fs from "node:fs/promises"
+import path from "node:path"
 
 /** Legacy OpenCode-derived web app. Set LOCALCODER_LEGACY_UI=1 to restore. */
 const legacyUI = process.env.LOCALCODER_LEGACY_UI === "1"
@@ -53,7 +54,7 @@ export default defineConfig({
       __LOCALCODER_LEGACY_UI__: JSON.stringify(legacyUI),
     },
     build: {
-      externalizeDeps: { include: [nodePtyPkg, ...oauthExternals] },
+      externalizeDeps: { include: [nodePtyPkg, "better-sqlite3", ...oauthExternals] },
       rollupOptions: {
         input: { index: "src/main/index.ts" },
         external: oauthExternals,
@@ -68,19 +69,10 @@ export default defineConfig({
         },
       },
       {
-        name: "localcoder:virtual-server-module",
-        enforce: "pre",
-        resolveId(id) {
-          if (id === "virtual:localcoder-server") return this.resolve(`${LOCALCODER_SERVER_DIST}/node.js`)
-        },
-      },
-      {
         name: "localcoder:copy-server-assets",
         async writeBundle() {
-          for (const l of await fs.readdir(LOCALCODER_SERVER_DIST)) {
-            if (!l.endsWith(".wasm")) continue
-            await fs.writeFile(`./out/main/chunks/${l}`, await fs.readFile(`${LOCALCODER_SERVER_DIST}/${l}`))
-          }
+          const dest = path.join("out", "main", "localcoder-server")
+          await fs.cp(LOCALCODER_SERVER_DIST, dest, { recursive: true, force: true })
         },
       },
     ],

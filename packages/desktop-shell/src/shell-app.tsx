@@ -29,6 +29,7 @@ function partsToLines(parts: Part[], role: "user" | "assistant"): ChatLine[] {
 }
 
 export function ShellApp(props: { server: ShellServer }) {
+  const directory = () => props.server.directory
   const sdk = createMemo(() => createShellSdk(props.server))
   const [sessions, setSessions] = createSignal<Session[]>([])
   const [sessionID, setSessionID] = createSignal<string | undefined>()
@@ -41,14 +42,14 @@ export function ShellApp(props: { server: ShellServer }) {
   const [agent, setAgent] = createSignal<string | undefined>()
 
   const refreshSessions = async () => {
-    const list = await sdk().session.list()
+    const list = await sdk().session.list({ directory: directory() })
     const data = (list.data ?? []).filter((s) => !s.parentID)
     setSessions(data)
     if (!sessionID() && data[0]) setSessionID(data[0].id)
   }
 
   const loadMessages = async (id: string) => {
-    const res = await sdk().session.messages({ sessionID: id })
+    const res = await sdk().session.messages({ sessionID: id, directory: directory() })
     const rows = res.data ?? []
     const merged: ChatLine[] = []
     for (const row of rows) {
@@ -107,10 +108,7 @@ export function ShellApp(props: { server: ShellServer }) {
     let streamDone = false
 
     const run = async () => {
-      const events = await sdk().event.subscribe(
-        { directory: props.server.directory },
-        { signal: abort.signal },
-      )
+      const events = await sdk().event.subscribe({ directory: directory() }, { signal: abort.signal })
       for await (const event of events.stream) {
         if (event.type === "message.part.updated") {
           const part = event.properties.part
@@ -166,7 +164,7 @@ export function ShellApp(props: { server: ShellServer }) {
   })
 
   const newSession = async () => {
-    const created = await sdk().session.create({ title: "New chat" })
+    const created = await sdk().session.create({ title: "New chat", directory: directory() })
     const id = created.data?.id
     if (!id) return
     setSessionID(id)
@@ -183,7 +181,7 @@ export function ShellApp(props: { server: ShellServer }) {
 
     let id = sessionID()
     if (!id) {
-      const created = await sdk().session.create({ title: text.slice(0, 48) })
+      const created = await sdk().session.create({ title: text.slice(0, 48), directory: directory() })
       id = created.data?.id
       if (!id) {
         setBusy(false)
@@ -202,6 +200,7 @@ export function ShellApp(props: { server: ShellServer }) {
     try {
       await sdk().session.prompt({
         sessionID: id,
+        directory: directory(),
         agent: agent(),
         model: provider && modelID ? { providerID: provider, modelID } : undefined,
         parts: [{ type: "text", text }],

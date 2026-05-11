@@ -88,10 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const terminal = vscode.window.activeTerminal;
       if (!terminal) { return; }
       if (terminal.name === TERMINAL_NAME) {
-        // @ts-ignore
-        const port = terminal.creationOptions.env?.["_EXTENSION_LOCALCODER_PORT"];
-        const directory = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-        port ? await appendPrompt(parseInt(port), fileRef, directory) : terminal.sendText(fileRef, false);
+        terminal.sendText(fileRef, false);
         terminal.show();
       }
     }),

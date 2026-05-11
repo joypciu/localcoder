@@ -26,5 +26,11 @@ export async function stepCliSimpleExeHelp(): Promise<string> {
   const out = `${stdout}\n${stderr}`
   if (code !== 0) throw new Error(`exe --help exited ${code}`)
   if (!out.includes("interactive CLI")) throw new Error("built exe help missing interactive CLI")
+  if (out.includes("start localcoder tui") && out.match(/\[default\]/)) {
+    const line = out.split("\n").find((l) => l.includes("[default]") && l.includes("tui"))
+    if (line && !line.includes("interactive CLI")) {
+      throw new Error("stale exe: TUI still default — run build:win or E2E_FORCE_CLI_BUILD=1")
+    }
+  }
   return "exe help ok"
 }

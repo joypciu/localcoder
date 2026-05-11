@@ -57,7 +57,7 @@ export async function runTurn(
     opts.signal.addEventListener("abort", () => eventAbort.abort(), { once: true })
   }
 
-  const events = await sdk.event.subscribe({ signal: eventAbort.signal })
+  const events = await sdk.event.subscribe(undefined, { signal: eventAbort.signal })
   let error: string | undefined
   let started = false
   let forked = Boolean(opts.fork && opts.continue)

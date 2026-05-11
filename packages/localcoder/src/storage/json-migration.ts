@@ -1,5 +1,5 @@
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3"
 import type { SQLiteBunDatabase } from "drizzle-orm/bun-sqlite"
-import type { NodeSQLiteDatabase } from "drizzle-orm/node-sqlite"
 import { Global } from "@localcoder-ai/core/global"
 import * as Log from "@localcoder-ai/core/util/log"
 import { ProjectTable } from "../project/project.sql"
@@ -22,7 +22,10 @@ type Options = {
   progress?: (event: Progress) => void
 }
 
-export async function run(db: SQLiteBunDatabase<any, any> | NodeSQLiteDatabase<any, any>, options?: Options) {
+export async function run(
+  db: SQLiteBunDatabase<any, any> | BetterSQLite3Database<any, any>,
+  options?: Options,
+) {
   const storageDir = path.join(Global.Path.data, "storage")
 
   if (!existsSync(storageDir)) {

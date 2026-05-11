@@ -32,7 +32,8 @@ export function setWslConfig(config: WslConfig) {
 
 export async function spawnLocalServer(hostname: string, port: number, password: string) {
   prepareServerEnv(password)
-  const { Log, Server } = await import("virtual:localcoder-server")
+  const { loadLocalcoderServer } = await import("./load-server")
+  const { Log, Server } = await loadLocalcoderServer()
   await Log.init({ level: "WARN" })
   const listener = await Server.listen({
     port,
