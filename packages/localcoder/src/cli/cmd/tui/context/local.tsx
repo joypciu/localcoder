@@ -192,16 +192,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           }
         }
 
-        const provider = sync.data.provider[0]
-        if (!provider) return undefined
-        const defaultModel = sync.data.provider_default[provider.id]
-        const firstModel = Object.values(provider.models)[0]
-        const model = defaultModel ?? firstModel?.id
-        if (!model) return undefined
-        return {
-          providerID: provider.id,
-          modelID: model,
-        }
+        return undefined
       })
 
       const currentModel = createMemo(() => {
@@ -307,6 +298,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             if (!a) return
             setModelStore("model", a.name, model)
             if (options?.recent) {
+              void sdk.client.config
+                .update({ model: `${model.providerID}/${model.modelID}` })
+                .catch(() => undefined)
               const uniq = uniqueBy([model, ...modelStore.recent], (x) => `${x.providerID}/${x.modelID}`)
               if (uniq.length > 10) uniq.pop()
               setModelStore(

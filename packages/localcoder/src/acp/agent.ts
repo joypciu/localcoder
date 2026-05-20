@@ -38,6 +38,7 @@ import { Hash } from "@localcoder-ai/core/util/hash"
 import { ACPSessionManager } from "./session"
 import type { ACPConfig } from "./types"
 import { Provider } from "@/provider/provider"
+import { loadRecentModels } from "@/provider/recent-model"
 import { ModelID, ProviderID } from "../provider/schema"
 import { Agent as AgentModule } from "../agent/agent"
 import { AppRuntime } from "@/effect/app-runtime"
@@ -1627,34 +1628,17 @@ async function defaultModel(config: ACPConfig, cwd?: string): Promise<{ provider
     if (provider && provider.models[specified.modelID]) return specified
   }
 
+  const recent = await loadRecentModels()
+  for (const entry of recent) {
+    const provider = providers.find((p) => p.id === entry.providerID)
+    if (provider && provider.models[entry.modelID]) return entry
+  }
+
   if (specified && !providers.length) return specified
 
-  const localcoderProvider = providers.find((p) => p.id === "localcoder")
-  if (localcoderProvider) {
-    if (localcoderProvider.models["big-pickle"]) {
-      return { providerID: ProviderID.localcoder, modelID: ModelID.make("big-pickle") }
-    }
-    const [best] = Provider.sort(Object.values(localcoderProvider.models))
-    if (best) {
-      return {
-        providerID: ProviderID.make(best.providerID),
-        modelID: ModelID.make(best.id),
-      }
-    }
-  }
-
-  const models = providers.flatMap((p) => Object.values(p.models))
-  const [best] = Provider.sort(models)
-  if (best) {
-    return {
-      providerID: ProviderID.make(best.providerID),
-      modelID: ModelID.make(best.id),
-    }
-  }
-
-  if (specified) return specified
-
-  return { providerID: ProviderID.localcoder, modelID: ModelID.make("big-pickle") }
+  throw new Error(
+    "No model configured. Connect a provider or choose a model before starting a session.",
+  )
 }
 
 function parseUri(

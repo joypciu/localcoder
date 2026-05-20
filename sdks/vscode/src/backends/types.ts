@@ -32,7 +32,7 @@ export interface SendMessageOptions {
 }
 
 export interface BackendConfig {
-  type: "localcoder" | "openai";
+  type: "localcoder" | "openai" | "none";
   openaiKey?: string;
   openaiEndpoint?: string;
   openaiModel?: string;

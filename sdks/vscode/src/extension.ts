@@ -73,6 +73,10 @@ export function activate(context: vscode.ExtensionContext) {
   async function showFirstRunSetup(ctx: vscode.ExtensionContext) {
     const FREE_PROVIDERS: vscode.QuickPickItem[] = [
       {
+        label: "$(close) Skip for now",
+        description: "No provider yet — configure later in the chat panel",
+      },
+      {
         label: "$(sparkle) Free — Google Gemini (Flash)",
         description: "Free tier · No credit card required",
         detail: "Endpoint: https://generativelanguage.googleapis.com/v1beta/openai · Get key at aistudio.google.com",
@@ -97,10 +101,6 @@ export function activate(context: vscode.ExtensionContext) {
         description: "Use the bundled localcoder server (requires Bun)",
         detail: "Full agent with tools — reads, writes, runs commands in your project",
       },
-      {
-        label: "$(close) Skip for now",
-        description: "Configure later via the ⚙ settings button in the chat panel",
-      },
     ];
 
     const pick = await vscode.window.showQuickPick(FREE_PROVIDERS, {
@@ -111,11 +111,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     if (!pick || pick.label.includes("Skip")) {
       await ctx.globalState.update("localcoder.hasSetup", true);
+      await ctx.globalState.update("chatBackendConfig", { type: "none" });
       return;
     }
 
     if (pick.label.includes("LocalCoder Backend")) {
-      // Already the default — no config needed
+      await ctx.globalState.update("chatBackendConfig", { type: "localcoder" });
       await ctx.globalState.update("localcoder.hasSetup", true);
       vscode.window.showInformationMessage(
         "LocalCoder: using the bundled backend. Click the LocalCoder icon in the Activity Bar to start.",
