@@ -166,8 +166,31 @@ function findBinary(startDir) {
   }
 }
 
+
+
+function runWithBun() {
+  let current = scriptDir
+  for (let i = 0; i < 8; i++) {
+    const candidate = path.join(current, "packages", "localcoder", "src", "index.ts")
+    if (fs.existsSync(candidate)) {
+      const bun = process.env.LOCALCODER_BUN || "bun"
+      const result = childProcess.spawnSync(
+        bun,
+        ["run", "--conditions=browser", candidate, ...process.argv.slice(2)],
+        { stdio: "inherit", cwd: path.join(current, "packages", "localcoder"), env: process.env },
+      )
+      process.exit(typeof result.status === "number" ? result.status : 1)
+    }
+    const parent = path.dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+}
+
+
 const resolved = findBinary(scriptDir)
 if (!resolved) {
+  runWithBun()
   console.error(
     "It seems that your package manager failed to install the right version of the localcoder CLI for your platform. You can try manually installing " +
       names.map((n) => `\"${n}\"`).join(" or ") +

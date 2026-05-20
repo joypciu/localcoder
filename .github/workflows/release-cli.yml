@@ -1,0 +1,37 @@
+﻿name: Release CLI binaries
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platforms: windows
+            artifact: windows
+          - os: macos-latest
+            platforms: darwin
+            artifact: macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.13"
+      - name: Build CLI
+        env:
+          LOCALCODER_VERSION: ${{ github.ref_name }}
+          LOCALCODER_CHANNEL: latest
+        run: |
+          cd packages/localcoder
+          bun run script/build.ts -- --platforms=${{ matrix.platforms }} --skip-embed-web-ui
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localcoder-${{ matrix.artifact }}
+          path: packages/localcoder/dist/localcoder-*/
