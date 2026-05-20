@@ -71,3 +71,15 @@ LocalCoder supports local GGUF models via [llama.cpp](https://github.com/ggml-or
 3. Optional env: `LOCALCODER_LLAMACPP_DIR`, `LOCALCODER_LLAMACPP_MODEL`, `LLAMACPP_CTX` (default 16384).
 
 Use **`/context`** in a session to inspect token usage; **`/compact`** to summarize long sessions.
+
+
+## npm publish
+
+```bash
+bun run build:win          # or build:mac on macOS
+bun run prepare:npm        # local install (file: optional deps)
+bun run prepare:npm:registry   # semver optional deps for npmjs
+cd dist/npm/localcoder && npm install -g .
+```
+
+Published as [`localcoder`](https://www.npmjs.com/package/localcoder) with platform packages `localcoder-windows-x64`, `localcoder-darwin-arm64`, etc.

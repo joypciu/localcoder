@@ -20,10 +20,19 @@ Key characteristics:
 
 ## Installation
 
+### npm (recommended)
+
+```bash
+npm install -g localcoder
+localcoder --version
+```
+
+See [INSTALL.md](INSTALL.md) for platform binaries and desktop installers.
+
 ### From source
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/joypciu/localcoder.git
 cd localcoder
 bun install
 bun run build
@@ -35,6 +44,22 @@ bun run build
 # After building from source
 bun run --cwd packages/localcoder start
 ```
+
+---
+
+## Desktop app (Electron)
+
+Graphical app with the embedded web UI — same sessions and tools as the CLI.
+
+- **Windows:** NSIS installer (`.exe`) from [Releases](https://github.com/joypciu/localcoder/releases)
+- **macOS:** `.dmg` — open and drag LocalCoder to Applications
+
+```bash
+bun run dev:desktop          # dev mode
+cd packages/desktop && bun run package:win   # Windows installer (on Windows)
+```
+
+See `packages/desktop/README.md`.
 
 ---
 
@@ -115,7 +140,7 @@ localcoder/
 ├── packages/
 │   ├── localcoder/   Core CLI, HTTP server, agent loop, storage
 │   ├── app/          Web UI (SolidJS)
-│   ├── desktop/      Native desktop app (Tauri v2)
+│   ├── desktop/      Electron desktop app (rich UI)
 │   ├── slack/        Slack bot integration
 │   ├── docs/         Documentation site
 │   └── web/          Marketing site

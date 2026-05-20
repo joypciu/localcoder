@@ -1,4 +1,4 @@
-﻿# Installing LocalCoder
+# Installing LocalCoder
 
 ## npm (recommended)
 
@@ -51,4 +51,25 @@ CI builds all platform binaries on tag push (see `.github/workflows/release-cli.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/joypciu/localcoder/main/install | bash
+```
+
+
+## Desktop app (Electron)
+
+Rich UI with the same agent as the CLI.
+
+| Platform | Artifact |
+|----------|----------|
+| Windows | NSIS installer (`localcoder-desktop-win-x64.exe`) |
+| macOS | `.dmg` (drag **LocalCoder** to Applications) |
+
+Download from [GitHub Releases](https://github.com/joypciu/localcoder/releases) or build locally (see `packages/desktop/README.md`).
+
+```bash
+cd packages/desktop
+bun run prebuild && bun run build
+# Windows
+set LOCALCODER_CHANNEL=prod && bun run package:win
+# macOS
+LOCALCODER_CHANNEL=prod bun run package:mac
 ```
