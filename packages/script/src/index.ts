@@ -34,14 +34,16 @@ const IS_PREVIEW = CHANNEL !== "latest"
 const VERSION = await (async () => {
   if (env.LOCALCODER_VERSION) return env.LOCALCODER_VERSION
   if (IS_PREVIEW) return `0.0.0-${CHANNEL}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "")}`
-  const version = await fetch("https://registry.npmjs.org/localcoder-ai/latest")
-    .then((res) => {
-      if (!res.ok) throw new Error(res.statusText)
-      return res.json()
-    })
-    .then((data: any) => data.version)
+  const localPkgPath = path.resolve(import.meta.dir, "../../localcoder/package.json")
+  const localPkg = await Bun.file(localPkgPath).json()
+  let version: string = localPkg.version
+  try {
+    const res = await fetch("https://registry.npmjs.org/localcoder/latest")
+    if (res.ok) version = ((await res.json()) as { version: string }).version
+  } catch {}
   const [major, minor, patch] = version.split(".").map((x: string) => Number(x) || 0)
   const t = env.LOCALCODER_BUMP?.toLowerCase()
+  if (!t) return version
   if (t === "major") return `${major + 1}.0.0`
   if (t === "minor") return `${major}.${minor + 1}.0`
   return `${major}.${minor}.${patch + 1}`

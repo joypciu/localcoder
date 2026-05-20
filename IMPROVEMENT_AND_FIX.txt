@@ -1,6 +1,6 @@
-﻿# LocalCoder — Improvements, Fixes & Roadmap
+# LocalCoder — Improvements, Fixes & Roadmap
 
-**Updated:** 2026-05-20  
+**Updated:** 2026-05-20 (v1.14.38)  
 **VS Code extension tests:** **84/84 passing** (`cd sdks/vscode && bun run test`)
 
 ---
@@ -11,6 +11,7 @@
 |------|--------|-------|
 | TUI + llama.cpp (Qwopus, tools, context) | Production-ready | **8.0/10** |
 | VS Code extension (agentic, SSE, undo, @files) | E2E verified | **~7.8/10** |
+| Desktop (Electron, Win/Mac installers) | CI release.yml | **~7.5/10** |
 | vs Copilot / Claude Code / Kilo | Gap: MCP, inline chat, native diff | — |
 
 ---

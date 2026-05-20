@@ -42,23 +42,23 @@ const getBase = (): Configuration => ({
   ],
   mac: {
     category: "public.app-category.developer-tools",
-    icon: `resources/icons/icon.icns`,
+    icon: `resources/icons/icon.png`,
     hardenedRuntime: true,
     gatekeeperAssess: false,
     entitlements: "resources/entitlements.plist",
     entitlementsInherit: "resources/entitlements.plist",
-    notarize: true,
+    notarize: Boolean(process.env.APPLE_ID && process.env.APPLE_APP_SPECIFIC_PASSWORD),
     target: ["dmg", "zip"],
   },
   dmg: {
-    sign: true,
+    sign: Boolean(process.env.APPLE_ID),
   },
   protocols: {
     name: "LocalCoder",
     schemes: ["localcoder"],
   },
   win: {
-    icon: `resources/icons/icon.ico`,
+    icon: `resources/icons/icon.png`,
     signtoolOptions: {
       sign: signWindows,
     },
@@ -68,8 +68,8 @@ const getBase = (): Configuration => ({
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
-    installerIcon: `resources/icons/icon.ico`,
-    installerHeaderIcon: `resources/icons/icon.ico`,
+    installerIcon: `resources/icons/icon.png`,
+    installerHeaderIcon: `resources/icons/icon.png`,
   },
   linux: {
     icon: `resources/icons`,
@@ -96,7 +96,7 @@ function getConfig() {
         appId: "ai.localcoder.desktop.beta",
         productName: "LocalCoder Beta",
         protocols: { name: "LocalCoder Beta", schemes: ["localcoder"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "localcoder-beta", channel: "latest" },
+        publish: { provider: "github", owner: "joypciu", repo: "localcoder", prerelease: true, channel: "latest" },
         rpm: { packageName: "localcoder-beta" },
       }
     }
@@ -106,7 +106,7 @@ function getConfig() {
         appId: "ai.localcoder.desktop",
         productName: "LocalCoder",
         protocols: { name: "LocalCoder", schemes: ["localcoder"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "localcoder", channel: "latest" },
+        publish: { provider: "github", owner: "joypciu", repo: "localcoder", channel: "latest" },
         rpm: { packageName: "localcoder" },
       }
     }

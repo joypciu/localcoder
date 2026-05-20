@@ -1,7 +1,7 @@
 {
   "name": "@localcoder-ai/desktop",
   "private": true,
-  "version": "1.14.37",
+  "version": "1.14.38",
   "type": "module",
   "license": "MIT",
   "homepage": "https://localcoder.ai",
@@ -20,7 +20,8 @@
     "package:mac": "electron-builder --mac --config electron-builder.config.ts",
     "package:win": "electron-builder --win --config electron-builder.config.ts",
     "package:linux": "electron-builder --linux --config electron-builder.config.ts",
-    "native:build": "bun install --cwd native"
+    "native:build": "bun install --cwd native",
+    "ensure-icons": "bun ./scripts/ensure-icons.ts"
   },
   "main": "./out/main/index.js",
   "dependencies": {
