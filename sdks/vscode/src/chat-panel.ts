@@ -41,7 +41,7 @@ abstract class ChatProviderBase {
 
   protected loadConfig(): BackendConfig {
     const c = this._context.globalState.get<BackendConfig>("chatBackendConfig");
-    return c || { type: "localcoder" };
+    return c ?? { type: "none" };
   }
 
   protected saveConfig() {
@@ -49,6 +49,11 @@ abstract class ChatProviderBase {
   }
 
   protected getOrCreateBackend(): ChatBackend {
+    if (this._config.type === "none") {
+      throw new Error(
+        "No AI provider configured. Open settings or complete setup to choose a provider.",
+      );
+    }
     if (!this._backend) {
       if (this._config.type === "openai") {
         this._backend = new OpenAIBackend({
@@ -331,6 +336,10 @@ abstract class ChatProviderBase {
         }
 
         case "sendMessage": {
+          if (this._config.type === "none") {
+            this.postMessage({ type: "error", message: "Configure a provider in settings before sending messages." });
+            break;
+          }
           if (!backend) { break; }
           // Clear undo snapshots for new turn
           this._turnSnapshots.clear();

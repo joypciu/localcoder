@@ -24,10 +24,12 @@ import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
 import { AppFileSystem } from "@localcoder-ai/core/filesystem"
 import { isRecord } from "@/util/record"
+import { NamedError } from "@localcoder-ai/core/util/error"
 import { optionalOmitUndefined, withStatics } from "@/util/schema"
 
 import * as ProviderTransform from "./transform"
 import { ModelID, ProviderID } from "./schema"
+import { loadRecentModels } from "./recent-model"
 
 const log = Log.create({ service: "provider" })
 
@@ -1737,18 +1739,7 @@ const layer: Layer.Layer<
       if (cfg.model) return parseModel(cfg.model)
 
       const s = yield* InstanceState.get(state)
-      const recent = yield* fs.readJson(path.join(Global.Path.state, "model.json")).pipe(
-        Effect.map((x): { providerID: ProviderID; modelID: ModelID }[] => {
-          if (!isRecord(x) || !Array.isArray(x.recent)) return []
-          return x.recent.flatMap((item) => {
-            if (!isRecord(item)) return []
-            if (typeof item.providerID !== "string") return []
-            if (typeof item.modelID !== "string") return []
-            return [{ providerID: ProviderID.make(item.providerID), modelID: ModelID.make(item.modelID) }]
-          })
-        }),
-        Effect.catch(() => Effect.succeed([] as { providerID: ProviderID; modelID: ModelID }[])),
-      )
+      const recent = yield* Effect.promise(() => loadRecentModels())
       for (const entry of recent) {
         const provider = s.providers[entry.providerID]
         if (!provider) continue
@@ -1756,14 +1747,12 @@ const layer: Layer.Layer<
         return { providerID: entry.providerID, modelID: entry.modelID }
       }
 
-      const provider = Object.values(s.providers).find((p) => !cfg.provider || Object.keys(cfg.provider).includes(p.id))
-      if (!provider) throw new Error("no providers found")
-      const [model] = sort(Object.values(provider.models))
-      if (!model) throw new Error("no models found")
-      return {
-        providerID: provider.id,
-        modelID: model.id,
-      }
+      return yield* Effect.fail(
+        new NamedError.Unknown({
+          message:
+            "No model configured. Run /connect for cloud APIs, /llama for local GGUF models, or pick a model from the model menu.",
+        }),
+      )
     })
 
     return Service.of({ list, getProvider, getModel, getLanguage, closest, getSmallModel, defaultModel })

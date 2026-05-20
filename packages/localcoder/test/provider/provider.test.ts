@@ -470,7 +470,7 @@ test("parseModel handles model IDs with slashes", () => {
   expect(String(result.modelID)).toBe("anthropic/claude-3-opus")
 })
 
-test("defaultModel returns first available model when no config set", async () => {
+test("defaultModel fails when no config or recent model", async () => {
   await using tmp = await tmpdir({
     init: async (dir) => {
       await Bun.write(
@@ -485,9 +485,7 @@ test("defaultModel returns first available model when no config set", async () =
     directory: tmp.path,
     fn: async () => {
       set("ANTHROPIC_API_KEY", "test-api-key")
-      const model = await defaultModel()
-      expect(model.providerID).toBeDefined()
-      expect(model.modelID).toBeDefined()
+      await expect(defaultModel()).rejects.toThrow()
     },
   })
 })
