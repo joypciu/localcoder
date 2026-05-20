@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { ChatPanelProvider, ChatSidebarProvider } from "./chat-panel";
+import { ChatPanelProvider, ChatSidebarProvider, chatProviderRef } from "./chat-panel";
 
 const TERMINAL_NAME = "localcoder";
 
@@ -31,6 +31,21 @@ export function activate(context: vscode.ExtensionContext) {
       const existingTerminal = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME);
       if (existingTerminal) { existingTerminal.show(); return; }
       await openTerminal();
+    }),
+    vscode.commands.registerCommand("localcoder.undoLastTurn", async () => {
+      await chatProviderRef?.commandUndo();
+    }),
+    vscode.commands.registerCommand("localcoder.addSelectionToChat", async () => {
+      const ref = getActiveFile();
+      if (ref) { await chatProviderRef?.commandInsertText(ref + " "); }
+    }),
+    vscode.commands.registerCommand("localcoder.explainSelection", async () => {
+      const ref = getActiveFile();
+      if (ref) { await chatProviderRef?.commandSendText(`Explain ${ref}`); }
+    }),
+    vscode.commands.registerCommand("localcoder.fixSelection", async () => {
+      const ref = getActiveFile();
+      if (ref) { await chatProviderRef?.commandSendText(`Fix issues in ${ref}`); }
     }),
     vscode.commands.registerCommand("localcoder.addFilepathToTerminal", async () => {
       const fileRef = getActiveFile();

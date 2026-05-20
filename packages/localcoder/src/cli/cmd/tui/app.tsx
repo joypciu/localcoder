@@ -35,14 +35,19 @@ import { useConnected } from "@tui/component/use-connected"
 import { DialogMcp } from "@tui/component/dialog-mcp"
 import { DialogStatus } from "@tui/component/dialog-status"
 import { DialogThemeList } from "@tui/component/dialog-theme-list"
+import { DialogLlama } from "@tui/component/dialog-llama"
+import * as LlamaServer from "@tui/llama-server"
 import { DialogHelp } from "./ui/dialog-help"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogAgent } from "@tui/component/dialog-agent"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
 import { DialogConsoleOrg } from "@tui/component/dialog-console-org"
 import { KeybindProvider, useKeybind } from "@tui/context/keybind"
+import { KeyboardLayerProvider } from "@tui/context/keyboard-layer"
 import { ThemeProvider, useTheme } from "@tui/context/theme"
 import { Home } from "@tui/routes/home"
+import { NewSession } from "@tui/routes/new-session"
+import { TypeToFocus } from "@tui/component/type-to-focus"
 import { Session } from "@tui/routes/session"
 import { PromptHistoryProvider } from "./component/prompt/history"
 import { FrecencyProvider } from "./component/prompt/frecency"
@@ -133,6 +138,7 @@ export function tui(input: {
     }
 
     const onBeforeExit = async () => {
+      LlamaServer.stopIfManaged()
       await TuiPluginRuntime.dispose()
     }
 
@@ -175,7 +181,8 @@ export function tui(input: {
                             <SyncProviderV2>
                               <ThemeProvider mode={mode}>
                                 <LocalProvider>
-                                  <KeybindProvider>
+                                  <KeyboardLayerProvider>
+        <KeybindProvider>
                                     <PromptStashProvider>
                                       <DialogProvider>
                                         <CommandProvider>
@@ -192,6 +199,7 @@ export function tui(input: {
                                       </DialogProvider>
                                     </PromptStashProvider>
                                   </KeybindProvider>
+      </KeyboardLayerProvider>
                                 </LocalProvider>
                               </ThemeProvider>
                             </SyncProviderV2>
@@ -212,6 +220,9 @@ export function tui(input: {
 
 function App(props: { onSnapshot?: () => Promise<string[]> }) {
   const tuiConfig = useTuiConfig()
+  const copyOnSelectEnabled = createMemo(
+    () => tuiConfig.copy_on_select ?? !Flag.LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT,
+  )
   const route = useRoute()
   const dimensions = useTerminalDimensions()
   const renderer = useRenderer()
@@ -311,7 +322,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   }
 
   renderer.on(CliRenderEvents.SELECTION, () => {
-    if (Flag.LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
+    if (!copyOnSelectEnabled()) return
     Selection.copy(renderer, toast)
   })
 
@@ -568,6 +579,18 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       hidden: true,
       onSelect: () => {
         local.agent.move(-1)
+      },
+    },
+    {
+      title: "llama.cpp server",
+      value: "llama.menu",
+      category: "Provider",
+      slash: {
+        name: "llama",
+        aliases: ["llamacpp", "llama-server"],
+      },
+      onSelect: () => {
+        dialog.replace(() => <DialogLlama />)
       },
     },
     {
@@ -899,7 +922,10 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         evt.preventDefault()
         evt.stopPropagation()
       }}
-      onMouseUp={() => Selection.copy(renderer, toast)}
+      onMouseUp={() => {
+        if (!copyOnSelectEnabled()) return
+        Selection.copyOnMouseUp(renderer, toast)
+      }}
     >
       <Show when={Flag.LOCALCODER_SHOW_TTFD}>
         <TimeToFirstDraw />
@@ -909,14 +935,19 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
           <Match when={route.data.type === "home"}>
             <Home />
           </Match>
+          <Match when={route.data.type === "new-session"}>
+            <NewSession />
+          </Match>
           <Match when={route.data.type === "session"}>
             <Session />
           </Match>
         </Switch>
       </Show>
       {plugin()}
+      <TypeToFocus />
       <TuiPluginRuntime.Slot name="app" />
       <StartupLoading ready={ready} />
     </box>
   )
 }
+

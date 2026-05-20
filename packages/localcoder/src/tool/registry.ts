@@ -1,9 +1,10 @@
-import { PlanExitTool } from "./plan"
+import { PlanEnterTool, PlanExitTool } from "./plan"
 import { Session } from "@/session/session"
 import { QuestionTool } from "./question"
 import { ShellTool } from "./shell"
 import { EditTool } from "./edit"
 import { GlobTool } from "./glob"
+import { ListTool } from "./list"
 import { GrepTool } from "./grep"
 import { ReadTool } from "./read"
 import { TaskTool } from "./task"
@@ -103,10 +104,12 @@ export const layer: Layer.Layer<
     const question = yield* QuestionTool
     const todo = yield* TodoWriteTool
     const lsptool = yield* LspTool
-    const plan = yield* PlanExitTool
+    const planEnter = yield* PlanEnterTool
+    const planExit = yield* PlanExitTool
     const webfetch = yield* WebFetchTool
     const websearch = yield* WebSearchTool
     const shell = yield* ShellTool
+    const listtool = yield* ListTool
     const globtool = yield* GlobTool
     const writetool = yield* WriteTool
     const edit = yield* EditTool
@@ -197,6 +200,7 @@ export const layer: Layer.Layer<
           invalid: Tool.init(invalid),
           shell: Tool.init(shell),
           read: Tool.init(read),
+          list: Tool.init(listtool),
           glob: Tool.init(globtool),
           grep: Tool.init(greptool),
           edit: Tool.init(edit),
@@ -209,7 +213,8 @@ export const layer: Layer.Layer<
           patch: Tool.init(patchtool),
           question: Tool.init(question),
           lsp: Tool.init(lsptool),
-          plan: Tool.init(plan),
+          planEnter: Tool.init(planEnter),
+          planExit: Tool.init(planExit),
         })
 
         return {
@@ -219,6 +224,7 @@ export const layer: Layer.Layer<
             ...(questionEnabled ? [tool.question] : []),
             tool.shell,
             tool.read,
+            tool.list,
             tool.glob,
             tool.grep,
             tool.edit,
@@ -230,7 +236,7 @@ export const layer: Layer.Layer<
             tool.skill,
             tool.patch,
             ...(Flag.LOCALCODER_EXPERIMENTAL_LSP_TOOL ? [tool.lsp] : []),
-            ...(Flag.LOCALCODER_EXPERIMENTAL_PLAN_MODE && Flag.LOCALCODER_CLIENT === "cli" ? [tool.plan] : []),
+            ...(Flag.LOCALCODER_EXPERIMENTAL_PLAN_MODE ? [tool.planEnter, tool.planExit] : []),
           ],
           task: tool.task,
           read: tool.read,

@@ -73,6 +73,13 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             })
           setAgentStore("current", name)
         },
+        toggleBuildPlan() {
+          const names = ["build", "plan"]
+          const current = this.current()?.name
+          const idx = names.indexOf(current ?? "build")
+          const next = names[(idx + 1) % names.length]
+          this.set(next)
+        },
         move(direction: 1 | -1) {
           batch(() => {
             const current = this.current()

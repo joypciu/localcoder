@@ -60,3 +60,14 @@ src/
 ## Supported Providers
 
 Anthropic, OpenAI, Google, Amazon Bedrock, Azure, Cohere, Mistral, xAI, Groq, Together AI, Fireworks, Perplexity, DeepSeek, and any OpenAI-compatible endpoint. Model selection is configured per-session.
+
+
+## Local models (llama.cpp)
+
+LocalCoder supports local GGUF models via [llama.cpp](https://github.com/ggml-org/llama.cpp):
+
+1. Install `llama-server` and download a `.gguf` model.
+2. In the TUI, run **`/llama`** → **Start server** (or set paths in `~/.localcoder/llamacpp.json`).
+3. Optional env: `LOCALCODER_LLAMACPP_DIR`, `LOCALCODER_LLAMACPP_MODEL`, `LLAMACPP_CTX` (default 16384).
+
+Use **`/context`** in a session to inspect token usage; **`/compact`** to summarize long sessions.

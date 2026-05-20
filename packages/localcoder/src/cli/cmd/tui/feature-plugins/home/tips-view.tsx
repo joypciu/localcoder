@@ -30,7 +30,7 @@ function parse(tip: string): TipPart[] {
   return parts
 }
 
-const NO_MODELS_TIP = "Run {highlight}/connect{/highlight} to add an AI provider and start coding"
+const NO_MODELS_TIP = "Run {highlight}/connect{/highlight} for cloud APIs or {highlight}/llama{/highlight} for local GGUF models"
 
 export function Tips(props: { connected?: boolean }) {
   const theme = useTheme().theme
@@ -70,7 +70,9 @@ const TIPS = [
   "Press {highlight}Ctrl+X X{/highlight} or {highlight}/export{/highlight} to save the conversation as Markdown",
   "Press {highlight}Ctrl+X Y{/highlight} to copy the assistant's last message to clipboard",
   "Press {highlight}Ctrl+P{/highlight} to see all available actions and commands",
-  "Run {highlight}/connect{/highlight} to add API keys for 75+ supported LLM providers",
+  "Run {highlight}/connect{/highlight} for cloud APIs or {highlight}/llama{/highlight} to run local GGUF via llama.cpp",
+  "Context bar in the prompt footer tracks tokens; use {highlight}/compact{/highlight} on long sessions",
+  "Run {highlight}/context{/highlight} in a session for a full token budget breakdown",
   "The leader key is {highlight}Ctrl+X{/highlight}; combine with other keys for quick actions",
   "Press {highlight}F2{/highlight} to quickly switch between recently used models",
   "Press {highlight}Ctrl+X B{/highlight} to show/hide the sidebar panel",
@@ -78,6 +80,9 @@ const TIPS = [
   "Press {highlight}Ctrl+G{/highlight} or {highlight}Home{/highlight} to jump to the beginning of the conversation",
   "Press {highlight}Ctrl+Alt+G{/highlight} or {highlight}End{/highlight} to jump to the most recent message",
   "Press {highlight}Shift+Enter{/highlight} or {highlight}Ctrl+J{/highlight} to add newlines in your prompt",
+  "Drag with the mouse to select words or sentences in messages and the prompt — release to copy",
+  "Right-click selected text in the prompt to copy; {highlight}Shift+right-click{/highlight} cuts",
+  "Double-click a word in the prompt to select it; triple-click selects the whole line",
   "Press {highlight}Ctrl+C{/highlight} when typing to clear the input field",
   "Press {highlight}Escape{/highlight} to stop the AI mid-response",
   "Switch to {highlight}Plan{/highlight} agent to get suggestions without making actual changes",

@@ -27,6 +27,8 @@ import { useCommandDialog } from "../dialog-command"
 import { useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import * as Editor from "@tui/util/editor"
 import { useExit } from "../../context/exit"
+import { useKeyboardLayer } from "@tui/context/keyboard-layer"
+import { InputShortcutsInline } from "@tui/component/input-shortcuts"
 import * as Clipboard from "../../util/clipboard"
 import type { AssistantMessage, FilePart, UserMessage } from "@localcoder-ai/sdk/v2"
 import { TuiEvent } from "../../event"
@@ -47,6 +49,8 @@ import { DialogWorkspaceUnavailable } from "../dialog-workspace-unavailable"
 import { useArgs } from "@tui/context/args"
 import { Flag } from "@localcoder-ai/core/flag/flag"
 import { WorkspaceLabel, type WorkspaceStatus } from "../workspace-label"
+import { hasLlamaCppProvider } from "../use-connected"
+import { computeContextUsage, contextLevelColor, tokensFromAssistant, formatSessionCost, homeModelHint } from "@tui/util/context-usage"
 
 export type PromptProps = {
   sessionID?: string
@@ -68,6 +72,7 @@ export type PromptRef = {
   focused: boolean
   current: PromptInfo
   set(prompt: PromptInfo): void
+  append(text: string): void
   reset(): void
   blur(): void
   focus(): void
@@ -267,10 +272,13 @@ export function Prompt(props: PromptProps) {
   })
 
   function promptModelWarning() {
+    const llama = hasLlamaCppProvider()()
     toast.show({
       variant: "warning",
-      message: "Connect a provider to send prompts",
-      duration: 3000,
+      message: llama
+        ? "Select a model or run /llama to start local llama-server"
+        : "Run /connect for cloud APIs or /llama for local GGUF models",
+      duration: 4000,
     })
     if (sync.data.provider.length === 0) {
       dialog.replace(() => <DialogProviderConnect />)
@@ -321,16 +329,19 @@ export function Prompt(props: PromptProps) {
     const last = msg.findLast((item): item is AssistantMessage => item.role === "assistant" && item.tokens.output > 0)
     if (!last) return
 
-    const tokens =
-      last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write
+    const tokens = tokensFromAssistant(last)
     if (tokens <= 0) return
 
     const model = sync.data.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
-    const pct = model?.limit.context ? `${Math.round((tokens / model.limit.context) * 100)}%` : undefined
-    const cost = msg.reduce((sum, item) => sum + (item.role === "assistant" ? item.cost : 0), 0)
+    const ctx = computeContextUsage({ tokens, model, cfg: sync.data.config })
+    const costTotal = msg.reduce((sum, item) => sum + (item.role === "assistant" ? item.cost : 0), 0)
+    const cost = formatSessionCost(costTotal, last.providerID)
+    const compacting = sync.session.status(props.sessionID) === "compacting"
     return {
-      context: pct ? `${Locale.number(tokens)} (${pct})` : Locale.number(tokens),
-      cost: cost > 0 ? money.format(cost) : undefined,
+      ctx,
+      cost: cost !== undefined ? money.format(cost) : undefined,
+      compacting,
+      context: ctx?.short ?? Locale.number(tokens),
     }
   })
 
@@ -623,6 +634,11 @@ export function Prompt(props: PromptProps) {
       restoreExtmarksFromParts(prompt.parts)
       input.gotoBufferEnd()
     },
+    append(text: string) {
+      if (!text) return
+      input.insertText(text)
+      setStore("prompt", "input", input.plainText)
+    },
     reset() {
       input.clear()
       input.extmarks.clear()
@@ -638,6 +654,17 @@ export function Prompt(props: PromptProps) {
   }
 
   onMount(() => {
+    layers.push("prompt", () => {
+      if (dialog.stack.length > 0) return false
+      if (store.prompt.input !== "") {
+        input.clear()
+        input.extmarks.clear()
+        setStore("prompt", { input: "", parts: [] })
+        setStore("extmarkToPartIndex", new Map())
+        return true
+      }
+      return false
+    })
     const saved = stashed
     stashed = undefined
     if (store.prompt.input) return
@@ -650,6 +677,7 @@ export function Prompt(props: PromptProps) {
   })
 
   onCleanup(() => {
+    layers.pop("prompt")
     if (store.prompt.input) {
       stashed = { prompt: unwrap(store.prompt), cursor: input.cursorOffset }
     }
@@ -861,44 +889,8 @@ export function Prompt(props: PromptProps) {
     }
 
     const variant = local.model.variant.current()
-    let sessionID = props.sessionID
-    if (sessionID == null) {
-      const workspace = workspaceSelection()
-      const workspaceID = iife(() => {
-        if (!workspace) return undefined
-        if (workspace.type === "none") return undefined
-        if (workspace.type === "existing") return workspace.workspaceID
-        return undefined
-      })
 
-      const res = await sdk.client.session.create({
-        workspace: props.workspaceID,
-        agent: agent.name,
-        model: {
-          providerID: selectedModel.providerID,
-          id: selectedModel.modelID,
-          variant,
-        },
-      })
-
-      if (res.error) {
-        console.log("Creating a session failed:", res.error)
-
-        toast.show({
-          message: "Creating a session failed. Open console for more details.",
-          variant: "error",
-        })
-
-        return true
-      }
-
-      sessionID = res.data.id
-    }
-
-    const messageID = MessageID.ascending()
     let inputText = store.prompt.input
-
-    // Expand pasted text inline before submitting
     const allExtmarks = input.extmarks.getAllForTypeId(promptPartTypeId)
     const sortedExtmarks = allExtmarks.sort((a: { start: number }, b: { start: number }) => b.start - a.start)
 
@@ -914,11 +906,48 @@ export function Prompt(props: PromptProps) {
       }
     }
 
-    // Filter out text parts (pasted content) since they're now expanded inline
     const nonTextParts = store.prompt.parts.filter((part) => part.type !== "text")
-
-    // Capture mode before it gets reset
     const currentMode = store.mode
+
+    if (props.sessionID == null) {
+      const workspace = workspaceSelection()
+      const selectedWorkspaceID = iife(() => {
+        if (props.workspaceID) return props.workspaceID
+        if (!workspace) return undefined
+        if (workspace.type === "none") return undefined
+        if (workspace.type === "existing") return workspace.workspaceID
+        return undefined
+      })
+
+      route.navigate({
+        type: "new-session",
+        message: inputText,
+        agent: agent.name,
+        model: {
+          providerID: selectedModel.providerID,
+          modelID: selectedModel.modelID,
+        },
+        variant,
+        workspaceID: selectedWorkspaceID,
+        parts: nonTextParts,
+        mode: currentMode,
+      })
+
+      history.append({
+        input: inputText,
+        parts: nonTextParts,
+        mode: currentMode,
+      })
+      input.extmarks.clear()
+      setStore("prompt", { input: "", parts: [] })
+      setStore("extmarkToPartIndex", new Map())
+      props.onSubmit?.()
+      input.clear()
+      return true
+    }
+
+    const sessionID = props.sessionID
+    const messageID = MessageID.ascending()
     const editorSelection = editorContext()
     const currentEditorSelectionKey = editorSelectionKey(editorSelection)
     const editorParts =
@@ -1013,19 +1042,11 @@ export function Prompt(props: PromptProps) {
     })
     setStore("extmarkToPartIndex", new Map())
     props.onSubmit?.()
-
-    // temporary hack to make sure the message is sent
-    if (!props.sessionID)
-      setTimeout(() => {
-        route.navigate({
-          type: "session",
-          sessionID,
-        })
-      }, 50)
     input.clear()
     return true
   }
   const exit = useExit()
+  const layers = useKeyboardLayer()
 
   function pasteText(text: string, virtualText: string) {
     const currentOffset = input.visualCursor.offset
@@ -1168,7 +1189,7 @@ export function Prompt(props: PromptProps) {
       return `Run a command... "${example}"`
     }
     if (!list().length) return undefined
-    return `Ask anything... "${list()[store.placeholder % list().length]}"`
+    return `Ask anything... "${list()[store.placeholder % list().length]}" · Shift+Enter · drag select · RMB · MMB paste`
   })
 
   const workspaceLabel = createMemo<
@@ -1649,6 +1670,7 @@ export function Prompt(props: PromptProps) {
                 </box>
               </Show>
             </box>
+            <InputShortcutsInline />
           </box>
         </box>
         <box
@@ -1813,7 +1835,20 @@ export function Prompt(props: PromptProps) {
               <Switch>
                 <Match when={store.mode === "normal"}>
                   <Switch>
-                    <Match when={usage()}>
+                    <Match when={usage()?.ctx}>
+                      {(item) => (
+                        <text fg={contextLevelColor(item().ctx!.level, theme)} wrapMode="none">
+                          {[
+                            item().compacting ? "compacting…" : item().ctx!.detail,
+                            item().ctx!.compactHint && !item().compacting ? "/compact" : undefined,
+                            item().cost,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </text>
+                      )}
+                    </Match>
+                    <Match when={usage() && !usage()?.ctx}>
                       {(item) => (
                         <text fg={theme.textMuted} wrapMode="none">
                           {[item().context, item().cost].filter(Boolean).join(" · ")}

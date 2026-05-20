@@ -896,6 +896,13 @@ export function options(input: {
     }
   }
 
+  if (input.model.providerID === "llamacpp" && input.model.api.npm === "@ai-sdk/openai-compatible") {
+    const id = input.model.api.id.toLowerCase()
+    if (id.includes("qwen") || id.includes("qwopus")) {
+      result["chat_template_args"] = { enable_thinking: false }
+    }
+  }
+
   if (input.model.providerID === "openai" || input.providerOptions?.setCacheKey) {
     result["promptCacheKey"] = input.sessionID
   }

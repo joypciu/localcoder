@@ -7,6 +7,7 @@ import { MessageV2 } from "../session/message-v2"
 import { Provider } from "@/provider/provider"
 import { InstanceState } from "@/effect/instance-state"
 import { type SessionID, MessageID, PartID } from "../session/schema"
+import ENTER_DESCRIPTION from "./plan-enter.txt"
 import EXIT_DESCRIPTION from "./plan-exit.txt"
 
 function getLastModel(sessionID: SessionID) {
@@ -17,6 +18,67 @@ function getLastModel(sessionID: SessionID) {
 }
 
 export const Parameters = Schema.Struct({})
+
+
+export const PlanEnterTool = Tool.define(
+  "plan_enter",
+  Effect.gen(function* () {
+    const session = yield* Session.Service
+    const question = yield* Question.Service
+    const provider = yield* Provider.Service
+
+    return {
+      description: ENTER_DESCRIPTION,
+      parameters: Parameters,
+      execute: (_params: {}, ctx: Tool.Context) =>
+        Effect.gen(function* () {
+          const answers = yield* question.ask({
+            sessionID: ctx.sessionID,
+            questions: [
+              {
+                question: "This task may benefit from planning first. Switch to the plan agent?",
+                header: "Plan mode",
+                custom: false,
+                options: [
+                  { label: "Yes", description: "Switch to plan agent (read-only exploration)" },
+                  { label: "No", description: "Stay on the current agent" },
+                ],
+              },
+            ],
+            tool: ctx.callID ? { messageID: ctx.messageID, callID: ctx.callID } : undefined,
+          })
+
+          if (answers[0]?.[0] === "No") yield* new Question.RejectedError()
+
+          const model = getLastModel(ctx.sessionID) ?? (yield* provider.defaultModel())
+
+          const msg: MessageV2.User = {
+            id: MessageID.ascending(),
+            sessionID: ctx.sessionID,
+            role: "user",
+            time: { created: Date.now() },
+            agent: "plan",
+            model,
+          }
+          yield* session.updateMessage(msg)
+          yield* session.updatePart({
+            id: PartID.ascending(),
+            messageID: msg.id,
+            sessionID: ctx.sessionID,
+            type: "text",
+            text: "Switching to plan agent. Explore the codebase and draft a plan before making changes.",
+            synthetic: true,
+          } satisfies MessageV2.TextPart)
+
+          return {
+            title: "Switching to plan agent",
+            output: "User approved switching to plan agent.",
+            metadata: {},
+          }
+        }).pipe(Effect.orDie),
+    }
+  }),
+)
 
 export const PlanExitTool = Tool.define(
   "plan_exit",

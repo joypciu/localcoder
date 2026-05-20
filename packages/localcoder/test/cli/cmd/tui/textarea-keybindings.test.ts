@@ -5,7 +5,7 @@ import { Keybind } from "@/util/keybind"
 describe("buildTextareaKeybindings", () => {
   test("matches newline return variants before plain return submit", () => {
     const bindings = buildTextareaKeybindings({
-      input_newline: Keybind.parse("shift+return,ctrl+return,alt+return,ctrl+j"),
+      input_newline: Keybind.parse("shift+return,shift+enter,ctrl+return,ctrl+enter,alt+return,ctrl+j"),
       input_submit: Keybind.parse("return"),
     })
 

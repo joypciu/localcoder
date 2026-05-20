@@ -1,9 +1,10 @@
 import { useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
-import { batch, createContext, Show, useContext, type JSX, type ParentProps } from "solid-js"
+import { batch, createContext, createEffect, Show, useContext, type JSX, type ParentProps } from "solid-js"
 import { useTheme } from "@tui/context/theme"
 import { MouseButton, Renderable, RGBA } from "@opentui/core"
 import { createStore } from "solid-js/store"
 import { useToast } from "./toast"
+import { useKeyboardLayer } from "@tui/context/keyboard-layer"
 import { Flag } from "@localcoder-ai/core/flag/flag"
 import * as Selection from "@tui/util/selection"
 
@@ -151,12 +152,28 @@ export type DialogContext = ReturnType<typeof init>
 
 const ctx = createContext<DialogContext>()
 
+function DialogKeyboardLayer() {
+  const dialog = useDialog()
+  const layers = useKeyboardLayer()
+  createEffect(() => {
+    if (dialog.stack.length > 0) {
+      layers.push("dialog", () => {
+        dialog.clear()
+        return true
+      })
+    } else {
+      layers.pop("dialog")
+    }
+  })
+}
+
 export function DialogProvider(props: ParentProps) {
   const value = init()
   const renderer = useRenderer()
   const toast = useToast()
   return (
     <ctx.Provider value={value}>
+      <DialogKeyboardLayer />
       {props.children}
       <box
         position="absolute"

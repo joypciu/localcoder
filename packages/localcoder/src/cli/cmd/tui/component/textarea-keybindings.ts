@@ -61,6 +61,7 @@ function mapTextareaKeybindings(
 export function buildTextareaKeybindings(keybinds: Record<string, Keybind.Info[]>) {
   return [
     { name: "return", shift: true, action: "newline" },
+    { name: "enter", shift: true, action: "newline" },
     { name: "return", ctrl: true, action: "newline" },
     { name: "return", meta: true, action: "newline" },
     ...TEXTAREA_ACTIONS.filter((action) => action !== "submit").flatMap((action) =>

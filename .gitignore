@@ -55,3 +55,4 @@ packages/desktop/dist/
 packages/app/dist/
 packages/web/dist/
 packages/docs/dist/
+sdks/vscode/.vscode-test/

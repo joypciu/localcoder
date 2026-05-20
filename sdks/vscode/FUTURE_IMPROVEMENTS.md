@@ -1,115 +1,85 @@
-# Future Improvements
+﻿# LocalCoder VS Code Extension — Changelog & Roadmap
 
-## Completed ✅
-
-### Activity Bar Icon + Sidebar Chat Panel
-- Full VS Code Activity Bar icon — click the LocalCoder icon to open the chat panel directly in the sidebar, just like GitHub Copilot or Claude Code
-- Sidebar uses `WebviewViewProvider` (persistent context, no re-renders on focus change)
-- `Ctrl+Shift+L` / `Cmd+Shift+L` still opens a floating panel tab as an alternative
-
-### First-Run Provider Setup Wizard
-- On first activation, a QuickPick walks the user through choosing an AI provider
-- Free options highlighted by default: Google Gemini (free tier), Groq (free tier), Ollama (local)
-- Preset configurations auto-fill endpoint + model; user only needs to enter API key
-- Setting is persisted to `globalState` — wizard never shows again after setup
-
-### Undo Last Changes (VS Code)
-- After every assistant response that modifies files, a **changes bar** appears below the message
-- Shows every file created or modified during that turn (✏️ icon + short path, full path on hover)
-- "↩ Revert all" button restores all files to their pre-turn state using `vscode.workspace.applyEdit`
-- Reverts go through VS Code's native undo stack — you can re-undo the revert with Ctrl+Z
-- No git required — works on any workspace
-
-### Chat UI Overhaul
-- Self-contained webview with **no CDN dependencies** — inline Markdown renderer, inline CSS, zero external fetches
-- Content Security Policy hardened to `default-src 'none'` (scripts/styles inline-only)
-- Fenced code blocks with language label and **Copy** button
-- **Tool call cards** — collapsible per-tool sections with icon, status badge, formatted input/output
-  - Tool-type icons and color coding (📄 Read, ✏️ Edit, 💻 Bash, 🔍 Glob, 🔎 Grep, 🌐 WebSearch/WebFetch, ⚙️ Agent)
-  - Shell: stdout in teal, stderr in red
-  - Edit/write: unified diff view with green/red line highlights
-  - Glob/Grep: structured file-path and match lists
-  - Web search: title + snippet cards
-  - Agent (sub-agent): collapsible delegation block
-  - Auto-collapse completed tools to keep the thread readable
-- **`toolCall` / `toolResult` real-time events** now handled in the webview (previously missing)
-- **Thinking/reasoning blocks** — collapsible `🧠 Thinking…` section for chain-of-thought models
-- Streaming cursor animation during live token output
-- Message copy (📋) and 👍/👎 rating buttons per message
-- Empty state with one-click suggestion chips
-- Smooth fade-in animation per message turn
-
-### Session/History
-- Session dropdown in header — switch between previous conversations
-- Sessions persist across VS Code restarts (stored by the localcoder backend)
-- "New session" button clears the active conversation
-
-### Test Suite (45 tests across 6 suites)
-- **Test 1** — Read file + Glob search tool call shapes and edge cases
-- **Test 2** — Write + Edit tool calls including actual filesystem I/O in temp dir
-- **Test 3** — Bash/shell tool — stdout/stderr, exit codes, multi-command
-- **Test 4** — Sub-agent delegation — Agent tool call, nested delegation, metadata
-- **Test 5** — Multi-turn conversation — history accumulation, session ID stability, token totals
-- **Test 6** — Grep, WebSearch, WebFetch — output shapes, zero-result edge cases, truncation
-
-### Marketplace Readiness
-- `@vscode/vsce` added to devDependencies
-- `publisher`, `categories`, `keywords`, `galleryBanner` set in `package.json`
-- `version` set to `1.0.0`
-- Clean package file list (10 files, no dev artifacts)
+**Last updated:** 2026-05-20  
+**Test status:** **84/84 passing** (`bun run test` — unit + live HTTP + VS Code host integration)
 
 ---
 
-## High Priority
+## Completed
 
-### Real-time Streaming for localcoder Backend ⏳
-**Currently: synchronous POST — waits for the full LLM response before rendering.**
-The SSE connection to `/global/event` is established but not forwarded to the webview.
-Goal: pipe SSE events (token deltas, tool start/done) into `onDelta` / `onToolCall` / `onToolResult` callbacks as they arrive, matching the OpenAI backend's streaming behaviour.
+### Agentic core (2026-05-20)
+- **Live SSE streaming** — `/global/event` parsed via `src/backends/sse-events.ts`; tokens and tools stream to the webview during turns
+- **Abort** — `AbortController` + server `/session/{id}/abort`
+- **Build / Plan agent** — header selector; `agent` sent on message POST
+- **@ file mentions** — autocomplete (`listFiles`) + file parts embedded in prompts
+- **Undo** — turn-level “Revert all” + per-file ↩ on the changes bar
+- **VS Code settings** — `localcoder.packagePath`, `bunPath`, `defaultAgent`, `openDiffOnEdit`
+- **Commands** — undo (`Ctrl+Shift+U`), add selection (`Ctrl+Shift+A`), explain/fix selection
+- **Activation** — `onView:localcoder.chatView` (sidebar loads without extra command)
+- **Marketplace icon** — `images/icon.png`
 
-### Selective Revert (per-file)
-Currently "Revert all" reverts every file in the turn. Add per-file revert so users can keep some changes and roll back others. The snapshot data is already collected per-file in the extension.
+### UX (prior)
+- Activity Bar sidebar + floating panel (`Ctrl+Shift+L`)
+- First-run provider wizard (Gemini, Groq, Ollama, OpenAI-compatible, LocalCoder backend)
+- Self-contained webview (no CDN), tool cards, diff rendering, thinking blocks, sessions
+- Terminal TUI bridge + active file context badge
 
-### @-Mention File Context
-Type `@filename` in the chat input to reference workspace files. Show an autocomplete dropdown filtered by workspace files. Embed file contents as context in the sent prompt.
+### Test suite (84 tests, 10 suites)
 
-### Diff View for Code Changes
-When the agent edits files, open a native VS Code diff editor showing the changes. Allow one-click apply / reject. (Inline diff in tool cards already works; native diff view is still missing.)
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| Tool read/glob | 7 | Read, Glob shapes, history |
+| Tool write/edit | 6 | FS I/O, diff fields |
+| Tool shell | 8 | stdout/stderr, exit codes, truncation |
+| Tool agent | 7 | delegation, metadata |
+| Conversation + search | 17 | multi-turn, Grep/WebSearch/WebFetch |
+| SSE events parser | 9 | deltas, tools, session filter, SSE blocks |
+| Extension manifest | 6 | package.json, commands, config, keybindings |
+| OpenAI backend | 5 | config, abort, API key validation |
+| Undo snapshots | 4 | write tools, restore simulation |
+| Chat HTML contract | 7 | DOM ids, message handlers, @mentions |
+| Backend live HTTP | 3 | health, session CRUD, SSE connect |
+| Extension integration | 5 | activate, commands, config (Electron) |
 
-### OpenAI Session Persistence
-OpenAI backend sessions live only in memory and are lost on extension reload. Persist session metadata to `globalState` or `ExtensionContext.storageUri`.
-
-## Medium Priority
-
-### Token Usage & Cost Display
-Show per-message and per-session token counts and estimated cost. Display a running total in the status bar.
-
-### Stop Generation — Reliable Abort
-The stop button sends an HTTP abort request but UI state may desync. Make the abort path update the webview synchronously and cancel pending SSE reads.
-
-### Agent Mode Switcher
-For the localcoder backend, allow switching between agents (`build`, `plan`, `general`, etc.) from the chat header without restarting the session.
-
-### Anthropic / Claude Backend
-Add a third backend using Anthropic's Messages API with native tool-use support and streaming.
-
-### Image & File Upload
-Support drag-and-drop file uploads into the chat. Preview images inline, send file contents as context.
-
-## Low Priority
-
-### Chat Themes
-Support VS Code's light theme and custom colour schemes (currently dark-only).
-
-### Voice Input
-Integrate VS Code's speech API for voice-to-text input in the chat.
+**Run tests:**
+```bash
+cd sdks/vscode
+bun run test              # full suite (downloads VS Code once)
+bun run test:unit         # mocha only (no Electron)
+bun run ../../scripts/vscode-extension-e2e.ts   # compile + unit + optional vscode-test
+```
 
 ---
 
-## Known Issues
+## High priority (next)
 
-1. **Shift+Enter in VS Code terminal** — Many terminal emulators cannot distinguish Shift+Enter from plain Enter at the byte level. Use `Ctrl+Enter` or `Ctrl+J` instead to insert a newline in the localcoder TUI.
-2. **OpenAI history grows unbounded** — Messages accumulate in memory with no compaction. Long conversations will eventually hit the model's context limit.
-3. **Streaming abort for OpenAI is incomplete** — `AbortController` is created but the stream-reading loop does not check it on every chunk.
-4. **localcoder server port race** — Rare: if the free-port probe and server bind race, the server may fail to start. Retry logic partially mitigates this.
-5. **Windows path quoting** — Workspace paths containing spaces may need additional escaping in some Bash tool commands.
+- [ ] **Native diff apply/reject** — `vscode.diff` + snapshot content provider
+- [ ] **MCP** — expose LocalCoder MCP config in the extension
+- [ ] **Inline chat** — editor gutter / selection actions
+- [ ] **SecretStorage** for API keys (replace `globalState` plaintext)
+- [ ] **Context bar in webview** — token usage + `/compact` (parity with TUI)
+
+## Medium priority
+
+- [ ] OpenAI session persistence across reloads
+- [ ] Model picker from connected provider
+- [ ] Reliable stop-button UI sync during abort
+- [ ] Anthropic Messages API backend
+- [ ] Drag-and-drop file / image upload
+
+## Low priority
+
+- [ ] Light theme polish for webview
+- [ ] Voice input via VS Code speech API
+
+---
+
+## Known issues
+
+1. **Monorepo layout required** — LocalCoder backend expects `packages/localcoder` or `localcoder.packagePath`.
+2. **Bun required** — for spawning the local agent server.
+3. **OpenAI backend** — chat only, no tools; sessions in-memory until persisted.
+4. **Windows paths with spaces** — rare Bash tool quoting issues.
+5. **Shift+Enter in terminal TUI** — use `Ctrl+Enter` / `Ctrl+J` for newline.
+
+See also: [IMPROVEMENT_AND_FIX.md](../../IMPROVEMENT_AND_FIX.md)

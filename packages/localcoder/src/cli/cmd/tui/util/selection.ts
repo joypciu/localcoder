@@ -10,8 +10,14 @@ type Renderer = {
   clearSelection: () => void
 }
 
-export function copy(renderer: Renderer, toast: Toast): boolean {
+export function selectedText(renderer: Renderer): string | undefined {
   const text = renderer.getSelection()?.getSelectedText()
+  if (!text || text.length === 0) return undefined
+  return text
+}
+
+export function copy(renderer: Renderer, toast: Toast): boolean {
+  const text = selectedText(renderer)
   if (!text) return false
 
   Clipboard.copy(text)
@@ -20,6 +26,23 @@ export function copy(renderer: Renderer, toast: Toast): boolean {
 
   renderer.clearSelection()
   return true
+}
+
+export function cut(renderer: Renderer, toast: Toast): boolean {
+  const text = selectedText(renderer)
+  if (!text) return false
+
+  Clipboard.copy(text)
+    .then(() => toast.show({ message: "Cut to clipboard", variant: "info" }))
+    .catch(toast.error)
+
+  renderer.clearSelection()
+  return true
+}
+
+/** Copy when the user finishes a mouse selection (mouseup). */
+export function copyOnMouseUp(renderer: Renderer, toast: Toast): boolean {
+  return copy(renderer, toast)
 }
 
 export * as Selection from "./selection"

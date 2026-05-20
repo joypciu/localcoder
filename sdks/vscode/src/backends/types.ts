@@ -27,6 +27,10 @@ export interface FileAttachment {
   name?: string;
 }
 
+export interface SendMessageOptions {
+  agent?: string;
+}
+
 export interface BackendConfig {
   type: "localcoder" | "openai";
   openaiKey?: string;
@@ -52,6 +56,7 @@ export interface ChatBackend {
       onDone: (message: Partial<ChatMessage>) => void;
       onError: (error: string) => void;
     },
+    options?: SendMessageOptions,
   ): Promise<void>;
 
   /** Abort the current generation */

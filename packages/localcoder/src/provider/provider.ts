@@ -194,7 +194,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
       const apiUrl =
         env["LLAMACPP_API_URL"] ??
         config.provider?.["llamacpp"]?.options?.baseURL ??
-        "http://localhost:8080/v1"
+        "http://127.0.0.1:8080/v1"
       const apiKey = config.provider?.["llamacpp"]?.options?.apiKey ?? "not-needed"
 
       // Try to detect if llama.cpp server is running
@@ -225,8 +225,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
                 providerID: "llamacpp",
                 api: { npm: "@ai-sdk/openai-compatible", id: m.id, url: apiUrl },
                 limit: {
-                  context: 128000,
-                  output: 16384,
+                  context: Number(process.env.LLAMACPP_CTX ?? 16384),
+                  output: Number(process.env.LLAMACPP_MAX_OUTPUT ?? 4096),
                 },
                 capability: {
                   reasoning: false,

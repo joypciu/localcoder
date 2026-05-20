@@ -7,6 +7,17 @@ export type HomeRoute = {
   prompt?: PromptInfo
 }
 
+export type NewSessionRoute = {
+  type: "new-session"
+  message: string
+  agent: string
+  model: { providerID: string; modelID: string }
+  variant?: string
+  workspaceID?: string
+  parts?: PromptInfo["parts"]
+  mode?: PromptInfo["mode"]
+}
+
 export type SessionRoute = {
   type: "session"
   sessionID: string
@@ -19,7 +30,7 @@ export type PluginRoute = {
   data?: Record<string, unknown>
 }
 
-export type Route = HomeRoute | SessionRoute | PluginRoute
+export type Route = HomeRoute | NewSessionRoute | SessionRoute | PluginRoute
 
 export const { use: useRoute, provider: RouteProvider } = createSimpleContext({
   name: "Route",
