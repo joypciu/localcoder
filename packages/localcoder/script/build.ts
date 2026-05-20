@@ -52,6 +52,9 @@ const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
 const sourcemapsFlag = process.argv.includes("--sourcemaps")
 const plugin = createSolidTransformPlugin()
+const platformsArg = process.argv.find((a) => a.startsWith("--platforms="))
+const platformsFilter = platformsArg?.split("=")[1]?.split(",").map((p) => p.trim().toLowerCase()) ?? null
+const incrementalFlag = process.argv.includes("--incremental")
 const skipEmbedWebUi = process.argv.includes("--skip-embed-web-ui")
 
 const createEmbeddedWebUIBundle = async () => {
@@ -143,28 +146,27 @@ const allTargets: {
   },
 ]
 
-const targets = singleFlag
+const targets = platformsFilter
   ? allTargets.filter((item) => {
-      if (item.os !== process.platform || item.arch !== process.arch) {
-        return false
-      }
-
-      // When building for the current platform, prefer a single native binary by default.
-      // Baseline binaries require additional Bun artifacts and can be flaky to download.
-      if (item.avx2 === false) {
-        return baselineFlag
-      }
-
-      // also skip abi-specific builds for the same reason
-      if (item.abi !== undefined) {
-        return false
-      }
-
-      return true
+      const osName = item.os === "win32" ? "windows" : item.os
+      return platformsFilter.includes(osName) || platformsFilter.includes(item.os)
     })
-  : allTargets
+  : singleFlag
+    ? allTargets.filter((item) => {
+        if (item.os !== process.platform || item.arch !== process.arch) {
+          return false
+        }
+        if (item.avx2 === false) {
+          return baselineFlag
+        }
+        if (item.abi !== undefined) {
+          return false
+        }
+        return true
+      })
+    : allTargets
 
-await $`rm -rf dist`
+if (!incrementalFlag) await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
 if (!skipInstall) {
@@ -198,7 +200,7 @@ for (const item of targets) {
     conditions: ["browser"],
     tsconfig: "./tsconfig.json",
     plugins: [plugin],
-    external: ["node-gyp"],
+    external: ["node-gyp", "mcp-oauth", "poe-oauth", "opencode-poe-auth", "opencode-gitlab-auth", "@gitlab/opencode-gitlab-auth"],
     format: "esm",
     minify: true,
     sourcemap: sourcemapsFlag ? "linked" : "none",
@@ -266,3 +268,5 @@ if (Script.release) {
 }
 
 export { binaries }
+
+
