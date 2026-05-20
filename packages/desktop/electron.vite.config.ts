@@ -13,6 +13,16 @@ const LOCALCODER_SERVER_DIST = "../localcoder/dist/node"
 
 const nodePtyPkg = `@lydell/node-pty-${process.platform}-${process.arch}`
 
+/** Mirror packages/localcoder/script/build.ts — Rollup must not bundle OAuth helpers */
+const oauthExternals = [
+  "mcp-oauth",
+  "poe-oauth",
+  "opencode-poe-auth",
+  "opencode-gitlab-auth",
+  "@gitlab/opencode-gitlab-auth",
+]
+
+
 const sentry =
   process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
     ? sentryVitePlugin({
@@ -36,10 +46,11 @@ export default defineConfig({
       "import.meta.env.LOCALCODER_CHANNEL": JSON.stringify(channel),
     },
     build: {
+      externalizeDeps: { include: [nodePtyPkg, ...oauthExternals] },
       rollupOptions: {
         input: { index: "src/main/index.ts" },
+        external: oauthExternals,
       },
-      externalizeDeps: { include: [nodePtyPkg] },
     },
     plugins: [
       {
@@ -92,6 +103,7 @@ export default defineConfig({
           main: "src/renderer/index.html",
           loading: "src/renderer/loading.html",
         },
+        external: oauthExternals,
       },
     },
   },

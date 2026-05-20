@@ -8,7 +8,10 @@ import * as path from "path";
 
 const SKIP = process.env.VSCODE_E2E_SKIP_LIVE === "1";
 const PKG = path.resolve(__dirname, "../../../../../packages/localcoder");
+const WIN_EXE = path.join(PKG, "dist", "localcoder-windows-x64", "bin", "localcoder.exe");
+const HAS_EXE = process.platform === "win32" && fs.existsSync(WIN_EXE);
 const HAS_PKG = fs.existsSync(path.join(PKG, "src", "index.ts"));
+const HAS_BACKEND = HAS_EXE || HAS_PKG;
 
 async function findFreePort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -40,15 +43,23 @@ suite("Localcoder backend live (HTTP)", function () {
   let proc: cp.ChildProcess | undefined;
 
   suiteSetup(async function () {
-    if (SKIP || !HAS_PKG) { this.skip(); return; }
+    if (SKIP || !HAS_BACKEND) { this.skip(); return; }
     port = await findFreePort();
     password = crypto.randomBytes(16).toString("hex");
-    const bun = resolveBun();
-    proc = cp.spawn(bun, ["run", "--cwd", PKG, "--conditions=browser", "src/index.ts", "serve", "--port", String(port), "--hostname", "127.0.0.1", "--cors"], {
-      cwd: PKG,
-      env: { ...process.env, LOCALCODER_SERVER_PASSWORD: password, LOCALCODER_CALLER: "vscode-e2e" },
-      stdio: "ignore",
-    });
+    const serveArgs = ["serve", "--port", String(port), "--hostname", "127.0.0.1", "--cors"];
+    if (HAS_EXE) {
+      proc = cp.spawn(WIN_EXE, serveArgs, {
+        env: { ...process.env, LOCALCODER_SERVER_PASSWORD: password, LOCALCODER_CALLER: "vscode-e2e" },
+        stdio: "ignore",
+      });
+    } else {
+      const bun = resolveBun();
+      proc = cp.spawn(bun, ["run", "--cwd", PKG, "--conditions=browser", "src/index.ts", ...serveArgs], {
+        cwd: PKG,
+        env: { ...process.env, LOCALCODER_SERVER_PASSWORD: password, LOCALCODER_CALLER: "vscode-e2e" },
+        stdio: "ignore",
+      });
+    }
     const auth = Buffer.from(`localcoder:${password}`).toString("base64");
     const headers = { Authorization: `Basic ${auth}` };
     for (let i = 0; i < 40; i++) {
@@ -66,7 +77,7 @@ suite("Localcoder backend live (HTTP)", function () {
   });
 
   test("health endpoint returns healthy", async function () {
-    if (SKIP || !HAS_PKG) { this.skip(); return; }
+    if (SKIP || !HAS_BACKEND) { this.skip(); return; }
     const auth = Buffer.from(`localcoder:${password}`).toString("base64");
     const r = await fetch(`http://127.0.0.1:${port}/global/health`, { headers: { Authorization: `Basic ${auth}` } });
     const j = (await r.json()) as { healthy?: boolean };
@@ -74,7 +85,7 @@ suite("Localcoder backend live (HTTP)", function () {
   });
 
   test("create session and list sessions", async function () {
-    if (SKIP || !HAS_PKG) { this.skip(); return; }
+    if (SKIP || !HAS_BACKEND) { this.skip(); return; }
     const auth = Buffer.from(`localcoder:${password}`).toString("base64");
     const headers = { Authorization: `Basic ${auth}`, "Content-Type": "application/json" };
     const tmpDir = path.join(os.tmpdir(), "lc-vscode-e2e");
@@ -90,7 +101,7 @@ suite("Localcoder backend live (HTTP)", function () {
   });
 
   test("SSE global/event connects", async function () {
-    if (SKIP || !HAS_PKG) { this.skip(); return; }
+    if (SKIP || !HAS_BACKEND) { this.skip(); return; }
     const auth = Buffer.from(`localcoder:${password}`).toString("base64");
     const ac = new AbortController();
     setTimeout(() => ac.abort(), 3000);

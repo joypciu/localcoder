@@ -1,88 +1,91 @@
-# LocalCoder — Improvements, Fixes & Roadmap
+LocalCoder — Improvements, Fixes & Roadmap
 
-**Updated:** 2026-05-20 (v1.14.38)  
-**VS Code extension tests:** **84/84 passing** (`cd sdks/vscode && bun run test`)
+Updated: 2026-05-20 · Release: v1.14.38  
+VS Code tests: 84/84 (cd sdks/vscode && bun run test:all)  
+Windows smoke: built .exe, serve health, npm postinstall launcher
 
 ---
 
-## Executive summary
+#Executive summary
 
-| Area | Status | Score |
+| Area | Status | Notes |
 |------|--------|-------|
-| TUI + llama.cpp (Qwopus, tools, context) | Production-ready | **8.0/10** |
-| VS Code extension (agentic, SSE, undo, @files) | E2E verified | **~7.8/10** |
-| Desktop (Electron, Win/Mac installers) | CI release.yml | **~7.5/10** |
-| Chat history (TUI + VS Code + persistence) | Sessions, resume, prompt reuse | **~8.0/10** |
-| vs Copilot / Claude Code / Kilo | Gap: MCP, inline chat, native diff | — |
+| TUI + llama.cpp | Production-ready | No default model until user configures; sessions + --continue |
+| VS Code extension | Fixed for real installs | Spawns localcoder.exe / PATH; live tests use .exe on Windows |
+| npm / Windows CLI | Fixed | postinstall copies platform binary; no-args without console shows help |
+| Desktop Electron | Build fixed | OAuth packages externalized in electron.vite.config.ts + build-node.ts |
+| CI release | Tag v1.14.38 | .github/workflows/release.yml — Win/Mac CLI + desktop + npm |
 
 ---
 
-## VS Code extension — verified (E2E)
+#Fixes in v1.14.38 (this release)
 
-### Implemented & tested
+##VS Code extension
+- Backend resolution: prefer dist/localcoder-windows-x64/bin/localcoder.exe, then PATH localcoder, then Bun monorepo fallback.
+- Stale none backend: auto-migrate to localcoder; startBackend no longer throws when unconfigured.
+- First-run skip: sets localcoder backend (not none).
+- Live tests: backend-live.test.ts starts the built executable on Windows when present.
 
-| Feature | Test coverage |
-|---------|----------------|
-| SSE live streaming | `sse-events.test.ts` (9), live SSE connect |
-| Tool call shapes | Suites 1–4, 6 (35 tests) |
-| Multi-turn / session | Suite 5 (8 tests) |
-| Undo write tools | `undo-snapshots.test.ts` (4) |
-| @ mentions + agent/files in send | `chat-html-contract.test.ts` (7) |
-| package.json / commands / config | `extension-manifest.test.ts` (6) |
-| Extension activate + commands | `extension-integration.test.ts` (5) |
-| Live HTTP server | `backend-live.test.ts` (3) |
-| OpenAI backend edges | `openai-backend.test.ts` (5) |
+##Windows / npm CLI
+- postinstall.mjs: on Windows, copies localcoder.exe to bin/.localcoder for the Node launcher.
+- Double-click / no console: running localcoder.exe with no args and no TTY prints version + terminal instructions instead of hanging in the TUI.
 
-### Run tests
-
-```bash
-# Full (unit + live + VS Code Electron)
-cd sdks/vscode && bun run test
-
-# Fast unit only
-cd sdks/vscode && bun run test:unit
-
-# Orchestrator from repo root
-bun run scripts/vscode-extension-e2e.ts
-```
-
-### Remaining P0
-
-- Native diff apply/reject (`vscode.diff`)
-- MCP in extension
-- Inline editor chat
-- SecretStorage for API keys
-- Context/token bar in webview
+##Desktop
+- electron.vite.config.ts: externalize mcp-oauth, poe-oauth, opencode-poe-auth, opencode-gitlab-auth (mirrors script/build.ts).
+- build-node.ts: same externals for the embedded Node server bundle.
 
 ---
 
-## Core / TUI (completed)
+#Further fixes (recommended next)
 
-- **Qwopus3.5-9B** default for 16 GB GPU, 16k context, MTP
-- Overflow/compaction for ≤32k models
-- `/context`, context usage bar, `/compact`
-- Portable `llamacpp-setup.ts` + example config
-- **agent-tool-real-e2e.ts** — 9/10 live tool tasks
-
----
-
-## Competitor matrix (abbrev.)
-
-| Capability | Copilot | Claude Code | LocalCoder VS Code |
-|------------|---------|-------------|-------------------|
-| Sidebar chat | ✓ | ✓ | ✓ |
-| Live stream + tools | ✓ | ✓ | ✓ |
-| File undo | ✓ | ✓ | ✓ (turn + per-file) |
-| @ files | ✓ | ✓ | ✓ |
-| Local llama | — | — | ✓ (TUI + backend) |
-| MCP | ✓ | ✓ | TUI only |
+| Priority | Item |
+|----------|------|
+| P0 | Publish VSIX to Marketplace; document localcoder.packagePath for custom installs |
+| P0 | script/smoke-windows.ps1 in CI (exe + npm + extension tests) |
+| P1 | Native diff apply/reject in VS Code (vscode.diff) |
+| P1 | SecretStorage for API keys |
+| P1 | Desktop: sign Windows installer; notarize macOS .dmg |
+| P2 | MCP panel in VS Code; inline editor chat; context/token bar in webview |
 
 ---
 
-## Files (VS Code test pass)
+#Future directions
 
-- `src/backends/sse-events.ts` — testable SSE parser
-- `src/test/suite/*.test.ts` — 10 suites, 84 tests
-- `scripts/vscode-extension-e2e.ts` — E2E runner
+1. Release automation — tag-driven GitHub Actions for all platform binaries and desktop installers; attach to GitHub Releases.
+2. Real E2E — extension host smoke that sends a message through localcoder serve, not only mocked tool shapes.
+3. Local-first default — guided llama.cpp / Qwopus setup wizard in VS Code matching TUI portable setup.
+4. Parity — Copilot-class inline chat, MCP, and diff-apply while keeping local agent + undo as differentiators.
 
-See `sdks/vscode/FUTURE_IMPROVEMENTS.md` for detailed changelog.
+---
+
+#Verify locally (Windows)
+
+powershell
+cd packages/localcoder
+bun run build:win
+bun run prepare:npm
+.\dist\localcoder-windows-x64\bin\localcoder.exe --version
+
+cd dist/npm/localcoder
+npm install
+node bin/localcoder --version
+
+cd ..\..\..\sdks\vscode
+bun run test:all
+
+
+VS Code: F5 from sdks/vscode or set localcoder.packagePath to your packages/localcoder folder.
+
+Note: Chat requires a configured model (localcoder in terminal → pick provider). Server start and chat errors are separate issues.
+
+---
+
+#Test coverage (honest)
+
+| What tests prove | What they do *not* prove |
+|------------------|---------------------------|
+| 84 VS Code unit/integration tests | Your global npm install path on another machine |
+| Live HTTP against .exe (Windows) | Desktop app UX without running Electron |
+| build:win smoke in build.ts | Double-click TUI (use terminal or serve) |
+
+See sdks/vscode/FUTURE_IMPROVEMENTS.md for the detailed changelog.

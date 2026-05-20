@@ -111,7 +111,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     if (!pick || pick.label.includes("Skip")) {
       await ctx.globalState.update("localcoder.hasSetup", true);
-      await ctx.globalState.update("chatBackendConfig", { type: "none" });
+      await ctx.globalState.update("chatBackendConfig", { type: "localcoder" });
       return;
     }
 

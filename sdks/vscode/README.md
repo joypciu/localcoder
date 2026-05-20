@@ -33,7 +33,8 @@ AI coding agent in VS Code — sidebar chat, live tool streaming, file edits wit
 1. Clone [localcoder](https://github.com/joypciu/localcoder) and open the repo in VS Code
 2. `cd sdks/vscode && bun install`
 3. Press **F5** (Extension Development Host)
-4. Open a workspace folder → click **LocalCoder** in the Activity Bar
+4. Build CLI on Windows: cd packages/localcoder && bun run build:win (extension finds dist/localcoder-windows-x64/bin/localcoder.exe)
+5. Open a workspace folder → click **LocalCoder** in the Activity Bar
 
 ### Settings (`localcoder.*`)
 

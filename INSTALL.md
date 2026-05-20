@@ -79,3 +79,15 @@ LOCALCODER_CHANNEL=prod bun run package:mac
 - **CLI/TUI:** `localcoder --continue` or `/sessions` to reopen chats; home screen lists recent sessions.
 - **VS Code:** Use the session button in the chat header; last conversation restores when you reopen the panel.
 - **Prompt reuse (TUI):** Arrow up/down in the prompt cycles previous inputs (stored in `~/.localcoder/prompt-history.jsonl`).
+
+## Windows troubleshooting (v1.14.38+)
+
+| Symptom | Fix |
+|---------|-----|
+| `localcoder` not found after `npm install -g` | Re-run install; check `%AppData%\npm` is on PATH. Or run `node …\localcoder\bin\localcoder --version`. |
+| Double-click `localcoder.exe` does nothing | Expected: use **Command Prompt** or **PowerShell**. Bare exe without a console prints instructions (v1.14.38+). |
+| VS Code chat empty / backend error | Build CLI (`bun run build:win`) or install globally; set **LocalCoder: Package Path** to `packages/localcoder`. Configure a model in terminal first. |
+
+## Release builds (CI)
+
+Push tag `v1.14.38` (or newer `v*`) to build Windows + macOS CLI zip/tarballs, desktop installers, and npm pack on GitHub Actions.

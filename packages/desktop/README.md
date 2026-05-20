@@ -34,3 +34,16 @@ Artifacts: `packages/desktop/dist/localcoder-desktop-*`
 ## Updates
 
 Production builds use `electron-updater` and GitHub Releases (`joypciu/localcoder`).
+
+## Build notes (v1.14.38)
+
+OAuth helper packages (`mcp-oauth`, `poe-oauth`, etc.) are **externalized** in `electron.vite.config.ts` and in `packages/localcoder/script/build-node.ts` (same list as `script/build.ts`). This fixes Rollup errors when running `bun run build`.
+
+```bash
+cd packages/desktop
+bun run prebuild   # builds ../localcoder/dist/node
+bun run build      # electron-vite
+LOCALCODER_CHANNEL=prod bun run package:win   # or package:mac on macOS
+```
+
+CI: push tag `v1.14.38` to run the desktop job in `.github/workflows/release.yml`.

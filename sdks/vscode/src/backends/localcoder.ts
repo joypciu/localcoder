@@ -32,6 +32,7 @@ export class LocalcoderBackend implements ChatBackend {
   private _sseRequest?: http.ClientRequest;
   private _activeSessionId?: string;
   private _localcoderDir: string;
+  private _extensionPath: string;
   private _abortController?: AbortController;
   private _streamCallbacks?: StreamCallbacks;
   private _streamSessionId?: string;
@@ -41,6 +42,7 @@ export class LocalcoderBackend implements ChatBackend {
   constructor(extensionPath: string) {
     const cfg = vscode.workspace.getConfiguration("localcoder");
     const configured = cfg.get<string>("packagePath");
+    this._extensionPath = extensionPath;
     this._localcoderDir = configured
       ? path.resolve(configured)
       : path.resolve(extensionPath, "..", "..", "packages", "localcoder");
@@ -64,6 +66,68 @@ export class LocalcoderBackend implements ChatBackend {
     return "bun";
   }
 
+
+  private resolveLocalcoderCommand(): { command: string; args: string[]; cwd?: string } {
+    const cfg = vscode.workspace.getConfiguration("localcoder");
+    const configured = cfg.get<string>("packagePath");
+    const candidates: string[] = [];
+
+    if (configured) {
+      const base = path.resolve(configured);
+      candidates.push(
+        path.join(base, "dist", "localcoder-windows-x64", "bin", "localcoder.exe"),
+        path.join(base, "bin", "localcoder.exe"),
+        path.join(base, "bin", "localcoder"),
+      );
+    }
+
+    candidates.push(
+      path.resolve(this._extensionPath, "..", "..", "packages", "localcoder", "dist", "localcoder-windows-x64", "bin", "localcoder.exe"),
+      path.resolve(this._extensionPath, "..", "..", "packages", "localcoder", "bin", "localcoder"),
+    );
+
+    for (const c of ["localcoder.exe", "localcoder.cmd", "localcoder"]) {
+      const fromPath = this.which(c);
+      if (fromPath) { candidates.push(fromPath); }
+    }
+
+    for (const c of candidates) {
+      if (!c || !fs.existsSync(c)) { continue; }
+      if (c.endsWith(".exe") || c.endsWith(".cmd")) {
+        return { command: c, args: ["serve", "--port", String(this._serverPort!), "--hostname", "127.0.0.1", "--cors"] };
+      }
+      if (c.endsWith("localcoder") && !c.endsWith(".js")) {
+        return { command: process.execPath, args: [c, "serve", "--port", String(this._serverPort!), "--hostname", "127.0.0.1", "--cors"] };
+      }
+    }
+
+    const src = configured
+      ? path.join(path.resolve(configured), "src", "index.ts")
+      : path.join(this._localcoderDir, "src", "index.ts");
+    if (!fs.existsSync(src)) {
+      throw new Error(
+        `LocalCoder not found. Install globally (npm install -g localcoder), set localcoder.packagePath, or build packages/localcoder (bun run build:win).`,
+      );
+    }
+    return {
+      command: this.resolveBunPath(),
+      args: ["run", "--cwd", this._localcoderDir, "--conditions=browser", "src/index.ts", "serve", "--port", String(this._serverPort!), "--hostname", "127.0.0.1", "--cors"],
+      cwd: this._localcoderDir,
+    };
+  }
+
+  private which(cmd: string): string | undefined {
+    const exts = process.platform === "win32" ? [".exe", ".cmd", ".bat", ""] : [""];
+    const dirs = (process.env.PATH || "").split(path.delimiter);
+    for (const d of dirs) {
+      for (const ext of exts) {
+        const p = path.join(d, cmd + ext);
+        if (fs.existsSync(p)) { return p; }
+      }
+    }
+    return undefined;
+  }
+
   async start(): Promise<void> {
     if (this._serverProcess) { return; }
 
@@ -71,19 +135,13 @@ export class LocalcoderBackend implements ChatBackend {
     this._serverPassword = crypto.randomBytes(16).toString("hex");
     log(`LOCALCODER starting on port ${this._serverPort} dir=${this._localcoderDir}`);
 
-    if (!fs.existsSync(path.join(this._localcoderDir, "src", "index.ts"))) {
-      throw new Error(`LocalCoder package not found at ${this._localcoderDir}. Set localcoder.packagePath in settings.`);
-    }
-
-    const bunPath = this.resolveBunPath();
-    this._serverProcess = cp.spawn(bunPath, [
-      "run", "--cwd", this._localcoderDir, "--conditions=browser",
-      "src/index.ts", "serve", "--port", String(this._serverPort),
-      "--hostname", "127.0.0.1", "--cors",
-    ], {
-      cwd: this._localcoderDir,
+    const launch = this.resolveLocalcoderCommand();
+    log(`LOCALCODER launch ${launch.command} ${launch.args.join(" ")}`);
+    this._serverProcess = cp.spawn(launch.command, launch.args, {
+      cwd: launch.cwd || path.dirname(launch.command),
       env: { ...process.env, LOCALCODER_SERVER_PASSWORD: this._serverPassword, LOCALCODER_CALLER: "vscode-chat" },
       stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
     });
 
     this._serverProcess.stdout?.on("data", (d) => log(`SRV: ${d.toString().trim()}`));

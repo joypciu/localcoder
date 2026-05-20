@@ -5,6 +5,20 @@ Runs in your terminal, edits your code, uses your tools.
 
 ---
 
+## Release v1.14.38
+
+This release focuses on **real-world Windows and VS Code installs** (not only monorepo dev tests).
+
+- **npm:** `postinstall` links the Windows binary; `localcoder --version` works after `npm install -g localcoder`
+- **CLI:** double-clicking `localcoder.exe` without a console shows help instead of a blank/hung window
+- **VS Code:** extension starts `localcoder serve` from the built `.exe` or PATH
+- **Desktop:** Electron build externalizes OAuth deps (CI can produce Win/Mac installers)
+
+Tag **`v1.14.38`** triggers [GitHub Actions](.github/workflows/release.yml) for Windows/macOS CLI and desktop artifacts.
+
+Details: [IMPROVEMENT_AND_FIX.md](IMPROVEMENT_AND_FIX.md)
+
+
 ## What is LocalCoder?
 
 LocalCoder is a terminal-first AI coding agent that works directly inside your development environment. It reads your files, runs commands, edits code, and manages sessions — all through a clean TUI and an optional VS Code chat panel.
