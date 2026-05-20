@@ -1,4 +1,4 @@
-﻿# LocalCoder VS Code Extension
+# LocalCoder VS Code Extension
 
 AI coding agent in VS Code — sidebar chat, live tool streaming, file edits with undo, and terminal TUI.
 
@@ -92,3 +92,10 @@ See [FUTURE_IMPROVEMENTS.md](./FUTURE_IMPROVEMENTS.md) and [IMPROVEMENT_AND_FIX.
 - VS Code 1.94+
 - Bun (LocalCoder backend)
 - Monorepo `packages/localcoder` or configured `localcoder.packagePath`
+
+
+## Chat history
+
+- **Sessions** — header button lists server sessions (LocalCoder backend) or saved OpenAI chats.
+- **Resume** — last active session per workspace restores when you reopen the panel.
+- **Prompt reuse** — `↑` / `↓` in the input recalls previous prompts (webview state).

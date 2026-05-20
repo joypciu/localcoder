@@ -73,3 +73,9 @@ set LOCALCODER_CHANNEL=prod && bun run package:win
 # macOS
 LOCALCODER_CHANNEL=prod bun run package:mac
 ```
+
+## Chat history
+
+- **CLI/TUI:** `localcoder --continue` or `/sessions` to reopen chats; home screen lists recent sessions.
+- **VS Code:** Use the session button in the chat header; last conversation restores when you reopen the panel.
+- **Prompt reuse (TUI):** Arrow up/down in the prompt cycles previous inputs (stored in `~/.localcoder/prompt-history.jsonl`).
