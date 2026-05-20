@@ -488,12 +488,18 @@ button:focus:not(:focus-visible) { outline: none }
 var vsc = acquireVsCodeApi();
 
 /* ── State ── */
+var _persisted = {};
 var S = {
   ready: false, busy: false, session: null, messages: [],
   streamTurn: null, streamAccum: '', streamTimer: null,
   sessions: [],
+  promptHistory: [],
+  promptHistIdx: -1,
   defaultAgent: 'build',
 };
+try { _persisted = vsc.getState() || {}; } catch (e) {}
+if (_persisted.sessionId) { S.session = _persisted.sessionId; }
+if (_persisted.promptHistory) { S.promptHistory = _persisted.promptHistory; }
 var attachedFiles = [];
 var mentionQuery = '';
 var mentionIdx = 0;
@@ -527,6 +533,13 @@ function scroll(force) {
   if (force || nearBottom) { $msgs.scrollTop = $msgs.scrollHeight; }
 }
 function post(m)  { vsc.postMessage(m); }
+
+function persistUiState() {
+  try {
+    vsc.setState({ sessionId: S.session, promptHistory: S.promptHistory.slice(-40) });
+  } catch (e) {}
+}
+
 
 function hideEmpty() {
   if ($empty && $empty.parentNode === $msgs) {
@@ -936,7 +949,7 @@ function renderSessions() {
     d.innerHTML = '<span class="ses-item-icon">💬</span><span class="ses-item-title">' + esc((s.title||s.id).slice(0,60)) + '</span>';
     d.addEventListener('click', function() {
       closeOverlays();
-      S.session = s.id; S.messages = [];
+      S.session = s.id; S.messages = []; persistUiState();
       post({ type: 'loadMessages', sessionId: s.id });
     });
     $sesList.appendChild(d);
@@ -966,6 +979,12 @@ function doSend() {
   var text = $inp.value.trim();
   if (!text || !S.ready) { return; }
   addUser(text);
+  if (text && (!S.promptHistory.length || S.promptHistory[0] !== text)) {
+    S.promptHistory.unshift(text);
+    if (S.promptHistory.length > 40) S.promptHistory.pop();
+  }
+  S.promptHistIdx = -1;
+  persistUiState();
   S.messages.push({ role: 'user', content: text });
   $inp.value = ''; resizeInp();
   setBusy(true);
@@ -981,7 +1000,7 @@ function doSend() {
 
 function newSession() {
   closeOverlays();
-  S.session = null; S.messages = [];
+  S.session = null; S.messages = []; persistUiState();
   $msgs.innerHTML = '';
   var e = document.createElement('div');
   e.id = 'empty'; e.innerHTML = $empty ? '' :
@@ -1034,14 +1053,19 @@ window.addEventListener('message', function(e) {
 
     case 'sessions':
       S.sessions = m.sessions || [];
-      renderSessions(); break;
+      renderSessions();
+      if (S.session && S.sessions.some(function(s){ return s.id === S.session; }) && S.messages.length === 0) {
+        post({ type: 'loadMessages', sessionId: S.session });
+      }
+      break;
 
     case 'sessionCreated':
-      S.session = m.sessionId;
+      S.session = m.sessionId; persistUiState();
       if (m.defaultAgent) { S.defaultAgent = m.defaultAgent; var ag = document.getElementById('agent-sel'); if (ag) ag.value = m.defaultAgent; }
       post({ type: 'listSessions' }); break;
 
     case 'messages':
+      if (m.sessionId) { S.session = m.sessionId; persistUiState(); }
       $msgs.innerHTML = ''; S.messages = []; $empty = null;
       (m.messages || []).forEach(function(msg) {
         if (msg.role === 'user') { addUser(msg.content); S.messages.push(msg); }
@@ -1181,6 +1205,21 @@ $inp.addEventListener('keydown', function(e) {
     resizeInp();
   }
 });
+$inp.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowUp' && !S.busy && S.promptHistory.length) {
+    if (S.promptHistIdx < S.promptHistory.length - 1) { S.promptHistIdx++; }
+    else if (S.promptHistIdx < 0) { S.promptHistIdx = 0; }
+    $inp.value = S.promptHistory[S.promptHistIdx] || '';
+    resizeInp();
+    e.preventDefault();
+  }
+  if (e.key === 'ArrowDown' && !S.busy && S.promptHistory.length && S.promptHistIdx >= 0) {
+    S.promptHistIdx--;
+    $inp.value = S.promptHistIdx < 0 ? '' : (S.promptHistory[S.promptHistIdx] || '');
+    resizeInp();
+    e.preventDefault();
+  }
+});
 $inp.addEventListener('input', resizeInp);
 $snd.addEventListener('click', doSend);
 
@@ -1233,21 +1272,21 @@ wireSugs();
 
 
 function insertMention(rel) {
-  var v = .value;
+  var v = $inp.value;
   var at = v.lastIndexOf('@');
-  if (at < 0) { .value = v + '@' + rel + ' '; }
-  else { .value = v.slice(0, at) + '@' + rel + ' '; }
+  if (at < 0) { $inp.value = v + '@' + rel + ' '; }
+  else { $inp.value = v.slice(0, at) + '@' + rel + ' '; }
   if (!attachedFiles.some(function(f){ return f.name === rel; })) {
     attachedFiles.push({ uri: 'file:///' + rel.replace(/\\/g, '/'), mime: 'text/plain', name: rel });
   }
   var box = document.getElementById('mention-box');
   if (box) box.classList.remove('open');
   resizeInp();
-  .focus();
+  $inp.focus();
 }
 
-.addEventListener('input', function() {
-  var v = .value;
+$inp.addEventListener('input', function() {
+  var v = $inp.value;
   var at = v.lastIndexOf('@');
   if (at < 0 || /\s/.test(v.slice(at + 1))) {
     var box = document.getElementById('mention-box');

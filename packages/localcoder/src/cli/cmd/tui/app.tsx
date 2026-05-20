@@ -41,6 +41,8 @@ import { DialogHelp } from "./ui/dialog-help"
 import { CommandProvider, useCommandDialog } from "@tui/component/dialog-command"
 import { DialogAgent } from "@tui/component/dialog-agent"
 import { DialogSessionList } from "@tui/component/dialog-session-list"
+import { saveLastSession } from "@/util/last-session"
+import { useProject } from "@tui/context/project"
 import { DialogConsoleOrg } from "@tui/component/dialog-console-org"
 import { KeybindProvider, useKeybind } from "@tui/context/keybind"
 import { KeyboardLayerProvider } from "@tui/context/keyboard-layer"
@@ -378,6 +380,14 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         })
       }
     })
+  })
+
+  const project = useProject()
+  createEffect(() => {
+    if (route.data.type !== "session") return
+    const dir = project.path.directory()
+    if (!dir) return
+    void saveLastSession(dir, route.data.sessionID)
   })
 
   let continued = false

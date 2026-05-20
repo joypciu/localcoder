@@ -20,6 +20,8 @@ const WRITE_TOOLS = new Set(["Edit", "Write", "edit", "write", "edit_file", "wri
 // ---------------------------------------------------------------------------
 // Shared base — backend + message handling + file-snapshot undo
 // ---------------------------------------------------------------------------
+type OpenAIStoredSession = { id: string; title: string; messages: import("./backends/types").ChatMessage[] };
+
 abstract class ChatProviderBase {
   protected _backend?: ChatBackend;
   protected _config: BackendConfig;
@@ -44,6 +46,30 @@ abstract class ChatProviderBase {
     return c ?? { type: "none" };
   }
 
+  protected workspaceKey(): string {
+    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "global";
+  }
+
+  protected async persistChatSession(sessionId: string | null) {
+    const key = this.workspaceKey();
+    const map = this._context.globalState.get<Record<string, string>>("lastChatSessionByWorkspace") ?? {};
+    if (sessionId) { map[key] = sessionId; } else { delete map[key]; }
+    await this._context.globalState.update("lastChatSessionByWorkspace", map);
+    if (this._backend?.type === "openai" && this._backend instanceof OpenAIBackend) {
+      await this._context.globalState.update("openaiChatSessions", this._backend.exportSessions());
+    }
+  }
+
+  protected async restoreLastChatSession(backend: ChatBackend) {
+    const last = this._context.globalState.get<Record<string, string>>("lastChatSessionByWorkspace")?.[this.workspaceKey()];
+    if (!last) { return; }
+    const sessions = await backend.listSessions();
+    if (!sessions.some((s) => s.id === last)) { return; }
+    backend.setActiveSessionId(last);
+    const messages = await backend.loadMessages(last);
+    this.postMessage({ type: "messages", messages, sessionId: last });
+  }
+
   protected saveConfig() {
     this._context.globalState.update("chatBackendConfig", this._config);
   }
@@ -56,11 +82,14 @@ abstract class ChatProviderBase {
     }
     if (!this._backend) {
       if (this._config.type === "openai") {
-        this._backend = new OpenAIBackend({
+        const backend = new OpenAIBackend({
           apiKey: this._config.openaiKey,
           endpoint: this._config.openaiEndpoint,
           model: this._config.openaiModel,
         });
+        const stored = this._context.globalState.get<OpenAIStoredSession[]>("openaiChatSessions");
+        if (stored?.length) { backend.restoreSessions(stored); }
+        this._backend = backend;
       } else {
         this._backend = new LocalcoderBackend(this._extensionPath);
       }
@@ -89,6 +118,7 @@ abstract class ChatProviderBase {
       log(`CHAT backend started`);
       this.postMessage(this.buildInitPayload(backend));
       this._inited = true;
+      await this.restoreLastChatSession(backend);
       this.sendActiveFile();
     } catch (e: any) {
       log(`CHAT backend start error: ${e.message}`);
@@ -331,7 +361,8 @@ abstract class ChatProviderBase {
         case "loadMessages": {
           if (!backend) { break; }
           const messages = await backend.loadMessages(msg.sessionId);
-          this.postMessage({ type: "messages", messages });
+          await this.persistChatSession(msg.sessionId);
+          this.postMessage({ type: "messages", messages, sessionId: msg.sessionId });
           break;
         }
 
@@ -369,7 +400,7 @@ abstract class ChatProviderBase {
               }
               this.postMessage({ type: "streamDone", message, canUndo: this._hasUndo });
               const sid = backend.getActiveSessionId();
-              if (sid) { this.postMessage({ type: "sessionCreated", sessionId: sid }); }
+              if (sid) { void this.persistChatSession(sid); this.postMessage({ type: "sessionCreated", sessionId: sid }); }
               backend.listSessions().then((s) => this.postMessage({ type: "sessions", sessions: s }));
             },
             onError: (error) => {

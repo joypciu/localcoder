@@ -182,3 +182,13 @@ The core capability is similar. The differences:
 **Does Shift+Enter work for inserting newlines in the terminal?**
 
 Most terminal emulators send the same byte sequence for Shift+Enter and plain Enter, so they can't be distinguished. Use `Ctrl+Enter` or `Ctrl+J` instead — both insert a newline in the TUI prompt.
+
+## Chat history and reuse
+
+| Surface | Feature |
+|---------|---------|
+| **TUI** | Recent sessions on home, `/sessions` or `Ctrl+X L`, `localcoder --continue`, prompt history (`↑`/`↓` in input) |
+| **VS Code** | Session list (header), auto-resume last chat per workspace, `↑`/`↓` for past prompts |
+| **OpenAI mode** | Conversations saved in extension state between restarts |
+
+Model and provider choices are remembered in `~/.localcoder/model.json` and `config.json` after you set them up.

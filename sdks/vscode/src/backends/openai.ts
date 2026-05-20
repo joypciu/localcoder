@@ -12,6 +12,19 @@ export class OpenAIBackend implements ChatBackend {
   private _sessions: { id: string; title: string; messages: ChatMessage[] }[] = [];
   private _sessionCounter = 0;
 
+  restoreSessions(sessions: { id: string; title: string; messages: ChatMessage[] }[]) {
+    this._sessions = sessions.map((s) => ({ ...s, messages: [...s.messages] }));
+    const nums = sessions.map((s) => {
+      const m = /^openai-(\d+)$/.exec(s.id);
+      return m ? Number(m[1]) : 0;
+    });
+    this._sessionCounter = Math.max(0, ...nums, 0);
+  }
+
+  exportSessions() {
+    return this._sessions.map((s) => ({ id: s.id, title: s.title, messages: [...s.messages] }));
+  }
+
   constructor(config: { apiKey?: string; endpoint?: string; model?: string }) {
     this._apiKey = config.apiKey || "";
     this._endpoint = config.endpoint || "https://api.openai.com/v1";

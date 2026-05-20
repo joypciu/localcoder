@@ -83,3 +83,11 @@ cd dist/npm/localcoder && npm install -g .
 ```
 
 Published as [`localcoder`](https://www.npmjs.com/package/localcoder) with platform packages `localcoder-windows-x64`, `localcoder-darwin-arm64`, etc.
+
+
+## Session history
+
+- Home screen shows **recent sessions**; `/sessions` opens the full list.
+- `localcoder --continue` resumes the latest session.
+- Last opened session per project directory is stored in `~/.localcoder/last-session.json`.
+- Prompt input history: `↑`/`↓` (see `prompt-history.jsonl` in state dir).
