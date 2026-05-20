@@ -49,7 +49,7 @@ await Bun.build({
   outdir: "./dist/node",
   format: "esm",
   sourcemap: "linked",
-  external: ["jsonc-parser", "@lydell/node-pty"],
+  external: ["jsonc-parser", "@lydell/node-pty", "mcp-oauth", "poe-oauth", "opencode-poe-auth", "opencode-gitlab-auth", "@gitlab/opencode-gitlab-auth"],
   define: {
     LOCALCODER_MIGRATIONS: JSON.stringify(migrations),
     LOCALCODER_CHANNEL: `'${Script.channel}'`,

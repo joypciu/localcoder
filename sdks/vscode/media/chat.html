@@ -1038,6 +1038,7 @@ window.addEventListener('message', function(e) {
       toggleOpenAIFields(m.backend === 'openai');
       if (m.error) {
         setReady(false); addSys('Error: ' + m.error);
+        if (m.needsSetup) { $inp.disabled = false; $cfgO.classList.add('open'); }
       } else {
         setReady(true, m.backend); addSys('Connected · ' + (m.backend || 'localcoder'));
       }

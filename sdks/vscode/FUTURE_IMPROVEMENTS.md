@@ -7,6 +7,12 @@
 
 ## Completed
 
+### Install-path fixes (v1.14.38)
+- **LocalcoderBackend** resolves built `localcoder.exe`, PATH, then Bun fallback
+- Migrates stale `chatBackendConfig.type === "none"` to `localcoder`
+- Live tests use Windows `.exe` when `dist/localcoder-windows-x64` exists
+- `needsSetup` opens settings when backend fails to start
+
 ### Agentic core (2026-05-20)
 - **Live SSE streaming** — `/global/event` parsed via `src/backends/sse-events.ts`; tokens and tools stream to the webview during turns
 - **Abort** — `AbortController` + server `/session/{id}/abort`

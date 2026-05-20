@@ -43,7 +43,10 @@ abstract class ChatProviderBase {
 
   protected loadConfig(): BackendConfig {
     const c = this._context.globalState.get<BackendConfig>("chatBackendConfig");
-    return c ?? { type: "none" };
+    if (!c) { return { type: "localcoder" }; }
+    // Older builds defaulted to "none" and broke the sidebar; recover automatically
+    if (c.type === "none") { return { ...c, type: "localcoder" }; }
+    return c;
   }
 
   protected workspaceKey(): string {
@@ -74,11 +77,9 @@ abstract class ChatProviderBase {
     this._context.globalState.update("chatBackendConfig", this._config);
   }
 
-  protected getOrCreateBackend(): ChatBackend {
+  protected getOrCreateBackend(): ChatBackend | undefined {
     if (this._config.type === "none") {
-      throw new Error(
-        "No AI provider configured. Open settings or complete setup to choose a provider.",
-      );
+      return undefined;
     }
     if (!this._backend) {
       if (this._config.type === "openai") {
@@ -97,10 +98,10 @@ abstract class ChatProviderBase {
     return this._backend;
   }
 
-  protected buildInitPayload(backend: ChatBackend, error?: string) {
+  protected buildInitPayload(backend?: ChatBackend, error?: string) {
     return {
       type: "init" as const,
-      backend: backend.type,
+      backend: backend?.type ?? this._config.type,
       error,
       config: {
         openaiKey: this._config.openaiKey ? "***" : "",
@@ -111,7 +112,24 @@ abstract class ChatProviderBase {
   }
 
   protected async startBackend() {
-    const backend = this.getOrCreateBackend();
+    if (this._config.type === "none") {
+      this.postMessage({
+        ...this.buildInitPayload(undefined, "No provider configured. Open settings (gear) and choose LocalCoder backend or an API."),
+        needsSetup: true,
+      });
+      this._inited = true;
+      return;
+    }
+    let backend: ChatBackend;
+    try {
+      backend = this.getOrCreateBackend()!;
+    } catch (e: any) {
+      log(`CHAT backend create error: ${e.message}`);
+      this.postMessage({ type: "error", message: e.message });
+      this.postMessage(this.buildInitPayload(undefined, e.message));
+      this._inited = true;
+      return;
+    }
     log(`CHAT starting backend: ${backend.type}`);
     try {
       await backend.start();
@@ -329,6 +347,7 @@ abstract class ChatProviderBase {
           this._backend?.dispose();
           this._backend = undefined;
           const newBackend = this.getOrCreateBackend();
+          if (!newBackend) { break; }
 
           try {
             await newBackend.start();
@@ -341,6 +360,7 @@ abstract class ChatProviderBase {
             this.saveConfig();
             this._backend = undefined;
             const fallback = this.getOrCreateBackend();
+            if (!fallback) { break; }
             try {
               await fallback.start();
               this.postMessage(this.buildInitPayload(fallback));

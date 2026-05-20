@@ -71,9 +71,10 @@ function findBinary() {
 async function main() {
   try {
     if (os.platform() === "win32") {
-      // On Windows, the .exe is already included in the package and bin field points to it
-      // No postinstall setup needed
-      console.log("Windows detected: binary setup not needed (using packaged .exe)")
+      const { binaryPath } = findBinary()
+      const target = path.join(__dirname, "bin", ".localcoder")
+      fs.copyFileSync(binaryPath, target)
+      console.log("Windows: linked platform binary for npm launcher")
       return
     }
 
