@@ -6,6 +6,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as vscode from "vscode";
 import type { ChatBackend, ChatMessage, FileAttachment, ToolCall } from "./types";
+import { directoryMatches, parseGlobalEvent, parseSseBlocks } from "./sse-events";
 
 const DEBUG_FILE = path.join(__dirname, "..", "debug.txt");
 function log(msg: string) {
@@ -15,6 +16,14 @@ function log(msg: string) {
   try { fs.appendFileSync(DEBUG_FILE, line + "\n"); } catch { /* ignore */ }
 }
 
+type StreamCallbacks = {
+  onDelta: (delta: string) => void;
+  onToolCall: (tool: ToolCall) => void;
+  onToolResult: (id: string, status: "completed" | "error", output?: any) => void;
+};
+
+export interface LocalcoderSendOptions { agent?: string; }
+
 export class LocalcoderBackend implements ChatBackend {
   readonly type = "localcoder";
   private _serverProcess?: cp.ChildProcess;
@@ -23,9 +32,18 @@ export class LocalcoderBackend implements ChatBackend {
   private _sseRequest?: http.ClientRequest;
   private _activeSessionId?: string;
   private _localcoderDir: string;
+  private _abortController?: AbortController;
+  private _streamCallbacks?: StreamCallbacks;
+  private _streamSessionId?: string;
+  private _streamedText = "";
+  private _seenToolIds = new Set<string>();
 
   constructor(extensionPath: string) {
-    this._localcoderDir = path.resolve(extensionPath, "..", "..", "packages", "localcoder");
+    const cfg = vscode.workspace.getConfiguration("localcoder");
+    const configured = cfg.get<string>("packagePath");
+    this._localcoderDir = configured
+      ? path.resolve(configured)
+      : path.resolve(extensionPath, "..", "..", "packages", "localcoder");
   }
 
   private get workspaceDir(): string {
@@ -33,6 +51,9 @@ export class LocalcoderBackend implements ChatBackend {
   }
 
   private resolveBunPath(): string {
+    const cfg = vscode.workspace.getConfiguration("localcoder");
+    const configured = cfg.get<string>("bunPath");
+    if (configured && fs.existsSync(configured)) { return configured; }
     const candidates = [
       path.join(process.env.APPDATA || "", "npm", "node_modules", "bun", "bin", "bun.exe"),
       path.join(process.env.HOME || process.env.USERPROFILE || "", ".bun", "bin", "bun.exe"),
@@ -48,7 +69,11 @@ export class LocalcoderBackend implements ChatBackend {
 
     this._serverPort = await this.findFreePort();
     this._serverPassword = crypto.randomBytes(16).toString("hex");
-    log(`LOCALCODER starting on port ${this._serverPort}`);
+    log(`LOCALCODER starting on port ${this._serverPort} dir=${this._localcoderDir}`);
+
+    if (!fs.existsSync(path.join(this._localcoderDir, "src", "index.ts"))) {
+      throw new Error(`LocalCoder package not found at ${this._localcoderDir}. Set localcoder.packagePath in settings.`);
+    }
 
     const bunPath = this.resolveBunPath();
     this._serverProcess = cp.spawn(bunPath, [
@@ -105,6 +130,24 @@ export class LocalcoderBackend implements ChatBackend {
     return res;
   }
 
+
+  private handleGlobalEvent(raw: string) {
+    if (!this._streamCallbacks || !this._streamSessionId) { return; }
+    for (const action of parseGlobalEvent(raw, this.workspaceDir, this._streamSessionId)) {
+      if (action.kind === "delta") {
+        this._streamedText += action.delta;
+        this._streamCallbacks.onDelta(action.delta);
+      } else if (action.kind === "tool_call") {
+        if (!this._seenToolIds.has(action.tool.id)) {
+          this._seenToolIds.add(action.tool.id);
+          this._streamCallbacks.onToolCall(action.tool);
+        }
+      } else if (action.kind === "tool_result") {
+        this._streamCallbacks.onToolResult(action.id, action.status, action.output);
+      }
+    }
+  }
+
   private startSSE() {
     if (this._sseRequest) { this._sseRequest.destroy(); }
     const dir = this.workspaceDir ? `?directory=${encodeURIComponent(this.workspaceDir)}` : "";
@@ -112,10 +155,15 @@ export class LocalcoderBackend implements ChatBackend {
     const parsed = new URL(u);
     const req = http.request({
       hostname: parsed.hostname, port: parsed.port, path: parsed.pathname + parsed.search,
-      method: "GET", headers: { ...this.getAuthHeaders(), "Accept": "text/event-stream", "Connection": "keep-alive" },
+      method: "GET", headers: { ...this.getAuthHeaders(), Accept: "text/event-stream", Connection: "keep-alive" },
     }, (res) => {
       let buf = "";
-      res.on("data", (c: Buffer) => { buf += c.toString(); const lines = buf.split("\n"); buf = lines.pop() || ""; });
+      res.on("data", (c: Buffer) => {
+        buf += c.toString();
+        const parsed = parseSseBlocks(buf);
+        buf = parsed.remainder;
+        for (const ev of parsed.events) { this.handleGlobalEvent(ev); }
+      });
       res.on("end", () => { this._sseRequest = undefined; setTimeout(() => this.startSSE(), 3000); });
     });
     req.on("error", () => { this._sseRequest = undefined; setTimeout(() => this.startSSE(), 3000); });
@@ -134,93 +182,126 @@ export class LocalcoderBackend implements ChatBackend {
       onDone: (message: Partial<ChatMessage>) => void;
       onError: (error: string) => void;
     },
+    options?: LocalcoderSendOptions,
   ): Promise<void> {
+    const controller = new AbortController();
+    this._abortController = controller;
+    this._streamCallbacks = callbacks;
+    this._streamedText = "";
+    this._seenToolIds.clear();
+
     try {
-      // Create session if needed
       let sessionId = this._activeSessionId;
       if (!sessionId) {
-        const cr = await this.apiFetch("/session", { method: "POST", body: JSON.stringify({ title: text.substring(0, 80) }) });
-        const cd = (await cr.json()) as any;
+        const cr = await this.apiFetch("/session", {
+          method: "POST",
+          body: JSON.stringify({ title: text.substring(0, 80) }),
+          signal: controller.signal,
+        });
+        const cd = (await cr.json()) as { id?: string; sessionID?: string };
         sessionId = cd.id || cd.sessionID;
         this._activeSessionId = sessionId;
       }
+      this._streamSessionId = sessionId;
 
-      // Send prompt
-      const sendResult = await this.apiFetch(`/api/session/${sessionId}/message`, {
+      const parts: Array<Record<string, unknown>> = [{ type: "text", text }];
+      for (const f of files) {
+        try {
+          const uri = vscode.Uri.parse(f.uri);
+          const raw = await vscode.workspace.fs.readFile(uri);
+          const body = Buffer.from(raw).toString("utf8");
+          const rel = vscode.workspace.asRelativePath(uri);
+          parts.push({
+            type: "file",
+            mime: f.mime || "text/plain",
+            filename: f.name || rel,
+            url: `file://${uri.fsPath}`,
+            source: { type: "text", text: body },
+          });
+        } catch (e: unknown) {
+          log(`FILE-ATTACH skip ${f.uri}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      const body: Record<string, unknown> = { parts };
+      if (options?.agent) { body.agent = options.agent; }
+
+      const sendResult = await this.apiFetch(`/session/${sessionId}/message`, {
         method: "POST",
-        body: JSON.stringify({ parts: [{ type: "text", text }] }),
+        body: JSON.stringify(body),
+        signal: controller.signal,
       });
 
       if (!sendResult.ok) {
-        callbacks.onError(`Failed to send message: ${sendResult.status}`);
+        let errBody = "";
+        try { errBody = await sendResult.text(); } catch { /* ignore */ }
+        log(`SEND-ERR ${sendResult.status}: ${errBody.slice(0, 500)}`);
+        callbacks.onError(`Failed to send message: ${sendResult.status}${errBody ? " — " + errBody.slice(0, 200) : ""}`);
         return;
       }
 
-      // Poll for response with tool event tracking
-      let lastContentLength = 0;
-      let lastToolCalls: { [key: string]: ToolCall } = {};
-      const pollInterval = setInterval(async () => {
-        try {
-          const mr = await this.apiFetch(`/api/session/${sessionId}/message`);
-          if (!mr.ok) {
-            return;
-          }
-
-          const md = (await mr.json()) as any;
-          const msgs = (md.items || []).map((m: any) => this.mapMessage(m));
-          const lastMsg = msgs[msgs.length - 1];
-
-          if (lastMsg && lastMsg.role === "assistant") {
-            const currentContent = lastMsg.content || "";
-            const newContent = currentContent.substring(lastContentLength);
-
-            // Emit text deltas
-            if (newContent) {
-              callbacks.onDelta(newContent);
-              lastContentLength = currentContent.length;
-            }
-
-            // Emit tool call/result events
-            const currentToolCalls: { [key: string]: ToolCall } = {};
-            if (lastMsg.toolCalls && Array.isArray(lastMsg.toolCalls)) {
-              for (const tool of lastMsg.toolCalls) {
-                currentToolCalls[tool.id] = tool;
-                const prev = lastToolCalls[tool.id];
-                if (!prev) {
-                  // New tool call started
-                  callbacks.onToolCall(tool);
-                } else if (prev.status !== tool.status && tool.status !== 'running') {
-                  // Tool completed or errored
-                  callbacks.onToolResult(tool.id, tool.status as "completed" | "error", tool.output);
-                }
-              }
-            }
-            lastToolCalls = currentToolCalls;
-
-            // Check if response is complete
-            const isComplete = lastMsg.finish && lastMsg.finish !== "tool-calls";
-            if (isComplete || (currentContent && currentContent.length > 10 && !currentContent.endsWith("..."))) {
-              clearInterval(pollInterval);
-              callbacks.onDone(lastMsg);
-            }
-          }
-        } catch (e) {
-          // Ignore poll errors, will retry
+      const reader = sendResult.body?.getReader();
+      let rawText = "";
+      if (reader) {
+        const decoder = new TextDecoder();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) { break; }
+          rawText += decoder.decode(value, { stream: true });
         }
-      }, 500);
+      } else {
+        rawText = await sendResult.text();
+      }
 
-      // Timeout after 60 seconds
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        if (lastContentLength === 0) {
-          callbacks.onDone({ content: "No response received from AI. Please check your configuration." });
-        } else {
-          callbacks.onDone({});
+      const data = JSON.parse(rawText) as { info?: Record<string, unknown>; parts?: Array<Record<string, unknown>> };
+      const respParts = data.parts || [];
+      let textContent = this._streamedText;
+      const toolCalls: ToolCall[] = [];
+
+      for (const part of respParts) {
+        if (part.type === "text" && !textContent) {
+          textContent += (textContent ? "\n\n" : "") + String(part.text || "");
+        } else if (part.type === "tool") {
+          const state = (part.state || {}) as Record<string, unknown>;
+          const id = String(part.id || part.callID || "");
+          if (!this._seenToolIds.has(id)) {
+            const tc: ToolCall = {
+              id,
+              name: String(part.tool || part.name || ""),
+              input: state.input,
+              status: state.status === "error" ? "error" : "completed",
+              output: state.output ?? state.content,
+              error: state.error as string | undefined,
+            };
+            toolCalls.push(tc);
+            callbacks.onToolCall(tc);
+            callbacks.onToolResult(tc.id, tc.status === "error" ? "error" : "completed", tc.output);
+          }
         }
-      }, 60000);
+      }
 
-    } catch (error: any) {
-      callbacks.onError(error.message || "Failed to send message");
+      if (textContent && !this._streamedText) { callbacks.onDelta(textContent); }
+
+      const info = data.info || {};
+      callbacks.onDone({
+        role: "assistant",
+        id: info.id as string | undefined,
+        content: textContent,
+        model: (info.model as { id?: string })?.id,
+        tokens: info.tokens as ChatMessage["tokens"],
+        error: info.error as ChatMessage["error"],
+        toolCalls: toolCalls.length ? toolCalls : undefined,
+        agent: info.agent as string | undefined,
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name === "AbortError") { return; }
+      const msg = error instanceof Error ? error.message : String(error);
+      log(`SEND-ERROR: ${msg}`);
+      callbacks.onError(msg || "Failed to send message");
+    } finally {
+      this._abortController = undefined;
+      this._streamCallbacks = undefined;
+      this._streamSessionId = undefined;
     }
   }
 
@@ -243,7 +324,7 @@ export class LocalcoderBackend implements ChatBackend {
         } else if (part.type === "tool") {
           toolParts.push({
             id: part.id || part.callID,
-            name: part.name,
+            name: String(part.tool || part.name || ""),
             input: part.state?.input,
             status: part.state?.status || "completed",
             output: part.state?.content,
@@ -269,6 +350,7 @@ export class LocalcoderBackend implements ChatBackend {
   }
 
   abort(): void {
+    this._abortController?.abort();
     if (this._activeSessionId) {
       this.apiFetch(`/session/${this._activeSessionId}/abort`, { method: "POST" }).catch(() => {});
     }

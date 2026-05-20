@@ -98,16 +98,17 @@ abstract class ChatProviderBase {
   // ---------------------------------------------------------------------------
 
   private async snapshotFile(filePath: string) {
-    if (this._turnSnapshots.has(filePath)) { return; } // already snapshotted
+    const abs = this.resolveFilePath(filePath);
+    if (this._turnSnapshots.has(abs)) { return; } // already snapshotted
     try {
-      const uri = vscode.Uri.file(filePath);
+      const uri = vscode.Uri.file(abs);
       const content = await vscode.workspace.fs.readFile(uri);
-      this._turnSnapshots.set(filePath, content);
+      this._turnSnapshots.set(abs, content);
       log(`SNAP ${filePath}`);
     } catch {
       // File doesn't exist yet (new file being created) — snapshot null so we
       // know to delete it on undo.
-      this._turnSnapshots.set(filePath, null);
+      this._turnSnapshots.set(abs, null);
     }
   }
 
@@ -165,6 +166,81 @@ abstract class ChatProviderBase {
     this.postMessage({ type: "undone", count });
     log(`UNDO restored ${count} file(s)`);
   }
+
+
+  private resolveFilePath(filePath: string): string {
+    const wf = vscode.workspace.workspaceFolders?.[0];
+    if (!wf) { return filePath; }
+    if (path.isAbsolute(filePath)) { return filePath; }
+    return path.join(wf.uri.fsPath, filePath);
+  }
+
+  private async restoreOneFile(filePath: string) {
+    const abs = this.resolveFilePath(filePath);
+    const content = this._turnSnapshots.get(abs);
+    if (content === undefined) {
+      this.postMessage({ type: "error", message: `No snapshot for ${filePath}` });
+      return;
+    }
+    const uri = vscode.Uri.file(abs);
+    if (content === null) {
+      const del = new vscode.WorkspaceEdit();
+      del.deleteFile(uri, { ignoreIfNotExists: true });
+      await vscode.workspace.applyEdit(del);
+    } else {
+      const edit = new vscode.WorkspaceEdit();
+      edit.replace(uri, new vscode.Range(new vscode.Position(0, 0), new vscode.Position(Number.MAX_VALUE, Number.MAX_VALUE)), Buffer.from(content).toString("utf8"));
+      await vscode.workspace.applyEdit(edit);
+      try { const doc = await vscode.workspace.openTextDocument(uri); await doc.save(); } catch { /* ignore */ }
+    }
+    this._turnSnapshots.delete(abs);
+    if (this._turnSnapshots.size === 0) { this._hasUndo = false; }
+    this.postMessage({ type: "fileUndone", path: abs });
+    log(`UNDO one file ${abs}`);
+  }
+
+  private async maybeOpenDiff(tool: { name: string; input?: Record<string, unknown> }) {
+    const cfg = vscode.workspace.getConfiguration("localcoder");
+    if (!cfg.get<boolean>("openDiffOnEdit", true)) { return; }
+    if (!WRITE_TOOLS.has(tool.name)) { return; }
+    const fp = tool.input?.file_path ?? tool.input?.path ?? tool.input?.filename;
+    if (typeof fp !== "string") { return; }
+    const abs = this.resolveFilePath(fp);
+    const uri = vscode.Uri.file(abs);
+    try {
+      const doc = await vscode.workspace.openTextDocument(uri);
+      const before = this._turnSnapshots.get(abs);
+      if (before === undefined) { return; }
+      const left = vscode.Uri.parse(`localcoder-snap:${abs}?${encodeURIComponent(Buffer.from(before ?? new Uint8Array()).toString("base64"))}`);
+      // Open file directly; native diff needs content provider — open editor instead
+      await vscode.window.showTextDocument(doc, { preview: false });
+    } catch { /* ignore */ }
+  }
+
+  async listWorkspaceFiles(query: string): Promise<{ path: string; label: string }[]> {
+    const wf = vscode.workspace.workspaceFolders?.[0];
+    if (!wf) { return []; }
+    const q = query.toLowerCase();
+    const out: { path: string; label: string }[] = [];
+    const files = await vscode.workspace.findFiles("**/*", "**/node_modules/**", 200);
+    for (const uri of files) {
+      const rel = vscode.workspace.asRelativePath(uri);
+      if (q && !rel.toLowerCase().includes(q)) { continue; }
+      out.push({ path: rel, label: rel });
+      if (out.length >= 30) { break; }
+    }
+    return out.sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  /** Exposed for VS Code commands */
+  async commandUndo() { await this.restoreSnapshots(); }
+  async commandInsertText(text: string) { this.postMessage({ type: "insertText", text }); }
+  async commandSendText(text: string) {
+    if (!this._inited) { await this.startBackend(); }
+    const agent = vscode.workspace.getConfiguration("localcoder").get<string>("defaultAgent") || "build";
+    await this.handleMessage({ type: "sendMessage", text, agent, history: [], files: [] });
+  }
+
 
   // ---------------------------------------------------------------------------
   // Message handler
@@ -263,6 +339,7 @@ abstract class ChatProviderBase {
           const sessionId = backend.getActiveSessionId() || msg.sessionId;
           backend.setActiveSessionId(sessionId);
 
+          const agent = msg.agent || vscode.workspace.getConfiguration("localcoder").get<string>("defaultAgent") || "build";
           await backend.sendMessage(msg.text, msg.history || [], msg.files || [], {
             onDelta: (delta) => this.postMessage({ type: "streamDelta", delta }),
             onToolCall: async (tool) => {
@@ -275,7 +352,7 @@ abstract class ChatProviderBase {
               }
               this.postMessage({ type: "toolCall", tool });
             },
-            onToolResult: (id, status, output) => this.postMessage({ type: "toolResult", id, status, output }),
+            onToolResult: (id, status, output) => { this.postMessage({ type: "toolResult", id, status, output }); },
             onDone: (message) => {
               // Mark undo available if any files were snapshotted
               if (this._turnSnapshots.size > 0) {
@@ -290,7 +367,7 @@ abstract class ChatProviderBase {
               this.postMessage({ type: "error", message: error });
               this.postMessage({ type: "streamDone", message: {}, canUndo: false });
             },
-          });
+          }, backend.type === "localcoder" ? { agent } : undefined);
           break;
         }
 
@@ -301,6 +378,19 @@ abstract class ChatProviderBase {
 
         case "undoLastTurn":
           await this.restoreSnapshots();
+          break;
+
+        case "undoFile":
+          if (msg.path) { await this.restoreOneFile(msg.path); }
+          break;
+
+        case "listFiles": {
+          const files = await this.listWorkspaceFiles(msg.query || "");
+          this.postMessage({ type: "fileSuggestions", files });
+          break;
+        }
+
+        case "insertText":
           break;
 
         case "getActiveFile":
@@ -367,6 +457,7 @@ export class ChatSidebarProvider extends ChatProviderBase implements vscode.Webv
     _token: vscode.CancellationToken,
   ) {
     this._view = webviewView;
+    chatProviderRef = this;
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.file(this._extensionPath)],
@@ -447,3 +538,6 @@ export class ChatPanelProvider extends ChatProviderBase {
     }
   }
 }
+
+
+export let chatProviderRef: ChatProviderBase | null = null;

@@ -136,6 +136,7 @@ export const layer = Layer.effect(
                 external_directory: {
                   [path.join(Global.Path.data, "plans", "*")]: "allow",
                 },
+                list: "allow",
                 edit: {
                   "*": "deny",
                   [path.join(".localcoder", "plans", "*.md")]: "allow",

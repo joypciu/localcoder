@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Test 5: Multi-turn conversation with context
  * Test 6: Grep/WebFetch/WebSearch tools + verify tool outputs
  */
@@ -19,11 +19,11 @@ function makeTool(
 }
 
 function userMsg(content: string, id?: string): ChatMessage {
-  return { role: "user", content, id: id || `u-${Date.now()}` };
+  return { role: "user", content, id: id || `u-${Date.now()}-${Math.random()}` };
 }
 
 function assistantMsg(content: string, overrides: Partial<ChatMessage> = {}): ChatMessage {
-  return { role: "assistant", content, id: `a-${Date.now()}`, toolCalls: [], ...overrides };
+  return { role: "assistant", content, id: `a-${Date.now()}-${Math.random()}`, toolCalls: [], ...overrides };
 }
 
 // ---------------------------------------------------------------------------
@@ -259,3 +259,4 @@ suite("Test 6: Grep/WebFetch/WebSearch tools and output rendering", () => {
     });
   });
 });
+

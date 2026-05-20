@@ -8,7 +8,9 @@ import { useArgs } from "../context/args"
 import { useRouteData } from "@tui/context/route"
 import { usePromptRef } from "../context/prompt"
 import { useLocal } from "../context/local"
+import { HomeSessions } from "@tui/component/home-sessions"
 import { TuiPluginRuntime } from "@/cli/cmd/tui/plugin/runtime"
+import { InputShortcutsInline } from "@tui/component/input-shortcuts"
 
 let once = false
 const placeholder = {
@@ -62,6 +64,7 @@ export function Home() {
             <Logo />
           </TuiPluginRuntime.Slot>
         </box>
+        <HomeSessions />
         <box height={1} minHeight={0} flexShrink={1} />
         <box width="100%" maxWidth={75} zIndex={1000} paddingTop={1} flexShrink={0}>
           <TuiPluginRuntime.Slot
@@ -77,6 +80,7 @@ export function Home() {
               placeholders={placeholder}
             />
           </TuiPluginRuntime.Slot>
+          <InputShortcutsInline />
         </box>
         <TuiPluginRuntime.Slot name="home_bottom" />
         <box flexGrow={1} minHeight={0} />

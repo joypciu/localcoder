@@ -1,0 +1,2 @@
+- List files and directories
+- Explore structure before read/edit

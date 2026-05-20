@@ -24,6 +24,10 @@ export const TuiOptions = z.object({
     .optional()
     .describe("Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column"),
   mouse: z.boolean().optional().describe("Enable or disable mouse capture (default: true)"),
+  copy_on_select: z
+    .boolean()
+    .optional()
+    .describe("Copy selected text to clipboard when you release the mouse (default: true)"),
 })
 
 export const TuiInfo = z

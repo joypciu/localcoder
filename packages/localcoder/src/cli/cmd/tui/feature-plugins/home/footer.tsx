@@ -1,5 +1,6 @@
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@localcoder-ai/plugin/tui"
 import { createMemo, Match, Show, Switch } from "solid-js"
+import { homeModelHint } from "@tui/util/context-usage"
 import { Global } from "@localcoder-ai/core/global"
 
 const id = "internal:home-footer"
@@ -44,6 +45,16 @@ function Mcp(props: { api: TuiPluginApi }) {
   )
 }
 
+function Model(props: { api: TuiPluginApi }) {
+  const theme = () => props.api.theme.current
+  const hint = createMemo(() =>
+    homeModelHint({
+providers: props.api.state.provider,
+    }),
+  )
+  return <text fg={theme().textMuted}>{hint()}</text>
+}
+
 function Version(props: { api: TuiPluginApi }) {
   const theme = () => props.api.theme.current
 
@@ -67,6 +78,7 @@ function View(props: { api: TuiPluginApi }) {
       gap={2}
     >
       <Directory api={props.api} />
+      <Model api={props.api} />
       <Mcp api={props.api} />
       <box flexGrow={1} />
       <Version api={props.api} />

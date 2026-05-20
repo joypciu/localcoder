@@ -1,6 +1,7 @@
 import type { AssistantMessage } from "@localcoder-ai/sdk/v2"
 import type { TuiPlugin, TuiPluginApi, TuiPluginModule } from "@localcoder-ai/plugin/tui"
-import { createMemo } from "solid-js"
+import { createMemo, Show } from "solid-js"
+import { computeContextUsage, contextLevelColor, tokensFromAssistant, formatSessionCost, isLocalProvider } from "@tui/util/context-usage"
 
 const id = "internal:sidebar-context"
 
@@ -12,24 +13,22 @@ const money = new Intl.NumberFormat("en-US", {
 function View(props: { api: TuiPluginApi; session_id: string }) {
   const theme = () => props.api.theme.current
   const msg = createMemo(() => props.api.state.session.messages(props.session_id))
-  const cost = createMemo(() => msg().reduce((sum, item) => sum + (item.role === "assistant" ? item.cost : 0), 0))
+  const cost = createMemo(() => {
+    const total = msg().reduce((sum, item) => sum + (item.role === "assistant" ? item.cost : 0), 0)
+    const pid = msg().findLast((m) => m.role === "assistant")?.providerID
+    return formatSessionCost(total, pid) ?? (pid && isLocalProvider(pid) ? undefined : total)
+  })
 
   const state = createMemo(() => {
     const last = msg().findLast((item): item is AssistantMessage => item.role === "assistant" && item.tokens.output > 0)
     if (!last) {
-      return {
-        tokens: 0,
-        percent: null,
-      }
+      return { tokens: 0, ctx: undefined as ReturnType<typeof computeContextUsage> }
     }
 
-    const tokens =
-      last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write
+    const tokens = tokensFromAssistant(last)
     const model = props.api.state.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
-    return {
-      tokens,
-      percent: model?.limit.context ? Math.round((tokens / model.limit.context) * 100) : null,
-    }
+    const ctx = computeContextUsage({ tokens, model, cfg: props.api.state.config })
+    return { tokens, ctx }
   })
 
   return (
@@ -37,9 +36,18 @@ function View(props: { api: TuiPluginApi; session_id: string }) {
       <text fg={theme().text}>
         <b>Context</b>
       </text>
-      <text fg={theme().textMuted}>{state().tokens.toLocaleString()} tokens</text>
-      <text fg={theme().textMuted}>{state().percent ?? 0}% used</text>
-      <text fg={theme().textMuted}>{money.format(cost())} spent</text>
+      <text fg={theme().textMuted}>
+        {state().ctx ? state().ctx.detail : `${state().tokens.toLocaleString()} tokens`}
+      </text>
+      <text fg={state().ctx ? contextLevelColor(state().ctx.level, theme()) : theme().textMuted}>
+        {state().ctx ? `${state().ctx.percent}% of usable context` : "—"}
+      </text>
+      <text fg={theme().textMuted}>
+        {state().ctx?.compactHint ? "Auto-compact on overflow · /compact now" : "Auto-compact enabled"}
+      </text>
+      <Show when={cost() !== undefined} fallback={<text fg={theme().textMuted}>Local model — no API cost</text>}>
+        <text fg={theme().textMuted}>{money.format(cost()!)} spent</text>
+      </Show>
     </box>
   )
 }

@@ -1,9 +1,11 @@
-import { createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js"
+﻿import { createMemo, Match, onCleanup, onMount, Show, Switch } from "solid-js"
 import { useTheme } from "../../context/theme"
 import { useSync } from "../../context/sync"
 import { useDirectory } from "../../context/directory"
 import { useConnected } from "../../component/use-connected"
 import { createStore } from "solid-js/store"
+import { StatusBar } from "@tui/component/status-bar"
+import { InputShortcutsInline } from "@tui/component/input-shortcuts"
 import { useRoute } from "../../context/route"
 
 export function Footer() {
@@ -18,6 +20,11 @@ export function Footer() {
     return sync.data.permission[route.data.sessionID] ?? []
   })
   const directory = useDirectory()
+  const sessionBusy = createMemo(() => {
+    if (route.data.type !== "session") return false
+    const st = sync.data.session_status?.[route.data.sessionID]
+    return st != null && st.type !== "idle"
+  })
   const connected = useConnected()
 
   const [store, setStore] = createStore({
@@ -50,9 +57,16 @@ export function Footer() {
   })
 
   return (
+    <box flexDirection="column" gap={0} flexShrink={0}>
     <box flexDirection="row" justifyContent="space-between" gap={1} flexShrink={0}>
       <text fg={theme.textMuted}>{directory()}</text>
-      <box gap={2} flexDirection="row" flexShrink={0}>
+      <box gap={2} flexDirection="row" flexShrink={0} alignItems="center">
+        <Show when={route.data.type === "session"}>
+          <StatusBar />
+        </Show>
+        <Show when={sessionBusy()}>
+          <text fg={theme.warning}>esc interrupt</text>
+        </Show>
         <Switch>
           <Match when={store.welcome}>
             <text fg={theme.text}>
@@ -87,5 +101,8 @@ export function Footer() {
         </Switch>
       </box>
     </box>
+    <InputShortcutsInline />
+    </box>
   )
 }
+

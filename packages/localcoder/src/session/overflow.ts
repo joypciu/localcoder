@@ -9,11 +9,17 @@ export function usable(input: { cfg: Config.Info; model: Provider.Model }) {
   const context = input.model.limit.context
   if (context === 0) return 0
 
-  const reserved =
-    input.cfg.compaction?.reserved ?? Math.min(COMPACTION_BUFFER, ProviderTransform.maxOutputTokens(input.model))
-  return input.model.limit.input
-    ? Math.max(0, input.model.limit.input - reserved)
-    : Math.max(0, context - ProviderTransform.maxOutputTokens(input.model))
+  const maxOut = ProviderTransform.maxOutputTokens(input.model)
+  const defaultReserved =
+    context <= 32_768
+      ? Math.min(4_096, Math.floor(context * 0.2))
+      : Math.min(COMPACTION_BUFFER, maxOut)
+  const reserved = input.cfg.compaction?.reserved ?? defaultReserved
+
+  if (input.model.limit.input) {
+    return Math.max(0, input.model.limit.input - reserved)
+  }
+  return Math.max(0, context - maxOut - reserved)
 }
 
 export function isOverflow(input: { cfg: Config.Info; tokens: MessageV2.Assistant["tokens"]; model: Provider.Model }) {

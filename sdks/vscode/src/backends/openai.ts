@@ -1,6 +1,6 @@
 import * as https from "https";
 import * as http from "http";
-import type { ChatBackend, ChatMessage, FileAttachment, ToolCall } from "./types";
+import type { ChatBackend, ChatMessage, FileAttachment, ToolCall, SendMessageOptions } from "./types";
 
 export class OpenAIBackend implements ChatBackend {
   readonly type = "openai";
@@ -40,6 +40,7 @@ export class OpenAIBackend implements ChatBackend {
       onDone: (message: Partial<ChatMessage>) => void;
       onError: (error: string) => void;
     },
+    _options?: SendMessageOptions,
   ): Promise<void> {
     this._abortController = new AbortController();
 

@@ -7,6 +7,7 @@ import {
   For,
   Match,
   on,
+  onCleanup,
   onMount,
   Show,
   Switch,
@@ -64,6 +65,8 @@ import { DialogTimeline } from "./dialog-timeline"
 import { DialogForkFromTimeline } from "./dialog-fork-from-timeline"
 import { DialogSessionRename } from "../../component/dialog-session-rename"
 import { Sidebar } from "./sidebar"
+import { Footer } from "./footer"
+import { createSessionMouseHandlers } from "./session-mouse"
 import { SubagentFooter } from "./subagent-footer.tsx"
 import { Flag } from "@localcoder-ai/core/flag/flag"
 import { LANGUAGE_EXTENSIONS } from "@/lsp/language"
@@ -75,6 +78,7 @@ import { useKV } from "../../context/kv.tsx"
 import * as Editor from "../../util/editor"
 import stripAnsi from "strip-ansi"
 import { usePromptRef } from "../../context/prompt"
+import { useSessionContextDialog } from "@tui/component/dialog-context"
 import { useExit } from "../../context/exit"
 import { Filesystem } from "@/util/filesystem"
 import { Global } from "@localcoder-ai/core/global"
@@ -180,6 +184,7 @@ export function Session() {
 
   const scrollAcceleration = createMemo(() => getScrollAcceleration(tuiConfig))
   const toast = useToast()
+  const dialog = useDialog()
   const sdk = useSDK()
   const editor = useEditorContext()
 
@@ -242,6 +247,11 @@ export function Session() {
 
   let seeded = false
   let scroll: ScrollBoxRenderable
+  const sessionMouse = createSessionMouseHandlers({
+    dialog,
+    toast,
+    getPrompt: () => prompt,
+  })
   let prompt: PromptRef | undefined
   const bind = (r: PromptRef | undefined) => {
     prompt = r
@@ -249,9 +259,21 @@ export function Session() {
     if (seeded || !route.prompt || !r) return
     seeded = true
     r.set(route.prompt)
+    setTimeout(() => setTimeout(() => r.submit(), 0), 0)
   }
+  const [followScroll, setFollowScroll] = createSignal(true)
+  const sessionBusy = createMemo(() => {
+    const st = sync.data.session_status?.[route.sessionID]
+    return st != null && st.type !== "idle"
+  })
+
+  onCleanup(() => {
+    if (sessionBusy()) {
+      void sdk.client.session.abort({ sessionID: route.sessionID }).catch(() => {})
+    }
+  })
+
   const keybind = useKeybind()
-  const dialog = useDialog()
   const renderer = useRenderer()
 
   event.on("session.status", (evt) => {
@@ -346,7 +368,12 @@ export function Session() {
     dialog.clear()
   }
 
+  function pauseScroll() {
+    setFollowScroll(false)
+  }
+
   function toBottom() {
+    setFollowScroll(true)
     setTimeout(() => {
       if (!scroll || scroll.isDestroyed) return
       scroll.scrollTo(scroll.scrollHeight)
@@ -389,6 +416,7 @@ export function Session() {
     }
   }
 
+  const showContext = useSessionContextDialog()
   const command = useCommandDialog()
   command.register(() => [
     {
@@ -487,6 +515,19 @@ export function Session() {
             sessionID={route.sessionID}
           />
         ))
+      },
+    },
+    {
+      title: "Context usage",
+      value: "session.context",
+      category: "Session",
+      slash: {
+        name: "context",
+        aliases: ["tokens", "ctx"],
+      },
+      onSelect: (dialog) => {
+        showContext(route.sessionID)
+        dialog.clear()
       },
     },
     {
@@ -692,6 +733,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        pauseScroll()
         scroll.scrollBy(-scroll.height / 2)
         dialog.clear()
       },
@@ -703,6 +745,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        pauseScroll()
         scroll.scrollBy(scroll.height / 2)
         dialog.clear()
       },
@@ -714,6 +757,7 @@ export function Session() {
       category: "Session",
       disabled: true,
       onSelect: (dialog) => {
+        pauseScroll()
         scroll.scrollBy(-1)
         dialog.clear()
       },
@@ -725,6 +769,7 @@ export function Session() {
       category: "Session",
       disabled: true,
       onSelect: (dialog) => {
+        pauseScroll()
         scroll.scrollBy(1)
         dialog.clear()
       },
@@ -736,6 +781,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        pauseScroll()
         scroll.scrollBy(-scroll.height / 4)
         dialog.clear()
       },
@@ -758,6 +804,7 @@ export function Session() {
       category: "Session",
       hidden: true,
       onSelect: (dialog) => {
+        pauseScroll()
         scroll.scrollTo(0)
         dialog.clear()
       },
@@ -1060,6 +1107,8 @@ export function Session() {
           <Show when={session()}>
             <scrollbox
               ref={(r) => (scroll = r)}
+              onMouseDown={(evt) => void sessionMouse.onMouseDown(evt)}
+              onMouseUp={(evt) => void sessionMouse.onMouseUp(evt)}
               viewportOptions={{
                 paddingRight: showScrollbar() ? 1 : 0,
               }}
@@ -1071,7 +1120,7 @@ export function Session() {
                   foregroundColor: theme.border,
                 },
               }}
-              stickyScroll={true}
+              stickyScroll={followScroll()}
               stickyStart="bottom"
               flexGrow={1}
               scrollAcceleration={scrollAcceleration()}
@@ -1082,7 +1131,8 @@ export function Session() {
                   <Switch>
                     <Match when={message.id === revert()?.messageID}>
                       {(function () {
-                        const command = useCommandDialog()
+                        const showContext = useSessionContextDialog()
+  const command = useCommandDialog()
                         const [hover, setHover] = createSignal(false)
                         const dialog = useDialog()
 
@@ -1254,6 +1304,9 @@ export function Session() {
               </Show>
             </box>
           </Show>
+          <box width="100%" paddingLeft={2} paddingRight={2} paddingBottom={1} flexShrink={0}>
+            <Footer />
+          </box>
           <Toast />
         </box>
         <Show when={sidebarVisible()}>
@@ -1467,12 +1520,14 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                   fg:
                     props.message.error?.name === "MessageAbortedError"
                       ? theme.textMuted
-                      : local.agent.color(props.message.agent),
+                      : props.message.agent === "plan"
+                        ? theme.accent
+                        : local.agent.color(props.message.agent),
                 }}
               >
                 ▣{" "}
               </span>{" "}
-              <span style={{ fg: theme.text }}>{Locale.titlecase(props.message.mode)}</span>
+              <span style={{ fg: theme.text }}>{props.message.agent === "plan" ? "Plan" : props.message.agent === "build" ? "Build" : Locale.titlecase(props.message.mode)}</span>
               <span style={{ fg: theme.textMuted }}> · {model()}</span>
               <Show when={duration()}>
                 <span style={{ fg: theme.textMuted }}> · {Locale.duration(duration())}</span>
@@ -1622,6 +1677,9 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
         </Match>
         <Match when={props.part.tool === "glob"}>
           <Glob {...toolprops} />
+        </Match>
+        <Match when={props.part.tool === "list"}>
+          <ListDir {...(toolprops as ToolProps<typeof ListTool>)} />
         </Match>
         <Match when={props.part.tool === "read"}>
           <Read {...toolprops} />
@@ -1963,6 +2021,20 @@ function Write(props: ToolProps<typeof WriteTool>) {
         </InlineTool>
       </Match>
     </Switch>
+  )
+}
+
+function ListDir(props: ToolProps<{ path?: string }>) {
+  const { theme } = useTheme()
+  const label = () => String((props.input as { path?: string })?.path ?? ".")
+  return (
+    <InlineTool icon="▤" pending="Listing directory..." complete={label()} part={props.part}>
+      <Show when={props.output}>
+        <box paddingLeft={2}>
+          <text fg={theme.textMuted}>{props.output}</text>
+        </box>
+      </Show>
+    </InlineTool>
   )
 }
 

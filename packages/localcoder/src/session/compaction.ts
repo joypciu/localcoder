@@ -307,6 +307,11 @@ export const layer: Layer.Layer<
         .pipe(Effect.catchIf(NotFoundError.isInstance, () => Effect.succeed(undefined)))
       if (!msgs) return
 
+      const ctxHint = Number(process.env.LLAMACPP_CTX ?? 0)
+      const smallCtx = ctxHint > 0 && ctxHint <= 32_768
+      const pruneProtect = smallCtx ? Math.max(4_000, Math.floor(ctxHint * 0.25)) : PRUNE_PROTECT
+      const pruneMinimum = smallCtx ? Math.max(2_000, Math.floor(ctxHint * 0.1)) : PRUNE_MINIMUM
+
       let total = 0
       let pruned = 0
       const toPrune: MessageV2.ToolPart[] = []
@@ -325,14 +330,14 @@ export const layer: Layer.Layer<
           if (part.state.time.compacted) break loop
           const estimate = Token.estimate(part.state.output)
           total += estimate
-          if (total <= PRUNE_PROTECT) continue
+          if (total <= pruneProtect) continue
           pruned += estimate
           toPrune.push(part)
         }
       }
 
       log.info("found", { pruned, total })
-      if (pruned > PRUNE_MINIMUM) {
+      if (pruned > pruneMinimum) {
         for (const part of toPrune) {
           if (part.state.status === "completed") {
             part.state.time.compacted = Date.now()

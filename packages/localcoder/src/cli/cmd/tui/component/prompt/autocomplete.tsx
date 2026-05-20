@@ -13,6 +13,7 @@ import { useTuiConfig } from "../../context/tui-config"
 import { useTheme, selectedForeground } from "@tui/context/theme"
 import { SplitBorder } from "@tui/component/border"
 import { useCommandDialog } from "@tui/component/dialog-command"
+import { useKeyboardLayer } from "@tui/context/keyboard-layer"
 import { useTerminalDimensions } from "@opentui/solid"
 import { Locale } from "@/util/locale"
 import type { PromptInfo } from "./history"
@@ -83,6 +84,7 @@ export function Autocomplete(props: {
   const sdk = useSDK()
   const sync = useSync()
   const command = useCommandDialog()
+  const layers = useKeyboardLayer()
   const { theme } = useTheme()
   const dimensions = useTerminalDimensions()
   const frecency = useFrecency()
@@ -417,7 +419,15 @@ export function Autocomplete(props: {
       })
     }
 
-    results.sort((a, b) => a.display.localeCompare(b.display))
+    const priority = ["agents", "models", "sessions", "theme", "new", "connect", "status"]
+    results.sort((a, b) => {
+      const ap = priority.findIndex((p) => a.display.includes("/" + p))
+      const bp = priority.findIndex((p) => b.display.includes("/" + p))
+      const ai = ap === -1 ? 999 : ap
+      const bi = bp === -1 ? 999 : bp
+      if (ai !== bi) return ai - bi
+      return a.display.localeCompare(b.display)
+    })
 
     const max = firstBy(results, [(x) => x.display.length, "desc"])?.display.length
     if (!max) return results
@@ -522,6 +532,13 @@ export function Autocomplete(props: {
 
   function show(mode: "@" | "/") {
     command.keybinds(false)
+    layers.push(mode === "/" ? "command" : "mention", (e) => {
+      if (e?.name === "escape" || (e?.ctrl && e?.name === "c")) {
+        hide()
+        return true
+      }
+      return false
+    })
     setStore({
       visible: mode,
       index: props.input().cursorOffset,
@@ -533,11 +550,12 @@ export function Autocomplete(props: {
     if (store.visible === "/" && !text.endsWith(" ") && text.startsWith("/")) {
       const cursor = props.input().logicalCursor
       props.input().deleteRange(0, 0, cursor.row, cursor.col)
-      // Sync the prompt store immediately since onContentChange is async
       props.setPrompt((draft) => {
         draft.input = props.input().plainText
       })
     }
+    layers.pop("command")
+    layers.pop("mention")
     command.keybinds(true)
     setStore("visible", false)
   }

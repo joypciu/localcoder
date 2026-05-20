@@ -1,7 +1,7 @@
 {
   "name": "localcoder",
   "displayName": "LocalCoder",
-  "description": "AI coding agent — chat, tool calls, file edits, and terminal TUI in VS Code",
+  "description": "AI coding agent \u2014 chat, tool calls, file edits, and terminal TUI in VS Code",
   "version": "1.0.0",
   "publisher": "joypciu",
   "repository": {
@@ -33,7 +33,10 @@
     "localcoder"
   ],
   "activationEvents": [
-    "onCommand:localcoder.openChat"
+    "onView:localcoder.chatView",
+    "onCommand:localcoder.openChat",
+    "onCommand:localcoder.undoLastTurn",
+    "onCommand:localcoder.addSelectionToChat"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -83,6 +86,22 @@
       {
         "command": "localcoder.addFilepathToTerminal",
         "title": "LocalCoder: Insert Active Filepath"
+      },
+      {
+        "command": "localcoder.undoLastTurn",
+        "title": "LocalCoder: Undo Last Agent Changes"
+      },
+      {
+        "command": "localcoder.addSelectionToChat",
+        "title": "LocalCoder: Add Selection to Chat"
+      },
+      {
+        "command": "localcoder.explainSelection",
+        "title": "LocalCoder: Explain Selection"
+      },
+      {
+        "command": "localcoder.fixSelection",
+        "title": "LocalCoder: Fix Selection"
       }
     ],
     "menus": {
@@ -117,8 +136,47 @@
         "command": "localcoder.addFilepathToTerminal",
         "key": "ctrl+alt+k",
         "mac": "cmd+alt+k"
+      },
+      {
+        "command": "localcoder.undoLastTurn",
+        "key": "ctrl+shift+u",
+        "mac": "cmd+shift+u"
+      },
+      {
+        "command": "localcoder.addSelectionToChat",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "LocalCoder",
+      "properties": {
+        "localcoder.packagePath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to packages/localcoder. Empty = auto-detect from extension."
+        },
+        "localcoder.bunPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to bun executable."
+        },
+        "localcoder.defaultAgent": {
+          "type": "string",
+          "enum": [
+            "build",
+            "plan"
+          ],
+          "default": "build",
+          "description": "Default agent mode (build = full tools, plan = planning)."
+        },
+        "localcoder.openDiffOnEdit": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open diff editor when agent edits a file."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "bun run package",
@@ -131,7 +189,9 @@
     "pretest": "bun run compile-tests && bun run compile && bun run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "test:unit": "bun run compile-tests && npx mocha out/test/suite/**/*.test.js --ui tdd --timeout 120000 --exclude out/test/suite/extension-integration.test.js",
+    "test:all": "bun run pretest && vscode-test"
   },
   "devDependencies": {
     "@types/vscode": "^1.94.0",
