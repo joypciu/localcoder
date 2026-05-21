@@ -125,7 +125,10 @@
   ],
   "overrides": {
     "@types/bun": "catalog:",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@babel/core": "7.28.4",
+    "@babel/traverse": "7.28.4",
+    "debug": "4.3.7"
   },
   "patchedDependencies": {
     "@npmcli/agent@4.0.0": "patches/@npmcli%2Fagent@4.0.0.patch",
