@@ -1,11 +1,12 @@
-# Superseded by release.yml (CLI + desktop + npm). Kept for compatibility.
+# Superseded by release.yml (CLI + desktop + npm). Manual runs only — do not trigger on tags.
 name: Release CLI binaries
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*"
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build:
@@ -25,13 +26,19 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: "1.3.13"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Set version from tag
+        run: |
+          if [ -n "${{ github.ref_name }}" ] && [ "${{ github.ref_name }}" != "main" ]; then
+            echo "LOCALCODER_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "LOCALCODER_VERSION=$(node -p "require('./packages/localcoder/package.json').version")" >> "$GITHUB_ENV"
+          fi
       - name: Build CLI
         env:
-          # tag v1.2.3 -> 1.2.3
-          LOCALCODER_VERSION: ${{ github.ref_name }}
           LOCALCODER_CHANNEL: latest
         run: |
-          echo "LOCALCODER_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
           cd packages/localcoder
           bun run script/build.ts -- --platforms=${{ matrix.platforms }} --skip-embed-web-ui
       - uses: actions/upload-artifact@v4
