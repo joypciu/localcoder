@@ -146,9 +146,19 @@ const allTargets: {
   },
 ]
 
+
+function skipCrossArchTarget(item: (typeof allTargets)[number]): boolean {
+  if (process.env.CI !== "true") return false
+  const host = process.platform
+  const arch = process.arch
+  if (item.os === "win32" && host === "win32" && item.arch !== arch) return true
+  return false
+}
+
 const targets = platformsFilter
   ? allTargets.filter((item) => {
       const osName = item.os === "win32" ? "windows" : item.os
+      if (skipCrossArchTarget(item)) return false
       return platformsFilter.includes(osName) || platformsFilter.includes(item.os)
     })
   : singleFlag
@@ -166,6 +176,8 @@ const targets = platformsFilter
       })
     : allTargets
 
+const targetsFiltered = targets.filter((item) => !skipCrossArchTarget(item))
+
 if (!incrementalFlag) await $`rm -rf dist`
 
 const binaries: Record<string, string> = {}
@@ -173,7 +185,7 @@ if (!skipInstall) {
   await $`bun install --os="*" --cpu="*" @opentui/core@${pkg.dependencies["@opentui/core"]}`
   await $`bun install --os="*" --cpu="*" @parcel/watcher@${pkg.dependencies["@parcel/watcher"]}`
 }
-for (const item of targets) {
+for (const item of targetsFiltered) {
   const name = [
     pkg.name,
     // changing to win32 flags npm for some reason
