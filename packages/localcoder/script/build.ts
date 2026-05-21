@@ -147,18 +147,21 @@ const allTargets: {
 ]
 
 
-function skipCrossArchTarget(item: (typeof allTargets)[number]): boolean {
+function skipCiTarget(item: (typeof allTargets)[number]): boolean {
   if (process.env.CI !== "true") return false
   const host = process.platform
   const arch = process.arch
-  if (item.os === "win32" && host === "win32" && item.arch !== arch) return true
+  if (item.os === "win32" && host === "win32") {
+    if (item.arch !== arch) return true
+    if (item.avx2 === false) return true
+  }
   return false
 }
 
 const targets = platformsFilter
   ? allTargets.filter((item) => {
       const osName = item.os === "win32" ? "windows" : item.os
-      if (skipCrossArchTarget(item)) return false
+      if (skipCiTarget(item)) return false
       return platformsFilter.includes(osName) || platformsFilter.includes(item.os)
     })
   : singleFlag
@@ -176,7 +179,7 @@ const targets = platformsFilter
       })
     : allTargets
 
-const targetsFiltered = targets.filter((item) => !skipCrossArchTarget(item))
+const targetsFiltered = targets.filter((item) => !skipCiTarget(item))
 
 if (!incrementalFlag) await $`rm -rf dist`
 
