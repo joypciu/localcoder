@@ -85,7 +85,7 @@ LOCALCODER_CHANNEL=prod bun run package:mac
 | Symptom | Fix |
 |---------|-----|
 | `localcoder` not found after `npm install -g` | Re-run install; check `%AppData%\npm` is on PATH. Or run `node …\localcoder\bin\localcoder --version`. |
-| Double-click `localcoder.exe` does nothing | Expected: use **Command Prompt** or **PowerShell**. Bare exe without a console prints instructions (v1.14.38+). |
+| Double-click `localcoder.exe` does nothing (v1.14.38) | **v1.14.39+:** opens a Command Prompt with instructions. Or run `localcoder` from PowerShell/CMD. |
 | VS Code chat empty / backend error | Build CLI (`bun run build:win`) or install globally; set **LocalCoder: Package Path** to `packages/localcoder`. Configure a model in terminal first. |
 
 ## Release builds (CI)

@@ -38,6 +38,7 @@ export class LocalcoderBackend implements ChatBackend {
   private _streamSessionId?: string;
   private _streamedText = "";
   private _seenToolIds = new Set<string>();
+  private _serverStderr = "";
 
   constructor(extensionPath: string) {
     const cfg = vscode.workspace.getConfiguration("localcoder");
@@ -145,7 +146,12 @@ export class LocalcoderBackend implements ChatBackend {
     });
 
     this._serverProcess.stdout?.on("data", (d) => log(`SRV: ${d.toString().trim()}`));
-    this._serverProcess.stderr?.on("data", (d) => { const t = d.toString().trim(); if (t) { log(`SRV-ERR: ${t}`); } });
+    this._serverProcess.stderr?.on("data", (d) => {
+      const line = d.toString();
+      this._serverStderr = (this._serverStderr + line).slice(-4000);
+      const trimmed = line.trim();
+      if (trimmed) { log(`SRV-ERR: ${trimmed}`); }
+    });
     this._serverProcess.on("exit", (c) => log(`SRV exited: ${c}`));
 
     await this.waitForServer();
@@ -162,7 +168,10 @@ export class LocalcoderBackend implements ChatBackend {
 
   private async waitForServer(maxRetries = 30): Promise<void> {
     for (let i = 0; i < maxRetries; i++) {
-      if (this._serverProcess?.exitCode !== null) { throw new Error(`Server died with code ${this._serverProcess?.exitCode}`); }
+      if (this._serverProcess?.exitCode != null) {
+        const tail = this._serverStderr.trim().slice(-800);
+        throw new Error(tail ? `Server exited (${this._serverProcess.exitCode}): ${tail}` : `Server died with code ${this._serverProcess.exitCode}`);
+      }
       try {
         const url = `http://127.0.0.1:${this._serverPort}/global/health`;
         const res = await fetch(url, { headers: this.getAuthHeaders() });
@@ -170,7 +179,8 @@ export class LocalcoderBackend implements ChatBackend {
       } catch { /* retry */ }
       await new Promise((r) => setTimeout(r, 500));
     }
-    throw new Error("Server did not start in time");
+    const tail = this._serverStderr.trim().slice(-800);
+    throw new Error(tail ? `Server did not start: ${tail}` : "Server did not start in time. Build CLI (bun run build:win) or npm install -g localcoder.");
   }
 
   private getAuthHeaders(): Record<string, string> {

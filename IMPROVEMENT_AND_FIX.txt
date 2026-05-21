@@ -1,12 +1,12 @@
-LocalCoder — Improvements, Fixes & Roadmap
+# LocalCoder — Improvements, Fixes & Roadmap
 
-Updated: 2026-05-20 · Release: v1.14.38  
+Updated: 2026-05-21 · Release: v1.14.39  
 VS Code tests: 84/84 (cd sdks/vscode && bun run test:all)  
 Windows smoke: built .exe, serve health, npm postinstall launcher
 
 ---
 
-#Executive summary
+## Executive summary
 
 | Area | Status | Notes |
 |------|--------|-------|
@@ -18,25 +18,33 @@ Windows smoke: built .exe, serve health, npm postinstall launcher
 
 ---
 
-#Fixes in v1.14.38 (this release)
+## Fixes in v1.14.39
+### Windows double-click (v1.14.39) — root cause fixed
 
-##VS Code extension
+- Problem: Double-clicking localcoder.exe showed nothing. Bun reports isTTY: true even with no visible console; the TUI started invisibly and exited.
+- Fix: Early src/entry.ts runs before TUI imports. Detect Explorer launch via parent process explorer.exe, then open a visible cmd window with instructions and --help.
+- npm: bin/localcoder.cmd shim; postinstall writes the shim on Windows.
+
+
+## Fixes in v1.14.38 (this release)
+
+### VS Code extension
 - Backend resolution: prefer dist/localcoder-windows-x64/bin/localcoder.exe, then PATH localcoder, then Bun monorepo fallback.
 - Stale none backend: auto-migrate to localcoder; startBackend no longer throws when unconfigured.
 - First-run skip: sets localcoder backend (not none).
 - Live tests: backend-live.test.ts starts the built executable on Windows when present.
 
-##Windows / npm CLI
+### Windows / npm CLI
 - postinstall.mjs: on Windows, copies localcoder.exe to bin/.localcoder for the Node launcher.
 - Double-click / no console: running localcoder.exe with no args and no TTY prints version + terminal instructions instead of hanging in the TUI.
 
-##Desktop
+### Desktop
 - electron.vite.config.ts: externalize mcp-oauth, poe-oauth, opencode-poe-auth, opencode-gitlab-auth (mirrors script/build.ts).
 - build-node.ts: same externals for the embedded Node server bundle.
 
 ---
 
-#Further fixes (recommended next)
+## Further fixes (recommended next)
 
 | Priority | Item |
 |----------|------|
@@ -49,7 +57,7 @@ Windows smoke: built .exe, serve health, npm postinstall launcher
 
 ---
 
-#Future directions
+## Future directions
 
 1. Release automation — tag-driven GitHub Actions for all platform binaries and desktop installers; attach to GitHub Releases.
 2. Real E2E — extension host smoke that sends a message through localcoder serve, not only mocked tool shapes.
@@ -58,7 +66,7 @@ Windows smoke: built .exe, serve health, npm postinstall launcher
 
 ---
 
-#Verify locally (Windows)
+## Verify locally (Windows)
 
 powershell
 cd packages/localcoder
@@ -80,7 +88,7 @@ Note: Chat requires a configured model (localcoder in terminal → pick provider
 
 ---
 
-#Test coverage (honest)
+## Test coverage (honest)
 
 | What tests prove | What they do *not* prove |
 |------------------|---------------------------|

@@ -75,6 +75,14 @@ async function main() {
       const target = path.join(__dirname, "bin", ".localcoder")
       fs.copyFileSync(binaryPath, target)
       console.log("Windows: linked platform binary for npm launcher")
+      const cmdShim = path.join(__dirname, "bin", "localcoder.cmd")
+      const shim = `@echo off
+"%~dp0.localcoder" %*
+exit /b %ERRORLEVEL%
+`
+      fs.writeFileSync(cmdShim, shim)
+      console.log("Windows: wrote bin/localcoder.cmd shim")
+
       return
     }
 

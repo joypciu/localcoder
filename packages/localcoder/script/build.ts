@@ -213,10 +213,10 @@ for (const item of targets) {
       target: name.replace(pkg.name, "bun") as any,
       outfile: `dist/${name}/bin/localcoder`,
       execArgv: [`--user-agent=localcoder/${Script.version}`, "--use-system-ca", "--"],
-      windows: {},
+      windows: { hideConsole: false },
     },
     files: embeddedFileMap ? { "localcoder-web-ui.gen.ts": embeddedFileMap } : {},
-    entrypoints: ["./src/index.ts", parserWorker, workerPath, ...(embeddedFileMap ? ["localcoder-web-ui.gen.ts"] : [])],
+    entrypoints: ["./src/entry.ts", parserWorker, workerPath, ...(embeddedFileMap ? ["localcoder-web-ui.gen.ts"] : [])],
     define: {
       LOCALCODER_VERSION: `'${Script.version}'`,
       LOCALCODER_MIGRATIONS: JSON.stringify(migrations),
