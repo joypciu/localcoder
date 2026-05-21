@@ -96,7 +96,7 @@ function getConfig() {
         appId: "ai.localcoder.desktop.beta",
         productName: "LocalCoder Beta",
         protocols: { name: "LocalCoder Beta", schemes: ["localcoder"] },
-        publish: { provider: "github", owner: "joypciu", repo: "localcoder", prerelease: true, channel: "latest" },
+        publish: process.env.CI === "true" ? null : { provider: "github", owner: "joypciu", repo: "localcoder", prerelease: true, channel: "latest" },
         rpm: { packageName: "localcoder-beta" },
       }
     }
@@ -106,7 +106,7 @@ function getConfig() {
         appId: "ai.localcoder.desktop",
         productName: "LocalCoder",
         protocols: { name: "LocalCoder", schemes: ["localcoder"] },
-        publish: { provider: "github", owner: "joypciu", repo: "localcoder", channel: "latest" },
+        publish: process.env.CI === "true" ? null : { provider: "github", owner: "joypciu", repo: "localcoder", channel: "latest" },
         rpm: { packageName: "localcoder" },
       }
     }
