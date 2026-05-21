@@ -1,4 +1,4 @@
-import { Config } from "effect"
+﻿import { Config } from "effect"
 import { InstallationChannel } from "../installation/version"
 
 function truthy(key: string) {
@@ -68,7 +68,7 @@ export const Flag = {
   ),
   LOCALCODER_EXPERIMENTAL_ICON_DISCOVERY: LOCALCODER_EXPERIMENTAL || truthy("LOCALCODER_EXPERIMENTAL_ICON_DISCOVERY"),
   LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT:
-    copy === undefined ? false : truthy("LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT"),
+    copy === undefined ? true : truthy("LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT"),
   LOCALCODER_ENABLE_EXA: truthy("LOCALCODER_ENABLE_EXA") || LOCALCODER_EXPERIMENTAL || truthy("LOCALCODER_EXPERIMENTAL_EXA"),
   LOCALCODER_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS: number("LOCALCODER_EXPERIMENTAL_BASH_DEFAULT_TIMEOUT_MS"),
   LOCALCODER_EXPERIMENTAL_OUTPUT_TOKEN_MAX: number("LOCALCODER_EXPERIMENTAL_OUTPUT_TOKEN_MAX"),
@@ -118,3 +118,4 @@ export const Flag = {
     return process.env["LOCALCODER_CLIENT"] ?? "cli"
   },
 }
+

@@ -1,6 +1,7 @@
-import { render, TimeToFirstDraw, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
+﻿import { render, TimeToFirstDraw, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/solid"
 import * as Clipboard from "@tui/util/clipboard"
 import * as Selection from "@tui/util/selection"
+import { openReadonlySelectionMenu } from "@tui/util/selection-actions"
 import { CliRenderEvents, createCliRenderer, MouseButton, type CliRendererConfig } from "@opentui/core"
 import { RouteProvider, useRoute } from "@tui/context/route"
 import {
@@ -90,6 +91,7 @@ function rendererConfig(_config: TuiConfig.Info): CliRendererConfig {
     autoFocus: false,
     openConsoleOnError: false,
     useMouse: mouseEnabled,
+    enableMouseMovement: mouseEnabled,
     consoleOptions: {
       keyBindings: [{ name: "y", ctrl: true, action: "copy-selection" }],
       onCopySelection: (text) => {
@@ -222,9 +224,7 @@ export function tui(input: {
 
 function App(props: { onSnapshot?: () => Promise<string[]> }) {
   const tuiConfig = useTuiConfig()
-  const copyOnSelectEnabled = createMemo(
-    () => tuiConfig.copy_on_select ?? !Flag.LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT,
-  )
+  const copyOnSelectEnabled = createMemo(() => tuiConfig.copy_on_select === true)
   const route = useRoute()
   const dimensions = useTerminalDimensions()
   const renderer = useRenderer()
@@ -277,7 +277,10 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     })
 
   useKeyboard((evt) => {
-    // Mouse copy-on-select: Ctrl+C copies selection, Esc dismisses,
+    // Ctrl+C / Ctrl+X: keyboard layer owns copy, cut, and exit
+    if (evt.ctrl && !evt.shift && (evt.name === "c" || evt.name === "x")) return
+
+    // Mouse selection dismiss: Ctrl+C copies selection, Esc dismisses,
     // any other key dismisses selection and passes through
     const sel = renderer.getSelection()
     if (!sel) return
@@ -323,9 +326,14 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     renderer.clearSelection()
   }
 
-  renderer.on(CliRenderEvents.SELECTION, () => {
+  renderer.on(CliRenderEvents.SELECTION, (selection) => {
     if (!copyOnSelectEnabled()) return
-    Selection.copy(renderer, toast)
+    const text = selection?.getSelectedText?.() ?? renderer.getSelection()?.getSelectedText?.()
+    if (!text?.trim()) return
+    void Clipboard.copy(text)
+      .then(() => toast.show({ message: "Copied to clipboard", variant: "info" }))
+      .catch(toast.error)
+    renderer.clearSelection()
   })
 
   const [terminalTitleEnabled, setTerminalTitleEnabled] = createSignal(kv.get("terminal_title_enabled", true))
@@ -385,7 +393,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   const project = useProject()
   createEffect(() => {
     if (route.data.type !== "session") return
-    const dir = project.path.directory()
+    const dir = project.instance.directory()
     if (!dir) return
     void saveLastSession(dir, route.data.sessionID)
   })
@@ -928,13 +936,13 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       backgroundColor={theme.background}
       onMouseDown={(evt) => {
         if (evt.button !== MouseButton.RIGHT) return
-        if (!Selection.copy(renderer, toast)) return
         evt.preventDefault()
-        evt.stopPropagation()
-      }}
-      onMouseUp={() => {
-        if (!copyOnSelectEnabled()) return
-        Selection.copyOnMouseUp(renderer, toast)
+        openReadonlySelectionMenu({
+          dialog,
+          toast,
+          renderer,
+          prompt: promptRef.current,
+        })
       }}
     >
       <Show when={Flag.LOCALCODER_SHOW_TTFD}>
@@ -960,4 +968,5 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     </box>
   )
 }
+
 

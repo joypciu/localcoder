@@ -1,4 +1,4 @@
-import z from "zod"
+﻿import z from "zod"
 import { ConfigPlugin } from "@/config/plugin"
 import { ConfigKeybinds } from "@/config/keybinds"
 
@@ -23,11 +23,11 @@ export const TuiOptions = z.object({
     .enum(["auto", "stacked"])
     .optional()
     .describe("Control diff rendering style: 'auto' adapts to terminal width, 'stacked' always shows single column"),
-  mouse: z.boolean().optional().describe("Enable or disable mouse capture (default: true)"),
+  mouse: z.boolean().optional().describe("Enable or disable mouse capture (default: false)"),
   copy_on_select: z
     .boolean()
     .optional()
-    .describe("Copy selected text to clipboard when you release the mouse (default: true)"),
+    .describe("Copy selected text to clipboard when you release the mouse (default: false)"),
 })
 
 export const TuiInfo = z
@@ -40,3 +40,4 @@ export const TuiInfo = z
   })
   .extend(TuiOptions.shape)
   .strict()
+

@@ -17,7 +17,7 @@ const TERMINAL_PARENTS = new Set([
   "mintty.exe",
 ])
 
-function getParentProcessName(): string | undefined {
+export function getParentProcessName(): string | undefined {
   if (process.platform !== "win32") return undefined
   try {
     const script =

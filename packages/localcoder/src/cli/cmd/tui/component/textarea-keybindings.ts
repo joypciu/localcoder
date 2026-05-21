@@ -67,8 +67,7 @@ export function buildTextareaKeybindings(keybinds: Record<string, Keybind.Info[]
     ...TEXTAREA_ACTIONS.filter((action) => action !== "submit").flatMap((action) =>
       mapTextareaKeybindings(keybinds, action),
     ),
-    ...mapTextareaKeybindings(keybinds, "submit"),
-    { name: "return", action: "submit" },
+    // Plain Enter submit is handled in Prompt onKeyDown (Windows ConPTY often drops shift on Shift+Enter).
   ] satisfies KeyBinding[]
 }
 

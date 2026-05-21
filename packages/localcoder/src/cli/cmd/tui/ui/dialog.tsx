@@ -5,8 +5,6 @@ import { MouseButton, Renderable, RGBA } from "@opentui/core"
 import { createStore } from "solid-js/store"
 import { useToast } from "./toast"
 import { useKeyboardLayer } from "@tui/context/keyboard-layer"
-import { Flag } from "@localcoder-ai/core/flag/flag"
-import * as Selection from "@tui/util/selection"
 
 export function Dialog(
   props: ParentProps<{
@@ -169,27 +167,11 @@ function DialogKeyboardLayer() {
 
 export function DialogProvider(props: ParentProps) {
   const value = init()
-  const renderer = useRenderer()
-  const toast = useToast()
   return (
     <ctx.Provider value={value}>
       <DialogKeyboardLayer />
       {props.children}
-      <box
-        position="absolute"
-        zIndex={3000}
-        onMouseDown={(evt) => {
-          if (!Flag.LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT) return
-          if (evt.button !== MouseButton.RIGHT) return
-
-          if (!Selection.copy(renderer, toast)) return
-          evt.preventDefault()
-          evt.stopPropagation()
-        }}
-        onMouseUp={
-          !Flag.LOCALCODER_EXPERIMENTAL_DISABLE_COPY_ON_SELECT ? () => Selection.copy(renderer, toast) : undefined
-        }
-      >
+      <box position="absolute" zIndex={3000}>
         <Show when={value.stack.length}>
           <Dialog onClose={() => value.clear()} size={value.size}>
             {value.stack.at(-1)!.element}

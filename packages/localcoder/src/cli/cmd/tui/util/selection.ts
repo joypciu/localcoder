@@ -11,7 +11,8 @@ type Renderer = {
 }
 
 export function selectedText(renderer: Renderer): string | undefined {
-  const text = renderer.getSelection()?.getSelectedText()
+  const raw = renderer.getSelection()?.getSelectedText?.()
+  const text = typeof raw === "string" ? raw : undefined
   if (!text || text.length === 0) return undefined
   return text
 }

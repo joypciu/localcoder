@@ -1108,7 +1108,6 @@ export function Session() {
             <scrollbox
               ref={(r) => (scroll = r)}
               onMouseDown={(evt) => void sessionMouse.onMouseDown(evt)}
-              onMouseUp={(evt) => void sessionMouse.onMouseUp(evt)}
               viewportOptions={{
                 paddingRight: showScrollbar() ? 1 : 0,
               }}

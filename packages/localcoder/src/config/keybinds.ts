@@ -12,6 +12,12 @@ const keybind = (value: string, description: string) =>
 
 // Windows prepends ctrl+z to the undo binding because `terminal_suspend`
 // cannot consume ctrl+z on native Windows terminals (no POSIX suspend).
+const inputSubmitDefault =
+  process.platform === "win32" ? "ctrl+return,ctrl+enter" : "return"
+const inputNewlineDefault =
+  process.platform === "win32"
+    ? "return,enter,shift+return,shift+enter,ctrl+j,alt+return"
+    : "shift+return,shift+enter,ctrl+return,ctrl+enter,alt+return,ctrl+j"
 const inputUndoDefault = process.platform === "win32" ? "ctrl+z,ctrl+-,super+z" : "ctrl+-,super+z"
 
 const KeybindsSchema = Schema.Struct({
@@ -66,8 +72,8 @@ const KeybindsSchema = Schema.Struct({
   variant_list: keybind("none", "List model variants"),
   input_clear: keybind("ctrl+c", "Clear input field"),
   input_paste: keybind("ctrl+v", "Paste from clipboard"),
-  input_submit: keybind("return", "Submit input"),
-  input_newline: keybind("shift+return,shift+enter,ctrl+return,ctrl+enter,alt+return,ctrl+j", "Insert newline in input"),
+  input_submit: keybind(inputSubmitDefault, "Submit input"),
+  input_newline: keybind(inputNewlineDefault, "Insert newline in input"),
   input_move_left: keybind("left,ctrl+b", "Move cursor left in input"),
   input_move_right: keybind("right,ctrl+f", "Move cursor right in input"),
   input_move_up: keybind("up", "Move cursor up in input"),

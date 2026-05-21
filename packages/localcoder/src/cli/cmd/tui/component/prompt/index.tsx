@@ -30,6 +30,7 @@ import { useExit } from "../../context/exit"
 import { useKeyboardLayer } from "@tui/context/keyboard-layer"
 import { InputShortcutsInline } from "@tui/component/input-shortcuts"
 import * as Clipboard from "../../util/clipboard"
+import * as Selection from "../../util/selection"
 import type { AssistantMessage, FilePart, UserMessage } from "@localcoder-ai/sdk/v2"
 import { TuiEvent } from "../../event"
 import { iife } from "@/util/iife"
@@ -43,6 +44,8 @@ import { useToast } from "../../ui/toast"
 import { useKV } from "../../context/kv"
 import { createFadeIn } from "../../util/signal"
 import { useTextareaKeybindings } from "../textarea-keybindings"
+import { windowsInputHint } from "@/util/windows-terminal"
+import { openSelectionActionsMenu, pasteTextFromClipboard } from "../../util/selection-actions"
 import { DialogSkill } from "../dialog-skill"
 import { openWorkspaceSelect, warpWorkspaceSession, type WorkspaceSelection } from "../dialog-workspace-create"
 import { DialogWorkspaceUnavailable } from "../dialog-workspace-unavailable"
@@ -149,6 +152,8 @@ export function Prompt(props: PromptProps) {
   const { theme, syntax } = useTheme()
   const kv = useKV()
   const animationsEnabled = createMemo(() => kv.get("animations_enabled", true))
+  const selectionHighlight = createMemo(() => tint(theme.primary, theme.backgroundElement, 0.55))
+  const selectionText = createMemo(() => theme.background)
   const list = createMemo(() => props.placeholders?.normal ?? [])
   const shell = createMemo(() => props.placeholders?.shell ?? [])
   const fileContextEnabled = createMemo(() => kv.get("file_context_enabled", true))
@@ -291,6 +296,17 @@ export function Prompt(props: PromptProps) {
   }
 
   const textareaKeybindings = useTextareaKeybindings()
+  let blockSubmitUntil = 0
+
+  function isNewlineKey(e: { name?: string }) {
+    const name = e.name?.toLowerCase()
+    return name === "return" || name === "enter"
+  }
+
+  function shouldInsertNewline(e: { name?: string; shift?: boolean }) {
+    return isNewlineKey(e) && (e.shift || keybind.match("input_newline", e as Parameters<typeof keybind.match>[1]))
+  }
+
 
   const fileStyleId = syntax().getStyleId("extmark.file")!
   const agentStyleId = syntax().getStyleId("extmark.agent")!
@@ -653,15 +669,54 @@ export function Prompt(props: PromptProps) {
     },
   }
 
+  function promptSelectedText() {
+    if (!input || input.isDestroyed) return undefined
+    const text = input.getSelectedText()
+    if (text && text.length > 0) return text
+    const rendererText = Selection.selectedText(renderer)
+    if (rendererText && renderer.currentFocusedRenderable === input) return rendererText
+    return undefined
+  }
+
+  async function copyPromptSelection() {
+    const selected = promptSelectedText()
+    if (!selected) return false
+    await Clipboard.copy(selected)
+    input.clearSelection()
+    toast.show({ message: "Copied to clipboard", variant: "info" })
+    return true
+  }
+
+  async function cutPromptSelection() {
+    const selected = promptSelectedText()
+    if (!selected) return false
+    await Clipboard.copy(selected)
+    input.deleteSelection()
+    input.clearSelection()
+    setStore("prompt", "input", input.plainText)
+    toast.show({ message: "Cut to clipboard", variant: "info" })
+    return true
+  }
+
   onMount(() => {
-    layers.push("prompt", () => {
+    layers.push("prompt", (event) => {
       if (dialog.stack.length > 0) return false
-      if (store.prompt.input !== "") {
-        input.clear()
-        input.extmarks.clear()
-        setStore("prompt", { input: "", parts: [] })
-        setStore("extmarkToPartIndex", new Map())
-        return true
+      if (!event?.ctrl || event.shift || event.meta || event.super) return false
+      const name = event.name?.toLowerCase()
+      if (name === "c") {
+        if (promptSelectedText()) {
+          void copyPromptSelection()
+          return true
+        }
+        if (store.prompt.input !== "") return true
+        return false
+      }
+      if (name === "x") {
+        if (promptSelectedText()) {
+          void cutPromptSelection()
+          return true
+        }
+        return false
       }
       return false
     })
@@ -1094,20 +1149,45 @@ export function Prompt(props: PromptProps) {
     }
   }
 
-  async function copyOrCutPromptSelection(cut: boolean) {
-    const selected = input.getSelectedText()
-    if (!selected) return false
 
-    await Clipboard.copy(selected)
-    if (cut) {
-      input.deleteSelection()
-      input.clearSelection()
-      toast.show({ message: "Cut to clipboard", variant: "info" })
-      return true
-    }
-
-    toast.show({ message: "Copied to clipboard", variant: "info" })
-    return true
+  function openPromptSelectionMenu() {
+    if (!input || input.isDestroyed) return
+    openSelectionActionsMenu({
+      dialog,
+      toast,
+      title: "Prompt",
+      editable: true,
+      handlers: {
+        getSelectedText: () => {
+          const t = input.getSelectedText()
+          return t && t.length > 0 ? t : undefined
+        },
+        clearSelection: () => input.clearSelection(),
+        onCopy: async (selected) => {
+          await Clipboard.copy(selected)
+          input.clearSelection()
+          toast.show({ message: "Copied to clipboard", variant: "info" })
+        },
+        onCut: async (selected) => {
+          await Clipboard.copy(selected)
+          input.deleteSelection()
+          input.clearSelection()
+          toast.show({ message: "Cut to clipboard", variant: "info" })
+        },
+        onDelete: () => {
+          input.deleteSelection()
+          input.clearSelection()
+          toast.show({ message: "Deleted selection", variant: "info" })
+        },
+        onPaste: async () => {
+          await pasteTextFromClipboard({
+            toast,
+            insert: (t) => input.insertText(t),
+            focus: () => input.focus(),
+          })
+        },
+      },
+    })
   }
 
   async function pasteAttachment(file: { filename?: string; filepath?: string; content: string; mime: string }) {
@@ -1189,7 +1269,7 @@ export function Prompt(props: PromptProps) {
       return `Run a command... "${example}"`
     }
     if (!list().length) return undefined
-    return `Ask anything... "${list()[store.placeholder % list().length]}" · Shift+Enter · drag select · RMB · MMB paste`
+    return `Ask anything... "${list()[store.placeholder % list().length]}" · ${windowsInputHint()}`
   })
 
   const workspaceLabel = createMemo<
@@ -1282,6 +1362,8 @@ export function Prompt(props: PromptProps) {
               placeholder={placeholderText()}
               placeholderColor={theme.textMuted}
               textColor={keybind.leader ? theme.textMuted : theme.text}
+              selectionBg={selectionHighlight()}
+              selectionFg={selectionText()}
               focusedTextColor={keybind.leader ? theme.textMuted : theme.text}
               minHeight={1}
               maxHeight={6}
@@ -1297,9 +1379,15 @@ export function Prompt(props: PromptProps) {
                   e.preventDefault()
                   return
                 }
-                if (keybind.match("input_newline", e)) {
+                if (shouldInsertNewline(e)) {
+                  blockSubmitUntil = Date.now() + 150
                   e.preventDefault()
                   input.insertText("\n")
+                  return
+                }
+                if (keybind.match("input_submit", e) && !e.shift) {
+                  e.preventDefault()
+                  setTimeout(() => setTimeout(() => submit(), 0), 0)
                   return
                 }
                 // Select all (meta+a / ctrl+a when not conflicting with line-home)
@@ -1412,33 +1500,31 @@ export function Prompt(props: PromptProps) {
                   }
                   // If no image, let the default paste behavior continue
                 }
-                // Copy selection (Ctrl+C when text is selected)
+                // Copy / cut selection (handled here so we beat global Ctrl+C exit)
                 if (e.ctrl && !e.shift && !e.meta && !e.super && e.name?.toLowerCase() === "c") {
-                  if (input.hasSelection()) {
-                    const selected = input.getSelectedText()
-                    if (selected) {
-                      e.preventDefault()
-                      await Clipboard.copy(selected)
-                      input.clearSelection()
-                      toast.show({ message: "Copied to clipboard", variant: "info" })
-                      return
-                    }
+                  if (promptSelectedText()) {
+                    e.preventDefault()
+                    await copyPromptSelection()
+                    return
+                  }
+                }
+                if (e.ctrl && !e.shift && !e.meta && !e.super && e.name?.toLowerCase() === "x") {
+                  if (promptSelectedText()) {
+                    e.preventDefault()
+                    await cutPromptSelection()
+                    return
                   }
                 }
 
-                // Cut selection (Ctrl+X when text is selected)
-                if (e.ctrl && !e.shift && !e.meta && !e.super && e.name?.toLowerCase() === "x") {
-                  if (input.hasSelection()) {
-                    const selected = input.getSelectedText()
-                    if (selected) {
-                      e.preventDefault()
-                      await Clipboard.copy(selected)
-                      input.deleteSelection()
-                      input.clearSelection()
-                      toast.show({ message: "Cut to clipboard", variant: "info" })
-                      return
-                    }
-                  }
+                if (
+                  (e.name === "backspace" || e.name === "delete") &&
+                  promptSelectedText()
+                ) {
+                  e.preventDefault()
+                  input.deleteSelection()
+                  input.clearSelection()
+                  setStore("prompt", "input", input.plainText)
+                  return
                 }
 
                 if (keybind.match("input_clear", e) && store.prompt.input !== "") {
@@ -1452,6 +1538,10 @@ export function Prompt(props: PromptProps) {
                   return
                 }
                 if (keybind.match("app_exit", e)) {
+                  if (promptSelectedText()) {
+                    e.preventDefault()
+                    return
+                  }
                   if (store.prompt.input === "") {
                     await exit()
                     // Don't preventDefault - let textarea potentially handle the event
@@ -1501,6 +1591,7 @@ export function Prompt(props: PromptProps) {
               onSubmit={() => {
                 // IME: double-defer so the last composed character (e.g. Korean
                 // hangul) is flushed to plainText before we read it for submission.
+                if (Date.now() < blockSubmitUntil) return
                 setTimeout(() => setTimeout(() => submit(), 0), 0)
               }}
               onPaste={async (event: PasteEvent) => {
@@ -1598,35 +1689,37 @@ export function Prompt(props: PromptProps) {
                 }, 0)
               }}
               onMouseDown={async (r: MouseEvent) => {
-                if (r.button === MouseButton.RIGHT || r.button === MouseButton.MIDDLE) {
+                if (r.button === MouseButton.RIGHT) {
                   r.preventDefault()
-                  if (await copyOrCutPromptSelection(r.modifiers.shift)) return
-
-                  const content = await Clipboard.read()
-                  if (content?.mime === "text/plain" && content.data) {
-                    input.insertText(content.data)
-                  }
+                  openPromptSelectionMenu()
+                  return
+                }
+                if (r.button === MouseButton.MIDDLE) {
+                  r.preventDefault()
+                  await pasteTextFromClipboard({
+                    toast,
+                    insert: (t) => input.insertText(t),
+                    focus: () => input.focus(),
+                  })
+                  return
+                }
+                if (r.button === MouseButton.LEFT) {
+                  r.target?.focus()
+                  queueMicrotask(() => {
+                    if (!input || input.isDestroyed) return
+                    const now = Date.now()
+                    const offset = input.cursorOffset
+                    const doubleClick =
+                      now - lastMouseUp.time < 450 && Math.abs(offset - lastMouseUp.offset) <= 1
+                    lastMouseUp = { time: now, offset }
+                    if (!doubleClick) return
+                    const range = wordRangeAt(input.plainText, offset)
+                    if (!range) return
+                    input.setSelection(range.start, range.end)
+                  })
                   return
                 }
                 r.target?.focus()
-              }}
-              onMouseUp={async (r: MouseEvent) => {
-                if (await copyOrCutPromptSelection(r.modifiers.shift)) return
-                if (r.button !== MouseButton.LEFT) return
-
-                setTimeout(() => {
-                  if (!input || input.isDestroyed) return
-                  const now = Date.now()
-                  const offset = input.cursorOffset
-                  const doubleClick = now - lastMouseUp.time < 500 && Math.abs(offset - lastMouseUp.offset) <= 1
-                  lastMouseUp = { time: now, offset }
-                  if (!doubleClick) return
-
-                  const range = wordRangeAt(input.plainText, offset)
-                  if (!range) return
-                  input.setSelection(range.start, range.end)
-                  void copyOrCutPromptSelection(r.modifiers.shift)
-                }, 0)
               }}
               focusedBackgroundColor={theme.backgroundElement}
               cursorColor={props.disabled ? theme.backgroundElement : theme.text}

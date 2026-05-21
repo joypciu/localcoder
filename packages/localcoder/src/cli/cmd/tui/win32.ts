@@ -1,8 +1,11 @@
-import { dlopen, ptr } from "bun:ffi"
+﻿import { dlopen, ptr } from "bun:ffi"
 import type { ReadStream } from "node:tty"
 
 const STD_INPUT_HANDLE = -10
 const ENABLE_PROCESSED_INPUT = 0x0001
+const ENABLE_MOUSE_INPUT = 0x0010
+const ENABLE_QUICK_EDIT_MODE = 0x0040
+const ENABLE_EXTENDED_FLAGS = 0x0080
 
 const kernel = () =>
   dlopen("kernel32.dll", {
@@ -24,10 +27,17 @@ function load() {
   }
 }
 
-/**
- * Clear ENABLE_PROCESSED_INPUT on the console stdin handle.
- */
-export function win32DisableProcessedInput() {
+/** Console mode for in-app mouse selection (not conhost Quick Edit mark/copy). */
+export function targetWin32ConsoleMode(mode: number): number {
+  let next = mode
+  next &= ~ENABLE_PROCESSED_INPUT
+  next &= ~ENABLE_QUICK_EDIT_MODE
+  next |= ENABLE_EXTENDED_FLAGS
+  next |= ENABLE_MOUSE_INPUT
+  return next
+}
+
+function applyWin32ConsoleMode() {
   if (process.platform !== "win32") return
   if (!process.stdin.isTTY) return
   if (!load()) return
@@ -37,13 +47,18 @@ export function win32DisableProcessedInput() {
   if (k32!.symbols.GetConsoleMode(handle, ptr(buf)) === 0) return
 
   const mode = buf[0]!
-  if ((mode & ENABLE_PROCESSED_INPUT) === 0) return
-  k32!.symbols.SetConsoleMode(handle, mode & ~ENABLE_PROCESSED_INPUT)
+  const next = targetWin32ConsoleMode(mode)
+  if (next === mode) return
+  k32!.symbols.SetConsoleMode(handle, next)
 }
 
 /**
- * Discard any queued console input (mouse events, key presses, etc.).
+ * Configure stdin console for TUI mouse (disable Quick Edit, enable mouse input).
  */
+export function win32DisableProcessedInput() {
+  applyWin32ConsoleMode()
+}
+
 export function win32FlushInputBuffer() {
   if (process.platform !== "win32") return
   if (!process.stdin.isTTY) return
@@ -55,17 +70,6 @@ export function win32FlushInputBuffer() {
 
 let unhook: (() => void) | undefined
 
-/**
- * Keep ENABLE_PROCESSED_INPUT disabled.
- *
- * On Windows, Ctrl+C becomes a CTRL_C_EVENT (instead of stdin input) when
- * ENABLE_PROCESSED_INPUT is set. Various runtimes can re-apply console modes
- * (sometimes on a later tick), and the flag is console-global, not per-process.
- *
- * We combine:
- * - A `setRawMode(...)` hook to re-clear after known raw-mode toggles.
- * - A low-frequency poll as a backstop for native/external mode changes.
- */
 export function win32InstallCtrlCGuard() {
   if (process.platform !== "win32") return
   if (!process.stdin.isTTY) return
@@ -81,14 +85,8 @@ export function win32InstallCtrlCGuard() {
   if (k32!.symbols.GetConsoleMode(handle, ptr(buf)) === 0) return
   const initial = buf[0]!
 
-  const enforce = () => {
-    if (k32!.symbols.GetConsoleMode(handle, ptr(buf)) === 0) return
-    const mode = buf[0]!
-    if ((mode & ENABLE_PROCESSED_INPUT) === 0) return
-    k32!.symbols.SetConsoleMode(handle, mode & ~ENABLE_PROCESSED_INPUT)
-  }
+  const enforce = () => applyWin32ConsoleMode()
 
-  // Some runtimes can re-apply console modes on the next tick; enforce twice.
   const later = () => {
     enforce()
     setImmediate(enforce)
@@ -106,7 +104,6 @@ export function win32InstallCtrlCGuard() {
     stdin.setRawMode = wrapped
   }
 
-  // Ensure it's cleared immediately too (covers any earlier mode changes).
   later()
 
   const interval = setInterval(enforce, 100)
@@ -127,4 +124,14 @@ export function win32InstallCtrlCGuard() {
   }
 
   return unhook
+}
+
+
+/** SGR + cell-motion mouse (drag to select). Complements OpenTUI native enableMouse. */
+export function enableWindowsMouseTracking() {
+  if (process.platform !== "win32") return
+  if (!process.stdout.isTTY) return
+  try {
+    process.stdout.write("\x1b[?1002h\x1b[?1006h")
+  } catch {}
 }

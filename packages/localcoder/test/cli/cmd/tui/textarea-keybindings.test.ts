@@ -3,19 +3,16 @@ import { buildTextareaKeybindings } from "@/cli/cmd/tui/component/textarea-keybi
 import { Keybind } from "@/util/keybind"
 
 describe("buildTextareaKeybindings", () => {
-  test("matches newline return variants before plain return submit", () => {
+  test("does not bind plain return to submit (handled in prompt onKeyDown)", () => {
     const bindings = buildTextareaKeybindings({
       input_newline: Keybind.parse("shift+return,shift+enter,ctrl+return,ctrl+enter,alt+return,ctrl+j"),
       input_submit: Keybind.parse("return"),
     })
 
-    const firstPlainReturn = bindings.findIndex((binding) => binding.name === "return" && binding.action === "submit")
-    const newlineReturns = bindings
-      .map((binding, index) => ({ binding, index }))
-      .filter((item) => item.binding.name === "return" && item.binding.action === "newline")
+    const plainSubmit = bindings.find((binding) => binding.name === "return" && binding.action === "submit")
+    expect(plainSubmit).toBeUndefined()
 
-    expect(firstPlainReturn).toBeGreaterThan(-1)
-    expect(newlineReturns.length).toBeGreaterThan(0)
-    expect(newlineReturns.every((item) => item.index < firstPlainReturn)).toBe(true)
+    const shiftNewline = bindings.find((binding) => binding.name === "return" && binding.shift && binding.action === "newline")
+    expect(shiftNewline).toBeDefined()
   })
 })

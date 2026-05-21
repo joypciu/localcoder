@@ -12,7 +12,7 @@ import { withNetworkOptions, resolveNetworkOptionsNoConfig } from "@/cli/network
 import { Filesystem } from "@/util/filesystem"
 import type { GlobalEvent } from "@localcoder-ai/sdk/v2"
 import type { EventSource } from "./context/sdk"
-import { win32DisableProcessedInput, win32InstallCtrlCGuard } from "./win32"
+import { win32DisableProcessedInput, win32InstallCtrlCGuard, enableWindowsMouseTracking } from "./win32"
 import { writeHeapSnapshot } from "v8"
 import { TuiConfig } from "./config/tui"
 import {
@@ -121,6 +121,21 @@ export const TuiThreadCommand = cmd({
       // Must be the very first thing — disables CTRL_C_EVENT before any Worker
       // spawn or async work so the OS cannot kill the process group.
       win32DisableProcessedInput()
+      enableWindowsMouseTracking()
+
+      if (process.platform === "win32") {
+        const { tryRelaunchInWindowsTerminal, isLegacyWindowsConsole } = await import("@/util/windows-terminal")
+        if (tryRelaunchInWindowsTerminal(process.argv)) {
+          process.stderr.write("Opening LocalCoder in Windows Terminal...\n")
+          return
+        }
+        if (isLegacyWindowsConsole()) {
+          UI.println(
+            UI.Style.TEXT_WARNING_BOLD +
+              "  Tip: use `localcoder ui` for the modern web UI, or run from Windows Terminal (wt.exe).",
+          )
+        }
+      }
 
       if (args.fork && !args.continue && !args.session) {
         UI.error("--fork requires --continue or --session")
