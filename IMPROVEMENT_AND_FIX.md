@@ -1,6 +1,6 @@
 # LocalCoder — Improvements, Fixes & Roadmap
 
-**Updated:** 2026-05-20 · **Release:** v1.14.38  
+**Updated:** 2026-05-21 · **Release:** v1.14.39  
 **VS Code tests:** 84/84 (`cd sdks/vscode && bun run test:all`)  
 **Windows smoke:** built `.exe`, `serve` health, npm `postinstall` launcher
 
@@ -17,6 +17,14 @@
 | CI release | Tag `v1.14.38` | `.github/workflows/release.yml` — Win/Mac CLI + desktop + npm |
 
 ---
+
+## Fixes in v1.14.39
+### Windows double-click (v1.14.39) — root cause fixed
+
+- **Problem:** Double-clicking `localcoder.exe` showed nothing. Bun reports `isTTY: true` even with no visible console; the TUI started invisibly and exited.
+- **Fix:** Early `src/entry.ts` runs before TUI imports. Detect **Explorer** launch via parent process `explorer.exe`, then open a visible `cmd` window with instructions and `--help`.
+- **npm:** `bin/localcoder.cmd` shim; `postinstall` writes the shim on Windows.
+
 
 ## Fixes in v1.14.38 (this release)
 

@@ -39,6 +39,9 @@ if (!hasBinaries) {
 fs.rmSync(outDir, { recursive: true, force: true })
 fs.mkdirSync(path.join(outDir, "bin"), { recursive: true })
 fs.copyFileSync(path.join(root, "bin", "localcoder"), path.join(outDir, "bin", "localcoder"))
+if (fs.existsSync(path.join(root, "bin", "localcoder.cmd"))) {
+  fs.copyFileSync(path.join(root, "bin", "localcoder.cmd"), path.join(outDir, "bin", "localcoder.cmd"))
+}
 fs.copyFileSync(path.join(root, "script", "postinstall.mjs"), path.join(outDir, "postinstall.mjs"))
 const license = path.join(root, "../../LICENSE")
 if (fs.existsSync(license)) fs.copyFileSync(license, path.join(outDir, "LICENSE"))
@@ -64,7 +67,7 @@ const npmPkg = {
   homepage: "https://github.com/joypciu/localcoder",
   bugs: { url: "https://github.com/joypciu/localcoder/issues" },
   keywords: ["ai", "coding", "agent", "cli", "llm", "localcoder"],
-  bin: { localcoder: "./bin/localcoder" },
+  bin: { localcoder: "./bin/localcoder", ...(fs.existsSync(path.join(outDir, "bin", "localcoder.cmd")) ? { "localcoder.cmd": "./bin/localcoder.cmd" } : {}) },
   scripts: { postinstall: "node ./postinstall.mjs" },
   optionalDependencies,
   engines: { node: ">=18" },

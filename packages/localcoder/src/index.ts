@@ -55,20 +55,6 @@ process.on("uncaughtException", (e) => {
 })
 
 const args = hideBin(process.argv)
-
-/** Explorer double-click / shortcut: no attached console — TUI would flash or hang */
-if (args.length === 0 && !process.stdin.isTTY && !process.stderr.isTTY) {
-  process.stderr.write(UI.logo() + EOL + EOL)
-  process.stderr.write("localcoder " + InstallationVersion + EOL + EOL)
-  process.stderr.write(
-    "LocalCoder is a terminal app. Open Command Prompt or PowerShell, then run:" + EOL +
-      "  localcoder --help" + EOL +
-      "  localcoder serve" + EOL +
-      "  localcoder" + EOL,
-  )
-  process.exit(0)
-}
-
 function show(out: string) {
   const text = out.trimStart()
   if (!text.startsWith("localcoder ")) {
