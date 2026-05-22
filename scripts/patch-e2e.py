@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 p = Path(r"P:/localcoder/scripts/e2e-llamacpp.ts")
 p.write_text(r'''#!/usr/bin/env bun
 /**
@@ -12,7 +12,7 @@ import { spawn, type ChildProcess } from "child_process"
 import path from "path"
 import fs from "fs"
 
-const LLAMA_DIR = r"P:\llama cpp\llama-b9222-bin-win-cuda-13.1-x64"
+const LLAMA_DIR = r"P:\llama cpp\llama-b9284-bin-win-cuda-13.1-x64"
 const MODEL_PATH = r"P:\gguf models\Qwen3.6-35B-A3B-Claude-4.7-Opus-Reasoning-Distilled.IQ4_XS.gguf"
 const SERVER_EXE = path.join(LLAMA_DIR, "llama-server.exe")
 const API_URL = process.env.LLAMACPP_API_URL ?? "http://127.0.0.1:8080/v1"

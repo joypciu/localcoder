@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 PKG = Path(r"P:\localcoder\packages\localcoder")
 SCRIPTS = Path(r"P:\localcoder\scripts")
@@ -323,7 +323,7 @@ if "append:" not in pt.split("export type PromptRef")[1][:300]:
 
 # 8. E2E script
 model = r"P:\gguf models\Qwen3.6-35B-A3B-Claude-4.7-Opus-Reasoning-Distilled.IQ4_XS.gguf"
-llama = r"P:\llama cpp\llama-b9222-bin-win-cuda-13.1-x64"
+llama = r"P:\llama cpp\llama-b9284-bin-win-cuda-13.1-x64"
 (SCRIPTS / "e2e-llamacpp.ts").write_text(f'''#!/usr/bin/env bun
 /**
  * E2E: start llama-server with local GGUF, verify OpenAI API, run one LocalCoder session prompt.

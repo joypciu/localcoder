@@ -13,6 +13,8 @@ export type LlamaCppUserConfig = {
 
 const CONFIG_PATH = path.join(os.homedir(), ".localcoder", "llamacpp.json")
 
+export const DEFAULT_WINDOWS_LLAMACPP_DIR = "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"
+
 export function loadUserLlamaConfig(): LlamaCppUserConfig {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
@@ -39,6 +41,31 @@ function existsFile(p: string) {
   }
 }
 
+function findVersionedLlamaDirs(): string[] {
+  if (process.platform !== "win32") return []
+  const serverName = "llama-server.exe"
+  const roots = [
+    path.join("P:", "llama cpp"),
+    path.join("C:", "llama cpp"),
+    path.join("P:", "llama.cpp"),
+    path.join("C:", "llama.cpp"),
+  ]
+  const found: { dir: string; build: number }[] = []
+  for (const root of roots) {
+    if (!existsFile(root)) continue
+    try {
+      for (const name of fs.readdirSync(root)) {
+        const m = /^llama-b(\d+)-/i.exec(name)
+        if (!m) continue
+        const dir = path.join(root, name)
+        if (existsFile(path.join(dir, serverName))) found.push({ dir, build: Number(m[1]) })
+      }
+    } catch {}
+  }
+  found.sort((a, b) => b.build - a.build)
+  return found.map((f) => f.dir)
+}
+
 export function resolveLlamaDir(): string {
   if (process.env.LOCALCODER_LLAMACPP_DIR) return process.env.LOCALCODER_LLAMACPP_DIR
   const saved = loadUserLlamaConfig().llamaDir
@@ -47,6 +74,10 @@ export function resolveLlamaDir(): string {
   }
   const candidates: string[] = []
   if (process.platform === "win32") {
+    candidates.push(...findVersionedLlamaDirs())
+    if (existsFile(path.join(DEFAULT_WINDOWS_LLAMACPP_DIR, "llama-server.exe"))) {
+      candidates.push(DEFAULT_WINDOWS_LLAMACPP_DIR)
+    }
     candidates.push(
       path.join("C:", "llama.cpp"),
       path.join("C:", "llama cpp"),

@@ -1,8 +1,8 @@
-﻿#!/usr/bin/env bun
+#!/usr/bin/env bun
 /** Step-by-step live llama test with visible progress */
 import { spawn, type ChildProcess } from "child_process"
 
-const LLAMA_DIR = "P:\\llama cpp\\llama-b9222-bin-win-cuda-13.1-x64"
+const LLAMA_DIR = "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"
 const EXE = `${LLAMA_DIR}\\llama-server.exe`
 const MODEL =
   process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"

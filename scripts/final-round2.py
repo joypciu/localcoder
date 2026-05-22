@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 PKG = Path(r"P:/localcoder/packages/localcoder")
 
 # fix dialog-llama imports and model set
@@ -20,7 +20,7 @@ s = s.replace(' wrapMode="word"', '')
 # fix e2e paths
 e = (SCRIPTS := Path(r"P:/localcoder/scripts")) / "e2e-llamacpp.ts"
 et = e.read_text(encoding="utf-8")
-et = et.replace('const LLAMA_DIR = "P:\\llama cpp\\llama-b9222-bin-win-cuda-13.1-x64"', 'const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\\\llama cpp\\\\llama-b9222-bin-win-cuda-13.1-x64"')
+et = et.replace('const LLAMA_DIR = "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"', 'const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\\\llama cpp\\\\llama-b9284-bin-win-cuda-13.1-x64"')
 et = et.replace('const MODEL_PATH = "P:\\gguf models\\Qwen3.6-35B-A3B-Claude-4.7-Opus-Reasoning-Distilled.IQ4_XS.gguf"', 'const MODEL_PATH = process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\\\gguf models\\\\Qwen3.6-35B-A3B-Claude-4.7-Opus-Reasoning-Distilled.IQ4_XS.gguf"')
 e.write_text(et, encoding='utf-8')
 

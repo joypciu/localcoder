@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bun
+#!/usr/bin/env bun
 /**
  * E2E: llama-server + OpenAI-compatible API smoke test.
  *
@@ -10,7 +10,7 @@ import { spawn, type ChildProcess } from "child_process"
 import path from "path"
 import fs from "fs"
 
-const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9222-bin-win-cuda-13.1-x64"
+const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"
 const MODEL_PATH = process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"
 const SERVER_EXE = path.join(LLAMA_DIR, "llama-server.exe")
 const API_URL = process.env.LLAMACPP_API_URL ?? "http://127.0.0.1:8080/v1"

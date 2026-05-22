@@ -23,7 +23,7 @@ async function resolveLocalcoderExe(): Promise<string | undefined> {
 
 async function configureLlamaCpp(ctx: vscode.ExtensionContext): Promise<boolean> {
   const defaultDir = process.platform === "win32"
-    ? "P:\\llama cpp\\llama-b9222-bin-win-cuda-13.1-x64"
+    ? "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"
     : path.join(os.homedir(), "llama.cpp");
   const defaultModel = process.platform === "win32"
     ? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"

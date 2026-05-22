@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 ROOT = Path(r"P:/localcoder/packages/localcoder")
 
@@ -14,7 +14,7 @@ def patch(path, old, new):
 llama = ROOT / "src/cli/cmd/tui/llama-server.ts"
 t = llama.read_text(encoding="utf-8")
 old_block = """const DEFAULT_LLAMA_DIR =
-  process.env.LOCALCODER_LLAMACPP_DIR ?? String.raw`P:\\llama cpp\\llama-b9222-bin-win-cuda-13.1-x64`
+  process.env.LOCALCODER_LLAMACPP_DIR ?? String.raw`P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64`
 const DEFAULT_MODEL =
   process.env.LOCALCODER_LLAMACPP_MODEL ??
   String.raw`P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf`"""

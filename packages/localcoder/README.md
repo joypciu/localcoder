@@ -68,7 +68,7 @@ LocalCoder supports local GGUF models via [llama.cpp](https://github.com/ggml-or
 
 1. Install `llama-server` and download a `.gguf` model.
 2. In the TUI, run **`/llama`** → **Start server** (or set paths in `~/.localcoder/llamacpp.json`).
-3. Optional env: `LOCALCODER_LLAMACPP_DIR`, `LOCALCODER_LLAMACPP_MODEL`, `LLAMACPP_CTX` (default 16384).
+3. Optional env: `LOCALCODER_LLAMACPP_DIR`, `LOCALCODER_LLAMACPP_MODEL`, `LLAMACPP_CTX` (default 16384). On Windows, `resolveLlamaDir()` auto-discovers the newest `llama-b*-bin-*` folder under `P:\llama cpp`.
 
 Use **`/context`** in a session to inspect token usage; **`/compact`** to summarize long sessions.
 

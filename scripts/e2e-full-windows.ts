@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bun
+#!/usr/bin/env bun
 /**
  * End-to-end Windows gate: CLI build, llama.cpp setup, serve API, VS Code tests, desktop artifact.
  *
@@ -17,7 +17,7 @@ const EXE = path.join(PKG, "dist", "localcoder-windows-x64", "bin", "localcoder.
 const DESKTOP_EXE = path.join(ROOT, "packages", "desktop", "dist", "win-unpacked", "LocalCoder.exe")
 const DESKTOP_INSTALLER = path.join(ROOT, "packages", "desktop", "dist", "localcoder-desktop-win-x64.exe")
 const VSCODE = path.join(ROOT, "sdks", "vscode")
-const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9222-bin-win-cuda-13.1-x64"
+const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"
 const MODEL_PATH = process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"
 const SKIP_BUILD = process.env.E2E_SKIP_BUILD === "1"
 const SKIP_LLAMA = process.env.E2E_SKIP_LLAMA === "1"

@@ -12,7 +12,7 @@ import path from "path"
 import os from "os"
 
 const ROOT = path.join(import.meta.dir, "..", "packages", "localcoder")
-const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9222-bin-win-cuda-13.1-x64"
+const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"
 const MODEL_PATH =
   process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"
 const SERVER_EXE = path.join(LLAMA_DIR, "llama-server.exe")
