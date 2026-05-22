@@ -639,6 +639,9 @@ export const layer: Layer.Layer<
           })
         }
         ctx.toolcalls = {}
+        if (!ctx.assistantMessage.finish) {
+          ctx.assistantMessage.finish = ctx.assistantMessage.error ? "error" : "stop"
+        }
         ctx.assistantMessage.time.completed = Date.now()
         yield* session.updateMessage(ctx.assistantMessage)
       })

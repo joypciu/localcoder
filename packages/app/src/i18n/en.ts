@@ -979,6 +979,8 @@ export const dict = {
   "dialog.llamacpp.pickLlamaDir": "Select llama.cpp folder",
   "dialog.llamacpp.pickModel": "Select GGUF model",
   "dialog.llamacpp.toast.ready.title": "Local model ready",
+  "dialog.llamacpp.field.thinking": "Thinking mode",
+  "dialog.llamacpp.field.thinking.description": "Qwen3.5 uses enable_thinking in API requests (HF instruct mode). Qwen3.5 does not support /think soft switches. Off = enable_thinking:false; on = thinking before the answer.",
   "dialog.llamacpp.toast.ready.description": "llama.cpp is running with {{model}}",
   "dialog.provider.llamacpp.name": "Local llama.cpp (GGUF)",
   "dialog.provider.llamacpp.note": "Runs fully on your machine — no API key needed",

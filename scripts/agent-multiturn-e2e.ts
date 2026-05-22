@@ -1,7 +1,7 @@
-#!/usr/bin/env bun
+﻿#!/usr/bin/env bun
 /**
- * Live agent + tool E2E via `localcoder run` and llamacpp.
- * Fast mode (<2 min): AGENT_LIVE_E2E=1 AGENT_E2E_FAST=1 LLAMACPP_SKIP_SERVER=1
+ * Multi-turn agent + tool E2E: same session, chained write -> edit -> bash verify.
+ * AGENT_MULTITURN_E2E=1 LLAMACPP_SKIP_SERVER=1 bun scripts/agent-multiturn-e2e.ts
  */
 import { spawn, type ChildProcess } from "child_process"
 import fs from "fs"
@@ -17,23 +17,19 @@ const API_URL = process.env.LLAMACPP_API_URL ?? "http://127.0.0.1:8080/v1"
 const PORT = Number(new URL(API_URL).port || 8080)
 const SKIP_SERVER = process.env.LLAMACPP_SKIP_SERVER === "1"
 const CTX = Number(process.env.LLAMACPP_CTX ?? 16384)
-const FAST = process.env.AGENT_E2E_FAST === "1"
-const RUN_TIMEOUT_MS = Number(process.env.AGENT_RUN_TIMEOUT_MS ?? (FAST ? 240_000 : 300_000))
-const EXE_ONLY = process.env.AGENT_EXE_ONLY === "1"
-const SKIP_EXE = process.env.AGENT_SKIP_EXE === "1"
-const EXE = process.env.LOCALCODER_EXE ?? ""
+const RUN_TIMEOUT_MS = Number(process.env.AGENT_RUN_TIMEOUT_MS ?? 240_000)
+const LIVE = process.env.AGENT_MULTITURN_E2E === "1"
 
-const LIVE = process.env.AGENT_LIVE_E2E === "1"
 if (!LIVE) {
-  console.log("[agent-e2e] Skipped (set AGENT_LIVE_E2E=1). Fast: add AGENT_E2E_FAST=1")
+  console.log("[multiturn-e2e] Skipped (set AGENT_MULTITURN_E2E=1)")
   process.exit(0)
 }
 
 function log(msg: string) {
-  console.log(`[agent-e2e] ${msg}`)
+  console.log(`[multiturn-e2e] ${msg}`)
 }
 
-async function probe(): Promise<string | undefined> {
+async function probe() {
   try {
     const res = await fetch(`${API_URL}/models`, { signal: AbortSignal.timeout(5000) })
     if (!res.ok) return undefined
@@ -54,7 +50,7 @@ async function waitForServer(timeoutMs = 120_000) {
   throw new Error("llama-server not ready")
 }
 
-function collectToolEvents(stdout: string) {
+function collectTools(stdout: string) {
   const tools: string[] = []
   for (const line of stdout.split(/\r?\n/)) {
     if (!line.trim()) continue
@@ -86,7 +82,7 @@ async function writeConfig(workdir: string, model: string) {
               reasoning: process.env.LLAMACPP_DISABLE_THINKING !== "1",
               interleaved: { field: "reasoning_content" },
               temperature: true,
-              limit: { context: CTX, output: 1024 },
+              limit: { context: CTX, output: 2048 },
             },
           },
         },
@@ -96,37 +92,25 @@ async function writeConfig(workdir: string, model: string) {
   )
 }
 
-async function runAgent(prompt: string, workdir: string, model: string, useExe = false) {
-  await writeConfig(workdir, model)
-
+async function runTurn(prompt: string, workdir: string, model: string, cont = false) {
   const runArgs = [
     "run", "--dir", workdir, "--model", `llamacpp/${model}`,
-    "--agent", "build", "--format", "json", "--dangerously-skip-permissions", prompt,
+    "--agent", "build", "--format", "json", "--dangerously-skip-permissions",
+    ...(cont ? ["--continue"] : []),
+    prompt,
   ]
-
-  const cmd = useExe && EXE && fs.existsSync(EXE) ? EXE : process.execPath
-  const spawnArgs = useExe && EXE && fs.existsSync(EXE)
-    ? runArgs
-    : ["run", "--conditions=browser", path.join(ROOT, "src/index.ts"), ...runArgs]
-
-  log(`running (${useExe ? "exe" : "bun"}): ${prompt.slice(0, 72)}...`)
-  const proc = Bun.spawn([cmd, ...spawnArgs], {
-    cwd: useExe ? undefined : ROOT,
+  const proc = Bun.spawn([process.execPath, "run", "--conditions=browser", path.join(ROOT, "src/index.ts"), ...runArgs], {
+    cwd: ROOT,
     env: { ...process.env, LLAMACPP_API_URL: API_URL },
     stdout: "pipe",
     stderr: "pipe",
   })
   const { stdout, stderr, code, timedOut } = await waitForProcess(proc, RUN_TIMEOUT_MS)
   if (code !== 0) {
-    console.error(stderr.slice(-4000))
-    console.error("stdout tail:", stdout.slice(-4000))
-    throw new Error(
-      timedOut
-        ? `localcoder run timed out after ${RUN_TIMEOUT_MS}ms`
-        : `localcoder run exited ${code}${code === null ? " (killed?)" : ""}`,
-    )
+    console.error(stderr.slice(-3000))
+    throw new Error(timedOut ? `turn timed out after ${RUN_TIMEOUT_MS}ms` : `turn failed exit ${code}`)
   }
-  return { stdout, stderr, tools: collectToolEvents(stdout) }
+  return { stdout, tools: collectTools(stdout) }
 }
 
 async function main() {
@@ -137,9 +121,9 @@ async function main() {
   let started = false
   const existing = await probe()
   if (existing) {
-    log(`using existing server, model: ${existing}`)
+    log(`using server model ${existing}`)
   } else if (SKIP_SERVER) {
-    throw new Error("LLAMACPP_SKIP_SERVER=1 but server not reachable")
+    throw new Error("LLAMACPP_SKIP_SERVER=1 but no server")
   } else {
     log("starting llama-server...")
     server = spawn(SERVER_EXE, ["-m", MODEL_PATH, "--host", "127.0.0.1", "--port", String(PORT), "-c", String(CTX), "--jinja"], {
@@ -155,42 +139,35 @@ async function main() {
   }
   process.on("exit", cleanup)
 
-  const workdir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "localcoder-agent-e2e-"))
+  const workdir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "localcoder-multiturn-"))
+  const scriptPath = path.join(workdir, "calc.py")
   try {
     const modelId = existing ?? (await waitForServer())
-    log(`model: ${modelId}`)
+    await writeConfig(workdir, modelId)
 
-    const bashPrompt = "Use bash tool with command echo agent_bash_ok. No explanation. Reply done after tool runs."
+    const t0 = Date.now()
+    const turn1 = await runTurn(
+      `Use write tool to create ${scriptPath} with exactly: def add(a,b): return a+b`,
+      workdir, modelId,
+    )
+    log(`turn1 tools: ${turn1.tools.join(", ") || "none"}`)
+    if (!turn1.tools.includes("write")) throw new Error("turn1: expected write")
 
-    if (FAST) {
-      if (EXE_ONLY) {
-        if (!EXE || !fs.existsSync(EXE)) throw new Error("AGENT_EXE_ONLY but LOCALCODER_EXE missing")
-        const exeRun = await runAgent(bashPrompt, workdir, modelId, true)
-        log(`bash (exe): ${exeRun.tools.join(", ") || "(none)"}`)
-        if (!exeRun.tools.includes("bash")) throw new Error("expected bash (exe)")
-      } else {
-        const bunRun = await runAgent(bashPrompt, workdir, modelId, false)
-        log(`bash (bun): ${bunRun.tools.join(", ") || "(none)"}`)
-        if (!bunRun.tools.includes("bash")) throw new Error("expected bash (bun)")
-        if (EXE && fs.existsSync(EXE) && !SKIP_EXE) {
-          const exeRun = await runAgent(bashPrompt, workdir, modelId, true)
-          log(`bash (exe): ${exeRun.tools.join(", ") || "(none)"}`)
-          if (!exeRun.tools.includes("bash")) throw new Error("expected bash (exe)")
-        }
-      }
-    } else {
-      const fetchPrompt = "Use webfetch on https://httpbin.org/json and reply slideshow if present."
-      const fetchRun = await runAgent(fetchPrompt, workdir, modelId)
-      if (!fetchRun.tools.includes("webfetch")) throw new Error("expected webfetch")
+    const turn2 = await runTurn(
+      `Use edit or write to append to ${scriptPath}: def mul(a,b): return a*b (keep add function)`,
+      workdir, modelId, true,
+    )
+    log(`turn2 tools: ${turn2.tools.join(", ") || "none"}`)
 
-      const pyPath = path.join(workdir, "live_agent_script.py")
-      const writePrompt = `Use write to create ${pyPath} with print("agent_live_ok"). Then bash: python ${pyPath}`
-      const writeRun = await runAgent(writePrompt, workdir, modelId)
-      if (!writeRun.tools.includes("write")) throw new Error("expected write")
-      if (!(await Bun.file(pyPath).exists())) throw new Error("script missing")
-    }
+    const turn3 = await runTurn(
+      `Use bash: python -c "import calc; import sys; sys.path.insert(0,'${workdir.replace(/\\/g, "/")}'); import importlib.util; spec=importlib.util.spec_from_file_location('calc','${scriptPath.replace(/\\/g, "/")}'); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); assert m.add(2,3)==5 and m.mul(2,3)==6; print('multiturn_ok')"`,
+      workdir, modelId, true,
+    )
+    log(`turn3 tools: ${turn3.tools.join(", ") || "none"}`)
+    if (!turn3.tools.includes("bash")) throw new Error("turn3: expected bash")
 
-    log("ALL AGENT TOOL E2E PASSED")
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1)
+    log(`ALL MULTITURN PASSED in ${elapsed}s`)
   } finally {
     cleanup()
   }

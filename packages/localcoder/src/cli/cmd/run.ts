@@ -438,7 +438,8 @@ export const RunCommand = effectCmd({
           return false
         }
 
-        const events = await sdk.event.subscribe()
+        const eventAbort = new AbortController()
+        const events = await sdk.event.subscribe({ signal: eventAbort.signal })
         let error: string | undefined
 
         async function loop() {
@@ -635,7 +636,7 @@ export const RunCommand = effectCmd({
         }
         await share(sdk, sessionID)
 
-        loop().catch((e) => {
+        const loopDone = loop().catch((e) => {
           console.error(e)
           process.exit(1)
         })
@@ -659,6 +660,10 @@ export const RunCommand = effectCmd({
             parts: [...files, { type: "text", text: message }],
           })
         }
+
+        await loopDone
+        if (error) process.exit(1)
+        if (!args.attach) process.exit(0)
       }
 
       if (args.attach) {

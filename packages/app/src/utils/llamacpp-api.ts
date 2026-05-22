@@ -13,6 +13,8 @@ export type LlamaCppPublicStatus = {
   saved: Record<string, unknown>
   discoveredModels: string[]
   serverExe: string
+  thinking?: boolean
+  thinkingSupported?: boolean
 }
 
 export type LlamaCppSetupResult = {
@@ -46,7 +48,7 @@ export async function getLlamaCppStatus(server: ServerConnection.HttpBase) {
 
 export async function setupLlamaCpp(
   server: ServerConnection.HttpBase,
-  body: { llamaDir: string; modelPath: string; autoStart?: boolean; ctx?: number },
+  body: { llamaDir: string; modelPath: string; autoStart?: boolean; ctx?: number; thinking?: boolean },
 ) {
   const res = await fetch(`${server.url}/global/llamacpp/setup`, {
     method: "POST",
@@ -54,4 +56,13 @@ export async function setupLlamaCpp(
     body: JSON.stringify(body),
   })
   return parse<LlamaCppSetupResult>(res)
+}
+
+export async function setLlamaCppThinking(server: ServerConnection.HttpBase, thinking: boolean) {
+  const res = await fetch(`${server.url}/global/llamacpp/thinking`, {
+    method: "POST",
+    headers: headers(server),
+    body: JSON.stringify({ thinking }),
+  })
+  return parse<{ thinking: boolean; modelId?: string; model?: string }>(res)
 }

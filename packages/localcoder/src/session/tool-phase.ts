@@ -12,7 +12,12 @@ export function hasPendingClientTools(msg: MessageV2.WithParts | undefined): boo
 
 function hasUnresolvedToolParts(msg: MessageV2.WithParts | undefined): boolean {
   if (!msg) return false
-  return msg.parts.some((part) => part.type === "tool" && !part.metadata?.providerExecuted)
+  return msg.parts.some(
+    (part) =>
+      part.type === "tool" &&
+      !part.metadata?.providerExecuted &&
+      (part.state.status === "pending" || part.state.status === "running"),
+  )
 }
 
 /** Returns true when the agent loop should run another step (mirror AI SDK auto-continue on tool calls). */
@@ -27,7 +32,10 @@ export function shouldContinueToolLoop(input: {
   if (hasUnresolvedToolParts(lastAssistantMsg)) return true
   if (!lastAssistant.finish) return true
   if (lastAssistant.finish === "tool-calls") return true
-  if (lastAssistant.finish === "unknown") return true
+  if (lastAssistant.finish === "unknown") {
+    if (!hasPendingClientTools(lastAssistantMsg) && !hasUnresolvedToolParts(lastAssistantMsg)) return false
+    return true
+  }
   if (lastUser.id >= lastAssistant.id) return true
   return false
 }

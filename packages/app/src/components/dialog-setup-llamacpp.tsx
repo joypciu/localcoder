@@ -4,6 +4,7 @@ import { Dialog } from "@localcoder-ai/ui/dialog"
 import { IconButton } from "@localcoder-ai/ui/icon-button"
 import { List } from "@localcoder-ai/ui/list"
 import { showToast } from "@localcoder-ai/ui/toast"
+import { Switch } from "@localcoder-ai/ui/switch"
 import { TextField } from "@localcoder-ai/ui/text-field"
 import { useMutation, useQuery } from "@tanstack/solid-query"
 import { createEffect, createMemo, createSignal, Show } from "solid-js"
@@ -11,7 +12,7 @@ import { useGlobalSDK } from "@/context/global-sdk"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useServer } from "@/context/server"
-import { getLlamaCppStatus, setupLlamaCpp } from "@/utils/llamacpp-api"
+import { getLlamaCppStatus, setLlamaCppThinking, setupLlamaCpp } from "@/utils/llamacpp-api"
 import { DialogSelectProvider } from "./dialog-select-provider"
 
 type Props = {
@@ -31,6 +32,7 @@ export function DialogSetupLlamacpp(props: Props) {
   const [llamaDir, setLlamaDir] = createSignal("")
   const [modelPath, setModelPath] = createSignal("")
   const [step, setStep] = createSignal<"paths" | "starting" | "done">("paths")
+  const [thinking, setThinking] = createSignal(false)
 
   const statusQuery = useQuery(() => ({
     queryKey: ["llamacpp-status", http()?.url],
@@ -43,6 +45,12 @@ export function DialogSetupLlamacpp(props: Props) {
     if (!data) return
     if (!llamaDir()) setLlamaDir(data.llamaDir ?? "")
     if (!modelPath()) setModelPath(data.modelPath ?? "")
+    if (data.thinking !== undefined) setThinking(data.thinking)
+  })
+
+  const thinkingSupported = createMemo(() => {
+    const name = modelPath().split(/[/\\]/).pop()?.toLowerCase() ?? ""
+    return /qwopus|qwen3(?:\.5|-)/i.test(name)
   })
 
   const goBack = () => {
@@ -77,6 +85,7 @@ export function DialogSetupLlamacpp(props: Props) {
         llamaDir: llamaDir().trim(),
         modelPath: modelPath().trim(),
         autoStart: true,
+        thinking: thinkingSupported() ? thinking() : undefined,
       })
     },
     onSuccess: async (result) => {
@@ -139,6 +148,27 @@ export function DialogSetupLlamacpp(props: Props) {
           <Button size="small" variant="secondary" onClick={() => void pickModel()}>
             {language.t("dialog.llamacpp.action.browseModel")}
           </Button>
+        </Show>
+
+        <Show when={thinkingSupported()}>
+          <Switch
+            checked={thinking()}
+            onChange={(v) => {
+              setThinking(v)
+              const conn = http()
+              if (conn && statusQuery.data?.running) {
+                void setLlamaCppThinking(conn, v)
+                  .then(() => globalSDK.client.global.dispose().catch(() => undefined))
+                  .catch((err) => {
+                    const message = err instanceof Error ? err.message : String(err)
+                    showToast({ title: language.t("common.requestFailed"), description: message })
+                  })
+              }
+            }}
+          >
+            {language.t("dialog.llamacpp.field.thinking")}
+          </Switch>
+          <p class="text-12-regular text-text-weak -mt-2">{language.t("dialog.llamacpp.field.thinking.description")}</p>
         </Show>
 
         <Show when={discovered().length > 0}>

@@ -42,6 +42,7 @@ export function llamaServerArgs(cfg: LlamaServerConfig): string[] {
     String(cfg.ctx),
     "--jinja",
   ]
+  // Qwen3.5 thinking via chat_template_args per request.
   if (LlamaSetup.modelUsesMtp(cfg.modelPath)) {
     args.push("--spec-type", "draft-mtp", "--spec-draft-n-max", process.env.LLAMACPP_MTP_DRAFT ?? "2")
   }

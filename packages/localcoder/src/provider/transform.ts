@@ -899,7 +899,9 @@ export function options(input: {
   if (input.model.providerID === "llamacpp" && input.model.api.npm === "@ai-sdk/openai-compatible") {
     const id = input.model.api.id.toLowerCase()
     if (id.includes("qwen") || id.includes("qwopus")) {
-      result["chat_template_args"] = { enable_thinking: false }
+      // llama.cpp b9222 returns empty content when enable_thinking=false (text in reasoning_content only).
+      // Keep API thinking enabled so tool calls and replies use content; UI toggle uses capabilities.reasoning.
+      result["chat_template_args"] = { enable_thinking: true }
     }
   }
 

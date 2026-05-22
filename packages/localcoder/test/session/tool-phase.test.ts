@@ -45,6 +45,25 @@ describe("session/tool-phase", () => {
     })).toBe(false)
   })
 
+  test("shouldContinueToolLoop exits when assistant finished with completed tool parts", () => {
+    expect(shouldContinueToolLoop({
+      lastUser: { id: userID, sessionID, role: "user", time: { created: 1 }, agent: "build", model: { providerID, modelID } } as MessageV2.User,
+      lastAssistant: { id: assistantID, sessionID, role: "assistant", time: { created: 2, completed: 3 }, agent: "build", modelID, providerID, mode: "build", finish: "stop", path: { cwd: "/", root: "/" } } as MessageV2.Assistant,
+      lastAssistantMsg: {
+        info: {} as MessageV2.Assistant,
+        parts: [{
+          id: PartID.make("p1"),
+          messageID: assistantID,
+          sessionID,
+          type: "tool",
+          tool: "bash",
+          callID: "c1",
+          state: { status: "completed", input: {}, output: "ok", time: { start: 1, end: 2 } },
+        }],
+      },
+    })).toBe(false)
+  })
+
   test("shouldContinueToolLoop continues on tool-calls finish", () => {
     expect(shouldContinueToolLoop({
       lastUser: { id: userID, sessionID, role: "user", time: { created: 1 }, agent: "build", model: { providerID, modelID } } as MessageV2.User,

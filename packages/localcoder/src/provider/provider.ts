@@ -13,6 +13,7 @@ import { Auth } from "../auth"
 import { Env } from "../env"
 import { InstallationVersion } from "@localcoder-ai/core/installation/version"
 import { Flag } from "@localcoder-ai/core/flag/flag"
+import * as LlamaSetup from "@/llamacpp/setup"
 import { zod } from "@/util/effect-zod"
 import { namedSchemaError } from "@/util/named-schema-error"
 import { iife } from "@/util/iife"
@@ -221,22 +222,32 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
             const data = (await res.json()) as { data?: Array<{ id: string }> }
             const models: Record<string, Model> = {}
             for (const m of data.data ?? []) {
+              const idLower = m.id.toLowerCase()
+              const thinking = LlamaSetup.resolveThinkingEnabled(m.id)
               models[m.id] = {
-                id: m.id,
+                id: ModelID.make(m.id),
                 name: m.id,
-                providerID: "llamacpp",
+                providerID: ProviderID.make("llamacpp"),
+                status: "active",
+                family: "",
+                headers: {},
+                options: {},
+                variants: {},
                 api: { npm: "@ai-sdk/openai-compatible", id: m.id, url: apiUrl },
                 limit: {
                   context: Number(process.env.LLAMACPP_CTX ?? 16384),
                   output: Number(process.env.LLAMACPP_MAX_OUTPUT ?? 4096),
                 },
-                capability: {
-                  reasoning: false,
+                capabilities: {
+                  reasoning: thinking,
                   temperature: true,
-                  tool_call: true,
-                  modalities: ["text"],
+                  toolcall: true,
+                  attachment: false,
+                  input: { text: true, audio: false, image: false, video: false, pdf: false },
+                  output: { text: true, audio: false, image: false, video: false, pdf: false },
+                  interleaved: /qwen|qwopus/i.test(idLower) ? { field: "reasoning_content" } : false,
                 },
-                cost: { input: 0, output: 0 },
+                cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
               }
             }
             return models

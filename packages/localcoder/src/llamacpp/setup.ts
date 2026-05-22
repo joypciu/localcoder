@@ -8,6 +8,7 @@ export type LlamaCppUserConfig = {
   ctx?: number
   mtp?: boolean
   autoStart?: boolean
+  thinking?: boolean
 }
 
 const CONFIG_PATH = path.join(os.homedir(), ".localcoder", "llamacpp.json")
@@ -108,6 +109,26 @@ export function resolveModelPath(): string | undefined {
   return findGgufFiles(1)[0]
 }
 
+export function modelSupportsThinkingToggle(modelRef: string) {
+  const base = path.basename(modelRef).toLowerCase()
+  return /qwopus|qwen3(?:\.5|-)/i.test(base)
+}
+
+export function resolveThinkingEnabled(modelRef: string) {
+  if (process.env.LLAMACPP_ENABLE_THINKING === "1") return true
+  if (process.env.LLAMACPP_DISABLE_THINKING === "1") return false
+  if (process.env.LLAMACPP_DISABLE_THINKING === "0") return true
+  const saved = loadUserLlamaConfig()
+  if (saved.thinking !== undefined) return saved.thinking
+  const base = path.basename(modelRef).toLowerCase()
+  if (modelSupportsThinkingToggle(base)) return true
+  return true
+}
+
+export function modelDisablesThinking(modelPath: string) {
+  return !resolveThinkingEnabled(modelPath)
+}
+
 export function modelUsesMtp(modelPath: string) {
   if (process.env.LLAMACPP_MTP === "0") return false
   if (process.env.LLAMACPP_MTP === "1") return true
@@ -124,6 +145,8 @@ export function setupHint(): string {
     "  Env: LOCALCODER_LLAMACPP_DIR, LOCALCODER_LLAMACPP_MODEL",
     "  Env: LLAMACPP_CTX (default 16384), LLAMACPP_MAX_OUTPUT (default 4096)",
     "  Env: LLAMACPP_MTP=1 or 0 to force MTP draft mode",
+    "  Qwen3.5/Qwopus thinking: set thinking in llamacpp.json or use the app toggle",
+    "  Env: LLAMACPP_ENABLE_THINKING=1 / LLAMACPP_DISABLE_THINKING=1 to override",
   ].join("\n")
 }
 

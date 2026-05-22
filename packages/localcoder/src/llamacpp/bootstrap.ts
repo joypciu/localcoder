@@ -12,6 +12,7 @@ export type LlamaCppSetupInput = {
   modelPath: string
   autoStart?: boolean
   ctx?: number
+  thinking?: boolean
 }
 
 export type LlamaCppSetupResult = {
@@ -23,8 +24,9 @@ export type LlamaCppSetupResult = {
   logPath?: string
 }
 
-function providerPatch(modelId: string, apiUrl: string, ctx: number): Partial<Info> {
+function providerPatch(modelId: string, modelPath: string, apiUrl: string, ctx: number): Partial<Info> {
   const output = Number(process.env.LLAMACPP_MAX_OUTPUT ?? 4096)
+  const thinking = Setup.resolveThinkingEnabled(modelPath)
   return {
     model: Server.modelRef(modelId),
     provider: {
@@ -38,6 +40,12 @@ function providerPatch(modelId: string, apiUrl: string, ctx: number): Partial<In
         models: {
           [modelId]: {
             name: modelId,
+            tool_call: true,
+            reasoning: thinking,
+            ...(Setup.modelSupportsThinkingToggle(modelPath)
+              ? { interleaved: { field: "reasoning_content" as const } }
+              : {}),
+            temperature: true,
             limit: { context: ctx, output },
           },
         },
@@ -50,39 +58,27 @@ export async function getPublicStatus() {
   const cfg = Server.getConfig()
   const status = await Server.status()
   const saved = Setup.loadUserLlamaConfig()
+  const modelRef = cfg.modelPath || saved.modelPath || ""
   return {
     ...status,
     llamaDir: cfg.llamaDir,
     modelPath: cfg.modelPath,
     ctx: cfg.ctx,
+    thinking: modelRef ? Setup.resolveThinkingEnabled(modelRef) : undefined,
+    thinkingSupported: modelRef ? Setup.modelSupportsThinkingToggle(modelRef) : false,
     saved,
     discoveredModels: Setup.findGgufFiles(24),
     serverExe: cfg.serverExe,
   }
 }
 
-export async function configure(input: LlamaCppSetupInput): Promise<LlamaCppSetupResult> {
-  Setup.validateSetup(input)
-  const cfg = Server.getConfig()
-  const ctx = input.ctx ?? Setup.loadUserLlamaConfig().ctx ?? Server.getLlamaContextLimit()
-  const mtp = Setup.modelUsesMtp(input.modelPath)
-
-  Setup.saveUserLlamaConfig({
-    llamaDir: input.llamaDir,
-    modelPath: input.modelPath,
-    autoStart: input.autoStart ?? true,
-    ctx,
-    mtp,
-  })
-
-  process.env.LLAMACPP_API_URL = cfg.apiUrl
-
-  const modelId = path.basename(input.modelPath)
+async function applyProvider(modelPath: string, apiUrl: string, ctx: number) {
+  const modelId = path.basename(modelPath)
   await AppRuntime.runPromise(
     Config.Service.use((svc) =>
       Effect.gen(function* () {
         const current = yield* svc.getGlobal()
-        const patch = providerPatch(modelId, cfg.apiUrl, ctx)
+        const patch = providerPatch(modelId, modelPath, apiUrl, ctx)
         const merged = mergeDeep(current, patch) as Info
         const result = yield* svc.updateGlobal(merged)
         if (result.changed) {
@@ -91,6 +87,44 @@ export async function configure(input: LlamaCppSetupInput): Promise<LlamaCppSetu
       }),
     ),
   )
+  return modelId
+}
+
+export async function setThinking(thinking: boolean) {
+  const saved = Setup.loadUserLlamaConfig()
+  const modelPath = saved.modelPath ?? Server.getConfig().modelPath
+  if (!modelPath) throw new Error("No GGUF model configured")
+  Setup.saveUserLlamaConfig({ ...saved, thinking })
+  const cfg = Server.getConfig()
+  const ctx = saved.ctx ?? cfg.ctx
+  const modelId = await applyProvider(modelPath, cfg.apiUrl, ctx)
+  return { thinking, modelId, model: Server.modelRef(modelId) }
+}
+
+export async function configure(input: LlamaCppSetupInput): Promise<LlamaCppSetupResult> {
+  Setup.validateSetup(input)
+  const cfg = Server.getConfig()
+  const ctx = input.ctx ?? Setup.loadUserLlamaConfig().ctx ?? Server.getLlamaContextLimit()
+  const mtp = Setup.modelUsesMtp(input.modelPath)
+  const prev = Setup.loadUserLlamaConfig()
+  const thinking =
+    input.thinking ??
+    (Setup.modelSupportsThinkingToggle(input.modelPath)
+      ? prev.thinking ?? Setup.resolveThinkingEnabled(input.modelPath)
+      : prev.thinking)
+
+  Setup.saveUserLlamaConfig({
+    llamaDir: input.llamaDir,
+    modelPath: input.modelPath,
+    autoStart: input.autoStart ?? true,
+    ctx,
+    mtp,
+    thinking,
+  })
+
+  process.env.LLAMACPP_API_URL = cfg.apiUrl
+
+  const modelId = await applyProvider(input.modelPath, cfg.apiUrl, ctx)
 
   if (input.autoStart === false) {
     return { model: Server.modelRef(modelId), running: false, apiUrl: cfg.apiUrl }

@@ -10,6 +10,7 @@ const SetupBody = z.object({
   modelPath: z.string().min(1),
   autoStart: z.boolean().optional(),
   ctx: z.number().int().positive().optional(),
+  thinking: z.boolean().optional(),
 })
 
 export const LlamaCppRoutes = lazy(() =>
@@ -73,6 +74,30 @@ export const LlamaCppRoutes = lazy(() =>
             model: Server.modelRef(started.modelId),
             logPath: Server.getLogPath(),
           })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          return c.json({ error: message }, 400)
+        }
+      },
+    )
+    .post(
+      "/thinking",
+      describeRoute({
+        summary: "Toggle Qwen3.5 thinking mode",
+        operationId: "llamacpp.thinking",
+        responses: {
+          200: {
+            description: "Thinking toggle result",
+            content: { "application/json": { schema: resolver(z.any()) } },
+          },
+        },
+      }),
+      validator("json", z.object({ thinking: z.boolean() })),
+      async (c) => {
+        try {
+          const { thinking } = c.req.valid("json")
+          const result = await Bootstrap.setThinking(thinking)
+          return c.json(result)
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
           return c.json({ error: message }, 400)

@@ -218,7 +218,7 @@ export const layer = Layer.effect(
           Effect.orDie,
         )
       const cleaned = text
-        .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
+        .replace(/<think>[\s\S]*?<\/redacted_thinking>\s*/g, "")
         .split("\n")
         .map((line) => line.trim())
         .find((line) => line.length > 0)
@@ -1603,6 +1603,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 yield* sessions.updateMessage(handle.message)
                 return "break" as const
               }
+              return "break" as const
             }
 
             if (result === "stop") return "break" as const
