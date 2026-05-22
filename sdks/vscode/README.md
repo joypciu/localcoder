@@ -1,27 +1,28 @@
 # LocalCoder VS Code Extension
 
-AI coding agent in VS Code — sidebar chat, live tool streaming, file edits with undo, and terminal TUI.
+AI coding agent in VS Code — sidebar chat, live tool streaming, file edits with undo, terminal TUI bridge.
 
-**Test status:** 84/84 passing (`bun run test`)
+**Tests:** 84/84 passing (`bun run test`)
 
 ## Features
 
-- **Activity Bar** — LocalCoder icon opens the sidebar chat (like Copilot / Claude Code)
-- **Live streaming** — tokens and tool calls update in real time via SSE
+- **Activity Bar** — LocalCoder icon opens sidebar chat
+- **Live streaming** — tokens and tools via SSE
 - **Tool cards** — Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Agent
-- **Undo** — revert all agent file changes per turn, or per-file ↩ on the changes bar
-- **@ mentions** — type `@` for workspace file autocomplete; contents sent as context
-- **Build / Plan** — agent mode selector in the chat header
-- **Multi-backend** — LocalCoder local agent (default) or any OpenAI-compatible API
-- **First-run wizard** — Gemini, Groq, Ollama, or custom endpoint
-- **Sessions** — history dropdown, persisted by the LocalCoder server
-- **Terminal TUI** — full TUI via `Ctrl+Esc` with filepath bridge
+- **Undo** — revert all per turn, or per-file on the changes bar
+- **@ mentions** — workspace file autocomplete
+- **Build / Plan** — agent mode selector
+- **Multi-backend** — LocalCoder agent or OpenAI-compatible API
+- **llama.cpp** — `LocalCoder: Set up llama.cpp` command + first-run wizard option
+- **Terminal TUI** — `Ctrl+Esc` with filepath bridge
+
+Desktop app has matching click-to-undo for file tools (see `packages/desktop/README.md`).
 
 ## Keyboard shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| `Ctrl+Shift+L` | Open chat panel (floating tab) |
+| `Ctrl+Shift+L` | Open chat panel |
 | `Ctrl+Shift+U` | Undo last agent file changes |
 | `Ctrl+Shift+A` | Add selection to chat |
 | `Ctrl+Esc` | Open LocalCoder terminal |
@@ -30,73 +31,46 @@ AI coding agent in VS Code — sidebar chat, live tool streaming, file edits wit
 
 ## Quick start
 
-1. Clone [localcoder](https://github.com/joypciu/localcoder) and open the repo in VS Code
+1. Clone [localcoder](https://github.com/joypciu/localcoder)
 2. `cd sdks/vscode && bun install`
-3. Press **F5** (Extension Development Host)
-4. Build CLI on Windows: cd packages/localcoder && bun run build:win (extension finds dist/localcoder-windows-x64/bin/localcoder.exe)
-5. Open a workspace folder → click **LocalCoder** in the Activity Bar
+3. From repo root: `bun run install:cli` (or `bun run build:win` in `packages/localcoder`)
+4. Press **F5** in VS Code
+5. Open a workspace → click **LocalCoder** in the Activity Bar
 
 ### Settings (`localcoder.*`)
 
 | Setting | Description |
 |---------|-------------|
-| `packagePath` | Path to `packages/localcoder` (auto-detected in monorepo) |
-| `bunPath` | Path to `bun` executable |
-| `defaultAgent` | `build` (full tools) or `plan` |
+| `packagePath` | Path to `packages/localcoder` |
+| `bunPath` | Path to `bun` |
+| `defaultAgent` | `build` or `plan` |
 | `openDiffOnEdit` | Open editor after agent edits |
-
-## Architecture
-
-```
-sdks/vscode/
-├── src/
-│   ├── extension.ts          Commands, wizard, terminal bridge
-│   ├── chat-panel.ts         Webview bridge, undo snapshots, @files
-│   └── backends/
-│       ├── localcoder.ts     Spawn server, SSE, agent API
-│       ├── sse-events.ts     Pure SSE event parser (testable)
-│       ├── openai.ts         OpenAI-compatible streaming
-│       └── types.ts
-├── media/chat.html           Self-contained webview (CSP-hardened)
-└── src/test/suite/           84 tests (10 suites)
-```
 
 ## Development
 
 ```bash
 cd sdks/vscode
 bun install
-bun run compile        # typecheck + lint + bundle
-bun run test:unit      # mocha (fast, no Electron)
-bun run test           # full suite including VS Code host
+bun run compile
+bun run test:unit
+bun run test
 ```
 
-From repo root:
-
-```bash
-bun run scripts/vscode-extension-e2e.ts
-```
+From repo root: `bun run scripts/vscode-extension-e2e.ts`
 
 ## Publishing
 
 ```bash
-npx vsce package   # .vsix for local install
-npx vsce publish   # VS Marketplace (after publisher login)
+npx vsce package
+npx vsce publish
 ```
 
 ## Roadmap
 
-See [FUTURE_IMPROVEMENTS.md](./FUTURE_IMPROVEMENTS.md) and [IMPROVEMENT_AND_FIX.md](../../IMPROVEMENT_AND_FIX.md).
+[FUTURE_IMPROVEMENTS.md](./FUTURE_IMPROVEMENTS.md) · [IMPROVEMENT_AND_FIX.md](../../IMPROVEMENT_AND_FIX.md)
 
 ## Requirements
 
 - VS Code 1.94+
-- Bun (LocalCoder backend)
-- Monorepo `packages/localcoder` or configured `localcoder.packagePath`
-
-
-## Chat history
-
-- **Sessions** — header button lists server sessions (LocalCoder backend) or saved OpenAI chats.
-- **Resume** — last active session per workspace restores when you reopen the panel.
-- **Prompt reuse** — `↑` / `↓` in the input recalls previous prompts (webview state).
+- Bun (LocalCoder backend) or built `localcoder.exe`
+- `localcoder.packagePath` when not in monorepo layout

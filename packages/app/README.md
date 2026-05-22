@@ -1,36 +1,35 @@
-# localcoder app
+# LocalCoder App
 
-The web UI for localcoder — a SolidJS single-page application that serves as the browser-based front-end for the localcoder agent.
+SolidJS web UI for LocalCoder — used in the browser and embedded in the Electron desktop app.
 
 ## Development
 
-Requires a running localcoder server (default `localhost:4096`).
+Requires a running LocalCoder server (default `localhost:4096`).
 
 ```bash
-# From the monorepo root
-bun run --cwd packages/app dev       # Vite dev server on http://localhost:3000
-bun run --cwd packages/app build     # Production build → dist/
+bun run --cwd packages/app dev       # Vite dev server
+bun run --cwd packages/app build     # production build
 ```
 
-## E2E Testing
+For desktop-embedded UI, use `bun run dev:desktop` from the repo root.
 
-Playwright starts the Vite dev server automatically and connects to a localcoder backend.
+## Features (desktop)
+
+- Cursor-style default theme, flat IDE layout
+- Session chat with tool diffs and **click-to-undo** for file changes
+- llama.cpp setup wizard, provider selection
+- File review side panel
+
+## E2E testing
 
 ```bash
 bunx playwright install chromium
 bun run --cwd packages/app test:e2e:local
-bun run --cwd packages/app test:e2e:local -- --grep "settings"
 ```
 
-Environment options:
-
 | Variable | Default | Description |
-|---|---|---|
-| `PLAYWRIGHT_SERVER_HOST` | `localhost` | localcoder backend host |
-| `PLAYWRIGHT_SERVER_PORT` | `4096` | localcoder backend port |
-| `PLAYWRIGHT_PORT` | `3000` | Vite dev server port |
-| `PLAYWRIGHT_BASE_URL` | auto | Override the full base URL |
+|----------|---------|-------------|
+| `PLAYWRIGHT_SERVER_HOST` | `localhost` | Backend host |
+| `PLAYWRIGHT_SERVER_PORT` | `4096` | Backend port |
 
-## Deployment
-
-Build produces a static `dist/` folder deployable to any static host (Netlify, Vercel, S3, Cloudflare Pages, etc.).
+Build output: static `dist/` for any static host or Electron renderer bundle.

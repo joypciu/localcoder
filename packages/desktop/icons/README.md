@@ -1,12 +1,8 @@
-﻿# Desktop icons
+# Desktop icons
 
-Icons are copied from `sdks/vscode/images/icon.png` by `bun run ensure-icons` (also runs during `prebuild`).
+Production icons for Electron builds.
 
-electron-builder uses `resources/icons/icon.png` and converts to platform formats at package time.
+- Source: `prod/icon.png` (512×512 recommended)
+- Generated: `resources/icons/icon.ico` (Windows), `icon.png` (macOS/Linux)
 
-To refresh after changing the VS Code icon:
-
-```bash
-cd packages/desktop
-bun run ensure-icons
-```
+Regenerate before release if the LC monogram / favicon v3 branding changes.

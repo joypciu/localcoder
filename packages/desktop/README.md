@@ -2,19 +2,28 @@
 
 **Standalone Windows GUI** — one portable `.exe`, no Bun/CLI/terminal required at runtime.
 
-Embeds Electron + SolidJS web UI + LocalCoder server (in-process). Users download a single file and double-click.
+Embeds Electron + SolidJS UI + LocalCoder server (in-process). Double-click to run.
 
-## End users (download only)
+## End users
 
-Get **`LocalCoder-x.y.z-portable.exe`** from [GitHub Releases](https://github.com/joypciu/localcoder/releases).
+Download **`LocalCoder-*-portable.exe`** from [GitHub Releases](https://github.com/joypciu/localcoder/releases).
 
 1. Download the portable exe
-2. Double-click — the app opens (no install, no dependencies)
-3. Use the in-app setup wizard (cloud API or local llama.cpp folder + GGUF)
+2. Double-click — no install, no dependencies
+3. Set up cloud API or local llama.cpp (folder + GGUF) in the wizard
 
-User data is stored under `%APPDATA%\ai.localcoder.desktop\`.
+User data: `%APPDATA%\ai.localcoder.desktop\`
 
-## Build standalone portable exe (developers)
+### UI highlights (v1.14.43+)
+
+- Cursor-style default theme, flat IDE layout
+- **Undo change** on each Write/Edit/Patch tool
+- **Undo all changes** on turn diff summaries
+- llama.cpp setup dialog with model discovery
+
+---
+
+## Build portable exe (developers)
 
 From repo root:
 
@@ -26,22 +35,23 @@ bun run build:win-standalone
 
 Output: `packages\desktop\dist\LocalCoder-<version>-portable.exe`
 
-**Fast iteration** (skip portable compression — ~1–2 min, good for dev):
+### Fast iteration
 
 ```powershell
 $env:LOCALCODER_FAST_PACK = "1"
 bun run build:win-standalone
-# Double-click: packages\desktop\dist\win-unpacked\LocalCoder.exe
+# Run: packages\desktop\dist\win-unpacked\LocalCoder.exe
 ```
 
-The full portable build compresses into one exe (~4–5 min). Packaging writes to `.pack-tmp` first, then moves into `dist`, so antivirus locks on an old portable exe should not hang the build.
+Full portable build ~2–4 min. Packaging uses `.pack-tmp` first to avoid antivirus locks on the output exe.
 
-This bundles everything needed at runtime. It does **not** include llama.cpp or GGUF models (too large) — users pick those in the setup wizard if they want local inference.
+Does **not** bundle llama.cpp or GGUF models — users select paths in the setup wizard.
+
+---
 
 ## Development
 
 ```bash
-bun install
 bun run --cwd packages/desktop dev
 ```
 
@@ -51,7 +61,7 @@ bun run --cwd packages/desktop dev
 cd packages/desktop
 bun run prebuild && bun run build
 $env:LOCALCODER_CHANNEL = "prod"
-bun run package:win-portable   # portable exe only
+bun run package:win-portable   # portable only
 bun run package:win            # portable + NSIS installer
 ```
 

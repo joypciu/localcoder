@@ -1,10 +1,10 @@
-# localcoder enterprise
+# LocalCoder Enterprise
 
-The enterprise web application for localcoder, built with [SolidStart](https://start.solidjs.com).
+Enterprise web application (SolidStart). Separate from the open-source CLI/desktop product.
 
 ## Development
 
 ```bash
-bun run --cwd packages/enterprise dev      # dev server
-bun run --cwd packages/enterprise build    # production build
+bun run --cwd packages/enterprise dev
+bun run --cwd packages/enterprise build
 ```

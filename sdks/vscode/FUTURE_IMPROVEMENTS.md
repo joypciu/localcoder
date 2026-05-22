@@ -1,11 +1,16 @@
 ﻿# LocalCoder VS Code Extension — Changelog & Roadmap
 
-**Last updated:** 2026-05-20  
+**Last updated:** 2026-05-22  
 **Test status:** **84/84 passing** (`bun run test` — unit + live HTTP + VS Code host integration)
 
 ---
 
 ## Completed
+
+
+### Desktop UI parity (2026-05-22)
+- Desktop app now has **Undo change** per file tool and **Undo all changes** per turn (same revert API as VS Code/TUI)
+- Cursor-style default theme in desktop; portable build via `bun run build:win-standalone`
 
 ### Install-path fixes (v1.14.38)
 - **LocalcoderBackend** resolves built `localcoder.exe`, PATH, then Bun fallback

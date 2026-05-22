@@ -1,27 +1,21 @@
-# @localcoder-ai/slack
+# LocalCoder Slack Bot
 
-Slack bot integration for localcoder that creates threaded conversations.
+Slack integration that creates threaded LocalCoder sessions.
 
 ## Setup
 
 1. Create a Slack app at https://api.slack.com/apps
 2. Enable Socket Mode
-3. Add the following OAuth scopes:
-   - `chat:write`
-   - `app_mentions:read`
-   - `channels:history`
-   - `groups:history`
-4. Install the app to your workspace
-5. Set environment variables in `.env`:
-   - `SLACK_BOT_TOKEN` - Bot User OAuth Token
-   - `SLACK_SIGNING_SECRET` - Signing Secret from Basic Information
-   - `SLACK_APP_TOKEN` - App-Level Token from Basic Information
+3. OAuth scopes: `chat:write`, `app_mentions:read`, `channels:history`, `groups:history`
+4. Set in `.env`:
+   - `SLACK_BOT_TOKEN`
+   - `SLACK_SIGNING_SECRET`
+   - `SLACK_APP_TOKEN`
 
-## Usage
+## Run
 
 ```bash
-# Edit .env with your Slack app credentials
-bun dev
+bun run --cwd packages/slack dev
 ```
 
-The bot will respond to messages in channels where it's added, creating separate localcoder sessions for each thread.
+Each Slack thread gets its own LocalCoder session.

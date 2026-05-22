@@ -1,34 +1,36 @@
 # LocalCoder
 
-**The open source AI coding agent.**
-Runs in your terminal, edits your code, uses your tools.
+**The open source AI coding agent.**  
+Runs in your terminal, edits your code, uses your tools — with an optional desktop app and VS Code extension.
 
 ---
 
-## Release v1.14.38
+## Release v1.14.43
 
-This release focuses on **real-world Windows and VS Code installs** (not only monorepo dev tests).
+Recent highlights:
 
-- **npm:** `postinstall` links the Windows binary; `localcoder --version` works after `npm install -g localcoder`
-- **GUI:** double-clicking `localcoder.exe` opens the desktop app (or browser UI); use `build:win-gui` to build it
-- **VS Code:** extension starts `localcoder serve` from the built `.exe` or PATH
-- **Desktop:** Electron build externalizes OAuth deps (CI can produce Win/Mac installers)
+- **Desktop UI** — Cursor-style theme (default), flat IDE chrome, Inter typography, click-to-undo for LLM file changes (per tool and per turn)
+- **Portable Windows app** — single `LocalCoder-*-portable.exe`; `bun run build:win-standalone` (~2–4 min)
+- **llama.cpp** — in-app setup wizard, auto-discover b9284 bins, Qwopus/Qwen3.5 agent fixes (16k ctx, tool-loop exit)
+- **Global CLI** — `npm install -g localcoder` or `bun run install:cli` from source; Windows embeds the native binary
+- **VS Code** — sidebar chat, live tool streaming, undo per turn / per file
 
-Tag **`v1.14.38`** triggers [GitHub Actions](.github/workflows/release.yml) for Windows/macOS CLI and desktop artifacts.
+Tag **`v*`** triggers [GitHub Actions](.github/workflows/release.yml) for Windows/macOS CLI, desktop installers, and npm.
 
-Details: [IMPROVEMENT_AND_FIX.md](IMPROVEMENT_AND_FIX.md)
+Details: [IMPROVEMENT_AND_FIX.md](IMPROVEMENT_AND_FIX.md) · Install: [INSTALL.md](INSTALL.md)
 
+---
 
 ## What is LocalCoder?
 
-LocalCoder is a terminal-first AI coding agent that works directly inside your development environment. It reads your files, runs commands, edits code, and manages sessions — all through a clean TUI and an optional VS Code chat panel.
+LocalCoder is an AI coding agent that runs on your machine. It reads files, runs commands, edits code, and manages sessions through a terminal TUI, a desktop app, or a VS Code panel.
 
-Key characteristics:
-
-- **Local-first** — runs on your machine, no data leaves unless you use a cloud model
-- **Provider-agnostic** — works with Anthropic, OpenAI, Google, Bedrock, Azure, Groq, local models via llama.cpp/Ollama, and many others
-- **Full tool access** — reads, writes, edits files; runs shell commands; searches; fetches web pages; delegates to sub-agents
-- **Open source** — MIT licensed, no telemetry, no paywalled features
+| Trait | Detail |
+|-------|--------|
+| **Local-first** | Runs on your machine; data stays local unless you use a cloud model |
+| **Provider-agnostic** | Anthropic, OpenAI, Google, Bedrock, Groq, Ollama, llama.cpp, and more |
+| **Full tool access** | Read, write, edit, bash, search, web, sub-agents |
+| **Open source** | MIT licensed |
 
 ---
 
@@ -41,123 +43,132 @@ npm install -g localcoder
 localcoder --version
 ```
 
-See [INSTALL.md](INSTALL.md) for platform binaries and desktop installers.
+See [INSTALL.md](INSTALL.md) for platform binaries, desktop installers, and troubleshooting.
 
-### From source
+### From source (monorepo)
 
 ```bash
 git clone https://github.com/joypciu/localcoder.git
 cd localcoder
 bun install
-bun run build
+bun run install:cli          # build Windows CLI + global install (on Windows)
+# or
+bun run --cwd packages/localcoder dev
 ```
 
-### CLI
+---
 
-```bash
-# After building from source
-bun run --cwd packages/localcoder start
-```
+## Surfaces
+
+| Surface | Best for |
+|---------|----------|
+| **CLI / TUI** | Terminal-first workflow, remote server, scripting |
+| **Desktop** | Rich UI, llama.cpp wizard, no terminal required |
+| **VS Code** | In-editor chat, diff view, selection context |
+| **Web UI** | Browser client when `localcoder serve` is running |
 
 ---
 
 ## Desktop app (Electron)
 
-Graphical app with the embedded web UI — same sessions and tools as the CLI.
+Graphical app with the same agent as the CLI.
 
-- **Windows:** NSIS installer (`.exe`) from [Releases](https://github.com/joypciu/localcoder/releases)
-- **macOS:** `.dmg` — open and drag LocalCoder to Applications
+| Artifact | Path / source |
+|----------|-----------------|
+| **Portable exe** | `packages/desktop/dist/LocalCoder-*-portable.exe` after `bun run build:win-standalone` |
+| **Releases** | [GitHub Releases](https://github.com/joypciu/localcoder/releases) |
 
-```bash
-bun run dev:desktop          # dev mode
-cd packages/desktop && bun run package:win   # Windows installer (on Windows)
+```powershell
+# Build portable (from repo root)
+bun run build:win-standalone
+
+# Fast dev pack (unpacked exe only, ~1 min)
+$env:LOCALCODER_FAST_PACK = "1"
+bun run build:win-standalone
 ```
 
-See `packages/desktop/README.md`.
+Features: Cursor-style default theme, session chat, file review panel, **Undo change** on each file tool, **Undo all changes** on turn summaries, llama.cpp setup wizard.
+
+See [packages/desktop/README.md](packages/desktop/README.md).
 
 ---
 
-## VS Code Extension
+## VS Code extension
 
-A sidebar chat panel for VS Code with real-time tool call visualization.
+Sidebar chat with live tool streaming and file undo.
 
-**Features:**
-- Activity Bar icon — click to open the chat panel in the sidebar (like GitHub Copilot or Claude Code)
-- Full Markdown rendering with syntax-highlighted code blocks
-- Collapsible tool cards (Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Agent…)
-- Diff view for file edits, shell stdout/stderr coloring, reasoning blocks
-- **Undo last changes** — after each AI response, see which files changed and revert them with one click (no git required)
-- Switch between the localcoder local agent and any OpenAI-compatible API
-- First-run setup wizard — picks a free provider (Gemini, Groq, Ollama) on first open
-- Session history and active file context
+| Feature | Detail |
+|---------|--------|
+| **Open panel** | Activity Bar icon or `Ctrl+Shift+L` / `Cmd+Shift+L` |
+| **Undo** | Revert all changes per turn, or per-file on the changes bar |
+| **Backends** | LocalCoder agent (default) or OpenAI-compatible API |
+| **Setup** | First-run wizard; llama.cpp via `LocalCoder: Set up llama.cpp` |
 
-**Open the panel:** Click the LocalCoder icon in the Activity Bar, or `Ctrl+Shift+L` (Windows/Linux) / `Cmd+Shift+L` (macOS)
-
-See `sdks/vscode/README.md` for setup, publishing, and development instructions.
+See [sdks/vscode/README.md](sdks/vscode/README.md).
 
 ---
 
 ## Agents
 
-LocalCoder ships with two built-in agents. Switch between them with `Tab`.
+Switch with `Tab` in the TUI or the header selector in VS Code / desktop.
 
 | Agent | Description |
-|---|---|
-| **build** | Default. Full read/write access for active development. |
-| **plan** | Read-only. Denies file edits by default, asks before running commands. Use it to explore an unfamiliar codebase or plan changes before committing. |
+|-------|-------------|
+| **build** | Default — full read/write access |
+| **plan** | Read-only exploration; asks before destructive commands |
 
-A **general** sub-agent handles complex searches and multi-step tasks internally. You can invoke it explicitly with `@general` in any message.
-
----
-
-## CLI Keyboard Shortcuts (TUI)
-
-| Shortcut | Action |
-|---|---|
-| `Enter` | Send message |
-| `Ctrl+Enter` or `Ctrl+J` | Insert newline (Shift+Enter alternative — most terminals can't distinguish Shift+Enter from Enter) |
-| `<leader>u` (usually `\u`) | Undo last message + revert all file changes it made |
-| `<leader>r` | Redo (un-revert) |
-| `Tab` | Switch between agents |
+Use `@general` to delegate complex multi-step tasks to a sub-agent.
 
 ---
 
-## Undo / Revert
+## Undo / revert
 
-### VS Code Extension
-After every AI response that modifies files, a **changes bar** appears in the chat showing which files were created or updated. Click **↩ Revert all** to restore them. No git needed — uses VS Code's native undo stack.
+| Surface | How |
+|---------|-----|
+| **Desktop** | **Undo change** on completed Write/Edit/Patch tools; **Undo all changes** on turn diff header; revert dock lists affected files |
+| **VS Code** | Changes bar after each turn — **Revert all** or per-file undo |
+| **CLI (TUI)** | `<leader>u` (usually `\u`) to undo last message + revert files; `<leader>r` to redo |
 
-### CLI (TUI)
-Press `<leader>u` (usually `\u`) to undo the last message and revert all file changes it made. The CLI uses its own snapshot system to track file states per turn.
+All surfaces use LocalCoder's snapshot system — no git required.
 
 ---
 
 ## Providers
 
-LocalCoder works with any provider supported by the Vercel AI SDK:
+Anthropic · OpenAI · Google Gemini · Amazon Bedrock · Azure · Cohere · Mistral · xAI · Groq · Together · Fireworks · Perplexity · DeepSeek · Ollama · **llama.cpp** · and more.
 
-Anthropic · OpenAI · Google Gemini · Amazon Bedrock · Azure OpenAI · Cohere · Mistral · xAI · Groq · Together AI · Fireworks · Perplexity · DeepSeek · Ollama · llama.cpp · and more.
+**Free / local options:**
 
-**Free options to get started:**
-- Google Gemini Flash — free tier at aistudio.google.com
-- Groq — free tier at console.groq.com
-- Ollama — fully local, no API key needed
+- Google Gemini Flash — [aistudio.google.com](https://aistudio.google.com)
+- Groq — [console.groq.com](https://console.groq.com)
+- Ollama or llama.cpp — fully local, no API key
 
-See `packages/localcoder/README.md` for model configuration details.
+Configure models in the app setup wizard, VS Code settings, or `~/.localcoder/`. See [packages/localcoder/README.md](packages/localcoder/README.md).
 
 ---
 
-## Project Structure
+## CLI keyboard shortcuts (TUI)
+
+| Shortcut | Action |
+|----------|--------|
+| `Enter` | Send message |
+| `Ctrl+Enter` / `Ctrl+J` | Newline (Shift+Enter is not distinguishable in most terminals) |
+| `<leader>u` | Undo last message + revert file changes |
+| `<leader>r` | Redo |
+| `Tab` | Switch agents |
+
+---
+
+## Project structure
 
 ```
 localcoder/
 ├── packages/
-│   ├── localcoder/   Core CLI, HTTP server, agent loop, storage
-│   ├── app/          Web UI (SolidJS)
-│   ├── desktop/      Electron desktop app (rich UI)
-│   ├── slack/        Slack bot integration
-│   ├── docs/         Documentation site
-│   └── web/          Marketing site
+│   ├── localcoder/   CLI, HTTP server, agent loop, llama.cpp module
+│   ├── app/          Web / desktop UI (SolidJS)
+│   ├── desktop/      Electron shell + portable build
+│   ├── ui/           Shared components and themes
+│   └── …
 └── sdks/
     └── vscode/       VS Code extension
 ```
@@ -166,43 +177,31 @@ localcoder/
 
 ## Contributing
 
-Read `CONTRIBUTING.md` before opening a pull request. The short version:
+Read `CONTRIBUTING.md` before opening a pull request.
 
-- File an issue first for anything beyond a small bug fix
-- Default branch is `dev` — open PRs against `dev`, not `main`
+- File an issue first for non-trivial changes
+- Default branch is **`dev`** — open PRs against `dev`
 - Run `bun install` and `bun run typecheck` before submitting
-- Follow the style guide in `AGENTS.md`
-
----
-
-## Building on LocalCoder
-
-If your project uses "localcoder" in its name (e.g. `localcoder-dashboard`), please note in your README that it is not affiliated with the LocalCoder team.
+- Style guide: [AGENTS.md](AGENTS.md)
 
 ---
 
 ## FAQ
 
-**How is this different from Claude Code?**
+**How is this different from Claude Code or Cursor?**
 
-The core capability is similar. The differences:
+Similar agent capabilities, but LocalCoder is fully open source (MIT), provider-agnostic, terminal-first, and includes LSP support. You can run the server remotely and connect from desktop, web, or mobile clients.
 
-- 100% open source (MIT)
-- Not tied to a single AI provider — bring your own key or use any compatible endpoint
-- Built-in LSP support
-- Terminal-first TUI
-- Client/server architecture — run LocalCoder on a remote machine and drive it from a mobile app or web browser
+**Does Shift+Enter insert a newline in the terminal?**
 
-**Does Shift+Enter work for inserting newlines in the terminal?**
+Usually not — most terminals send the same bytes for Shift+Enter and Enter. Use `Ctrl+Enter` or `Ctrl+J` in the TUI.
 
-Most terminal emulators send the same byte sequence for Shift+Enter and plain Enter, so they can't be distinguished. Use `Ctrl+Enter` or `Ctrl+J` instead — both insert a newline in the TUI prompt.
+**Chat history?**
 
-## Chat history and reuse
+| Surface | Resume |
+|---------|--------|
+| TUI | Recent sessions on home, `/sessions`, `localcoder --continue` |
+| VS Code | Session list in header; auto-resume per workspace |
+| Desktop | Same server sessions as CLI |
 
-| Surface | Feature |
-|---------|---------|
-| **TUI** | Recent sessions on home, `/sessions` or `Ctrl+X L`, `localcoder --continue`, prompt history (`↑`/`↓` in input) |
-| **VS Code** | Session list (header), auto-resume last chat per workspace, `↑`/`↓` for past prompts |
-| **OpenAI mode** | Conversations saved in extension state between restarts |
-
-Model and provider choices are remembered in `~/.localcoder/model.json` and `config.json` after you set them up.
+Model choices persist in `~/.localcoder/model.json` and related config files.
