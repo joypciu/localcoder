@@ -83,3 +83,13 @@
     }
   }
 }
+
+
+[data-component="titlebar"] [data-component="button"],
+.titlebar-icon {
+  -webkit-app-region: no-drag;
+}
+
+[data-component="session-composer-region"] [data-component="prompt-input"] {
+  border-radius: 8px;
+}

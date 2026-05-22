@@ -1328,6 +1328,16 @@ const layer: Layer.Layer<
           }
           database[providerID] = parsed
         }
+        // Register config-defined providers before custom autoload (e.g. llamacpp without server yet)
+        for (const [id, provider] of configProviders) {
+          const providerID = ProviderID.make(id)
+          if (disabled.has(providerID)) continue
+          const entry = database[providerID]
+          if (!entry) continue
+          const modelCount = Object.keys(provider.models ?? {}).length || Object.keys(entry.models).length
+          if (modelCount === 0) continue
+          mergeProvider(providerID, { source: "config" })
+        }
 
         // load env
         const envs = yield* env.all()

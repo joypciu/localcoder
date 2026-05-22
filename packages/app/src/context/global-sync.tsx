@@ -335,13 +335,17 @@ function createGlobalSync() {
         event,
         project: globalStore.project,
         refresh: () => {
+          if (event.type === "global.disposed") {
+            bootstrap.refetch()
+            return
+          }
           if (recent) return
           bootstrap.refetch()
         },
         setGlobalProject: setProjects,
       })
       if (event.type === "server.connected" || event.type === "global.disposed") {
-        if (recent) return
+        if (event.type !== "global.disposed" && recent) return
         for (const directory of Object.keys(children.children)) {
           queue.push(directory)
         }

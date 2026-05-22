@@ -16,6 +16,7 @@ import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { normalizeServerUrl, ServerConnection, useServer } from "@/context/server"
 import { type ServerHealth, useCheckServerHealth } from "@/utils/server-health"
+import { createVisibilityPoll, HEALTH_POLL_MS } from "@/utils/visibility-poll"
 
 const DEFAULT_USERNAME = "localcoder"
 
@@ -345,8 +346,8 @@ export function DialogSelectServer() {
   createEffect(() => {
     items()
     void refreshHealth()
-    const interval = setInterval(refreshHealth, 10_000)
-    onCleanup(() => clearInterval(interval))
+    const stopPoll = createVisibilityPoll(refreshHealth, HEALTH_POLL_MS)
+    onCleanup(() => stopPoll())
   })
 
   async function select(conn: ServerConnection.Any, persist?: boolean) {

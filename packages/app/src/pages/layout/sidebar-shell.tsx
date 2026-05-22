@@ -51,7 +51,7 @@ export const SidebarContent = (props: {
     <div class="flex h-full w-full min-w-0 overflow-hidden">
       <div
         data-component="sidebar-rail"
-        class="w-16 shrink-0 bg-background-base flex flex-col items-center overflow-hidden"
+        class="w-14 shrink-0 bg-background-base border-r border-border-weaker-base flex flex-col items-center overflow-hidden"
         onMouseMove={props.aimMove}
       >
         <div class="flex-1 min-h-0 w-full">
@@ -64,7 +64,7 @@ export const SidebarContent = (props: {
             <DragDropSensors />
             <ConstrainDragXAxis />
             <div class="h-full w-full flex flex-col items-center gap-3 px-3 py-3 overflow-y-auto no-scrollbar">
-              <div class="shrink-0 py-1 opacity-70" aria-hidden="true">
+              <div class="shrink-0 py-2 opacity-50" aria-hidden="true">
                 <Mark />
               </div>
               <SortableProvider ids={props.projects().map((p) => p.worktree)}>

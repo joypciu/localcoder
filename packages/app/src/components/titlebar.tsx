@@ -175,8 +175,11 @@ export function Titlebar() {
 
   return (
     <header
-      class="h-10 shrink-0 bg-background-base relative overflow-hidden"
-      style={{ "min-height": minHeight() }}
+      class="h-10 shrink-0 bg-background-base border-b border-border-weaker-base relative overflow-hidden"
+      style={{
+        "min-height": minHeight(),
+        "-webkit-app-region": platform.platform === "desktop" && !tauriApi() ? "drag" : undefined,
+      }}
       data-tauri-drag-region
       onMouseDown={drag}
       onDblClick={maximize}
@@ -197,7 +200,7 @@ export function Titlebar() {
               <IconButton
                 icon="menu"
                 variant="ghost"
-                class="titlebar-icon rounded-md"
+                class="titlebar-icon rounded-md" style={{ "-webkit-app-region": "no-drag" }}
                 onClick={layout.mobileSidebar.toggle}
                 aria-label={language.t("sidebar.menu.toggle")}
                 aria-expanded={layout.mobileSidebar.opened()}
@@ -209,7 +212,7 @@ export function Titlebar() {
               <IconButton
                 icon="menu"
                 variant="ghost"
-                class="titlebar-icon rounded-md"
+                class="titlebar-icon rounded-md" style={{ "-webkit-app-region": "no-drag" }}
                 onClick={layout.mobileSidebar.toggle}
                 aria-label={language.t("sidebar.menu.toggle")}
                 aria-expanded={layout.mobileSidebar.opened()}

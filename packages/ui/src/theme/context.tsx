@@ -1,10 +1,11 @@
-﻿import { createEffect, onMount } from "solid-js"
+import { createEffect, onMount } from "solid-js"
 import { createStore } from "solid-js/store"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createSimpleContext } from "../context/helper"
 import oc2ThemeJson from "./themes/oc-2.json"
+import cursorThemeJson from "./themes/cursor.json"
 import localcoderThemeJson from "./themes/localcoder.json"
-import { DEFAULT_THEME_ID, isBundledTheme } from "./constants"
+import { BRAND_THEME_ID, DEFAULT_THEME_ID, isBundledTheme } from "./constants"
 import { resolveThemeVariant, themeToCss } from "./resolve"
 import type { DesktopTheme } from "./types"
 
@@ -17,7 +18,8 @@ const STORAGE_KEYS = {
   THEME_CSS_DARK: "localcoder-theme-css-dark",
 } as const
 
-const THEME_STYLE_ID = "oc-theme"
+const THEME_STYLE_ID = "localcoder-theme"
+const LEGACY_THEME_STYLE_IDS = ["oc-theme", "localcoder-theme-preload"]
 let files: Record<string, () => Promise<{ default: DesktopTheme }>> | undefined
 let ids: string[] | undefined
 let known: Set<string> | undefined
@@ -43,7 +45,7 @@ function knownThemes() {
 }
 
 const names: Record<string, string> = {
-  "oc-2": "Legacy OpenCode",
+  "oc-2": "Legacy (deprecated)",
   amoled: "AMOLED",
   aura: "Aura",
   ayu: "Ayu",
@@ -82,6 +84,7 @@ const names: Record<string, string> = {
   zenburn: "Zenburn",
 }
 const oc2Theme = oc2ThemeJson as DesktopTheme
+const cursorTheme = cursorThemeJson as DesktopTheme
 const localcoderTheme = localcoderThemeJson as DesktopTheme
 
 function normalize(id: string | null | undefined) {
@@ -117,6 +120,7 @@ function clear() {
 }
 
 function ensureThemeStyleElement(): HTMLStyleElement {
+  for (const id of LEGACY_THEME_STYLE_IDS) document.getElementById(id)?.remove()
   const existing = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null
   if (existing) return existing
   const element = document.createElement("style")
@@ -146,7 +150,7 @@ function applyThemeCss(theme: DesktopTheme, themeId: string, mode: "light" | "da
   ${css}
 }`
 
-  document.getElementById("oc-theme-preload")?.remove()
+  for (const id of LEGACY_THEME_STYLE_IDS) document.getElementById(id)?.remove()
   ensureThemeStyleElement().textContent = fullCss
   document.documentElement.dataset.theme = themeId
   document.documentElement.dataset.colorScheme = mode
@@ -171,7 +175,8 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
     const mode = colorScheme === "system" ? getSystemMode() : colorScheme
     const [store, setStore] = createStore({
       themes: {
-        [DEFAULT_THEME_ID]: localcoderTheme,
+        [DEFAULT_THEME_ID]: cursorTheme,
+        [BRAND_THEME_ID]: localcoderTheme,
         "oc-2": oc2Theme,
       } as Record<string, DesktopTheme>,
       themeId,
@@ -214,7 +219,7 @@ export const { use: useTheme, provider: ThemeProvider } = createSimpleContext({
       const extra = Object.keys(store.themes)
         .filter((id) => !knownThemes().has(id))
         .sort()
-      const all = themeIDs()
+      const all = themeIDs().filter((id) => id !== "oc-2" || store.themeId === "oc-2")
       if (extra.length === 0) return all
       return [...all, ...extra]
     }

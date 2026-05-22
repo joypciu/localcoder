@@ -42,7 +42,7 @@ export const LlamacppStopCommand = effectCmd({
   describe: "stop managed llama-server",
   instance: false,
   handler: Effect.fn("Cli.llamacpp.stop")(function* () {
-    const stopped = Server.stopIfManaged()
+    const stopped = yield* Effect.promise(() => Server.stopIfManaged())
     console.log(stopped ? "stopped managed llama-server" : "no managed llama-server")
   }),
 })

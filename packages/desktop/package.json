@@ -21,7 +21,10 @@
     "package:win": "electron-builder --win --config electron-builder.config.ts",
     "package:linux": "electron-builder --linux --config electron-builder.config.ts",
     "native:build": "bun install --cwd native",
-    "ensure-icons": "bun ./scripts/ensure-icons.ts"
+    "ensure-icons": "bun ./scripts/ensure-icons.ts",
+    "package:win-portable": "electron-builder --win portable --config electron-builder.config.ts",
+    "build:vite": "electron-vite build",
+    "prepack:win": "bun ./scripts/prepack-win.ts"
   },
   "main": "./out/main/index.js",
   "dependencies": {
@@ -65,5 +68,7 @@
     "@lydell/node-pty-linux-x64": "1.2.0-beta.10",
     "@lydell/node-pty-win32-arm64": "1.2.0-beta.10",
     "@lydell/node-pty-win32-x64": "1.2.0-beta.10"
-  }
+  },
+  "description": "LocalCoder desktop — standalone Windows GUI",
+  "packageManager": "bun@1.3.13"
 }

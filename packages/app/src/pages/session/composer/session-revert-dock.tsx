@@ -3,10 +3,12 @@ import { createStore } from "solid-js/store"
 import { Button } from "@localcoder-ai/ui/button"
 import { DockTray } from "@localcoder-ai/ui/dock-surface"
 import { IconButton } from "@localcoder-ai/ui/icon-button"
+import { DiffChanges } from "@localcoder-ai/ui/diff-changes"
 import { useLanguage } from "@/context/language"
 
 export function SessionRevertDock(props: {
   items: { id: string; text: string }[]
+  files?: { filename: string; additions: number; deletions: number }[]
   restoring?: string
   disabled?: boolean
   onRestore: (id: string) => void
@@ -30,6 +32,7 @@ export function SessionRevertDock(props: {
     }),
   )
   const preview = createMemo(() => props.items[0]?.text ?? "")
+  const files = createMemo(() => props.files ?? [])
 
   return (
     <DockTray data-component="session-revert-dock">
@@ -75,6 +78,18 @@ export function SessionRevertDock(props: {
       </Show>
 
       <Show when={!store.collapsed}>
+        <Show when={files().length > 0}>
+          <div class="px-3 pb-2 flex flex-col gap-1 border-b border-border-weak-base">
+            <For each={files()}>
+              {(file) => (
+                <div class="flex items-center gap-2 min-w-0 text-12-regular text-text-base py-0.5">
+                  <span class="min-w-0 flex-1 truncate font-mono">{file.filename}</span>
+                  <DiffChanges changes={{ additions: file.additions, deletions: file.deletions }} />
+                </div>
+              )}
+            </For>
+          </div>
+        </Show>
         <div class="px-3 pb-7 flex flex-col gap-1.5 max-h-42 overflow-y-auto no-scrollbar">
           <For each={props.items}>
             {(item) => (

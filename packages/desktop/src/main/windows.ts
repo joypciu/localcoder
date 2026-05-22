@@ -47,9 +47,10 @@ function tone() {
 
 function overlay(theme: Partial<TitlebarTheme> = {}, zoom = 1) {
   const mode = theme.mode ?? tone()
+  const fallback = mode === "dark" ? "#181818" : "#fcfcfc"
   return {
-    color: "#00000000",
-    symbolColor: mode === "dark" ? "white" : "black",
+    color: backgroundColor ?? fallback,
+    symbolColor: mode === "dark" ? "#e4e4e4" : "#141414",
     height: Math.max(titlebarHeight, Math.round(titlebarHeight * zoom)),
   }
 }
@@ -104,6 +105,7 @@ export function createMainWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: false,
     },
   })
 
@@ -154,6 +156,7 @@ export function createLoadingWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: false,
     },
   })
 

@@ -64,6 +64,7 @@ import { Persist, persisted } from "@/utils/persist"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { same } from "@/utils/same"
 import { formatServerError } from "@/utils/server-errors"
+import { getRevertDiffFiles } from "@/utils/revert-diff"
 
 const emptyUserMessages: UserMessage[] = []
 type FollowupItem = FollowupDraft & { id: string }
@@ -1621,7 +1622,7 @@ export default function Page() {
     busy(sessionID) ? sdk.client.session.abort({ sessionID }).catch(() => {}) : Promise.resolve()
 
   const revertMutation = useMutation(() => ({
-    mutationFn: async (input: { sessionID: string; messageID: string }) => {
+    mutationFn: async (input: { sessionID: string; messageID: string; partID?: string }) => {
       const prev = prompt.current().slice()
       const last = info()?.revert
       const value = draft(input.messageID)
@@ -1633,6 +1634,12 @@ export default function Page() {
         .then(() => sdk.client.session.revert(input))
         .then((result) => {
           if (result.data) merge(result.data)
+          void sync.session.diff(input.sessionID, { force: true })
+          const tab = activeFileTab()
+          if (tab) {
+            const path = file.pathFromTab(tab)
+            if (path) void file.load(path, { force: true })
+          }
         })
         .catch((err) => {
           batch(() => {
@@ -1674,6 +1681,12 @@ export default function Page() {
       await task
         .then((result) => {
           if (result.data) merge(result.data)
+          void sync.session.diff(sessionID, { force: true })
+          const tab = activeFileTab()
+          if (tab) {
+            const path = file.pathFromTab(tab)
+            if (path) void file.load(path, { force: true })
+          }
         })
         .catch((err) => {
           batch(() => {
@@ -1693,6 +1706,11 @@ export default function Page() {
     return revertMutation.mutateAsync(input)
   }
 
+  const revertPart = (input: { sessionID: string; messageID: string; partID: string }) => {
+    if (reverting()) return
+    return revertMutation.mutateAsync(input)
+  }
+
   const restore = (id: string) => {
     if (!params.id || reverting()) return
     return restoreMutation.mutateAsync(id)
@@ -1706,7 +1724,9 @@ export default function Page() {
       .map((item) => ({ id: item.id, text: line(item.id) }))
   })
 
-  const actions = { revert }
+  const revertFiles = createMemo(() => getRevertDiffFiles(info()?.revert?.diff ?? ""))
+
+  const actions = { revert, revertPart }
 
   createEffect(() => {
     const sessionID = params.id
@@ -1924,6 +1944,7 @@ export default function Page() {
               rolled().length > 0
                 ? {
                     items: rolled(),
+                    files: revertFiles(),
                     restoring: restoring(),
                     disabled: reverting(),
                     onRestore: restore,

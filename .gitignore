@@ -50,6 +50,7 @@ coverage/
 # Electron / desktop
 packages/desktop/out/
 packages/desktop/dist/
+packages/desktop/.pack-tmp/
 
 # App build
 packages/app/dist/

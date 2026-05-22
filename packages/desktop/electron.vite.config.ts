@@ -9,6 +9,8 @@ const channel = (() => {
   return "dev"
 })()
 
+const standalone = process.env.LOCALCODER_STANDALONE === "1"
+
 const LOCALCODER_SERVER_DIST = "../localcoder/dist/node"
 
 const nodePtyPkg = `@lydell/node-pty-${process.platform}-${process.arch}`
@@ -97,13 +99,22 @@ export default defineConfig({
       "import.meta.env.VITE_LOCALCODER_CHANNEL": JSON.stringify(channel),
     },
     build: {
-      sourcemap: true,
+      sourcemap: !standalone,
       rollupOptions: {
         input: {
           main: "src/renderer/index.html",
           loading: "src/renderer/loading.html",
         },
         external: oauthExternals,
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return
+            if (id.includes("shiki") || id.includes("@shikijs")) return "vendor-shiki"
+            if (id.includes("@sentry")) return "vendor-sentry"
+            if (id.includes("ghostty-web")) return "vendor-terminal"
+            if (id.includes("luxon")) return "vendor-luxon"
+          },
+        },
       },
     },
   },

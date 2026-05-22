@@ -69,6 +69,8 @@ export const dict: Record<string, string> = {
   "ui.messagePart.diagnostic.error": "Error",
   "ui.messagePart.title.edit": "Edit",
   "ui.messagePart.title.write": "Write",
+  "ui.tool.undo": "Undo change",
+  "ui.sessionTurn.diffs.revertAll": "Undo all changes",
   "ui.messagePart.option.typeOwnAnswer": "Type your own answer",
   "ui.messagePart.review.title": "Review your answers",
   "ui.messagePart.questions.dismissed": "Questions dismissed",

@@ -1,4 +1,7 @@
-import { spawn, type ChildProcess } from "child_process"
+import { spawn, execFile, type ChildProcess } from "child_process"
+import { promisify } from "node:util"
+
+const execFileAsync = promisify(execFile)
 import * as LlamaSetup from "./setup"
 import fs from "fs"
 import path from "path"
@@ -157,17 +160,32 @@ export async function start(input?: {
   return { modelId, alreadyRunning: false }
 }
 
-export function stopIfManaged() {
+export async function stopIfManaged() {
   if (!managed) return false
+  const proc = managed
+  managed = undefined
   try {
     if (process.platform === "win32") {
-      spawn("taskkill", ["/pid", String(managed.pid), "/f", "/t"], { stdio: "ignore" })
+      await execFileAsync("taskkill", ["/pid", String(proc.pid), "/f", "/t"])
     } else {
-      managed.kill("SIGTERM")
+      proc.kill("SIGTERM")
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, 5000)
+        proc.once("exit", () => {
+          clearTimeout(timer)
+          resolve()
+        })
+      })
     }
-  } catch {}
-  managed = undefined
-  return true
+    for (let i = 0; i < 20; i++) {
+      const probed = await probe()
+      if (!probed.ok) return true
+      await Bun.sleep(250)
+    }
+    return true
+  } catch {
+    return true
+  }
 }
 
 export async function status(): Promise<LlamaServerStatus> {

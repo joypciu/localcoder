@@ -1,4 +1,4 @@
-import { authTokenFromCredentials } from "@/utils/server"
+﻿import { authTokenFromCredentials } from "@/utils/server"
 import type { ServerConnection } from "@/context/server"
 
 export type LlamaCppPublicStatus = {
@@ -25,6 +25,13 @@ export type LlamaCppSetupResult = {
   apiUrl: string
   logPath?: string
   error?: string
+}
+
+export type LlamaCppStartResult = {
+  modelId?: string
+  alreadyRunning?: boolean
+  model?: string
+  logPath?: string
 }
 
 function headers(server: ServerConnection.HttpBase) {
@@ -56,6 +63,22 @@ export async function setupLlamaCpp(
     body: JSON.stringify(body),
   })
   return parse<LlamaCppSetupResult>(res)
+}
+
+export async function startLlamaCpp(server: ServerConnection.HttpBase) {
+  const res = await fetch(`${server.url}/global/llamacpp/start`, {
+    method: "POST",
+    headers: headers(server),
+  })
+  return parse<LlamaCppStartResult>(res)
+}
+
+export async function stopLlamaCpp(server: ServerConnection.HttpBase) {
+  const res = await fetch(`${server.url}/global/llamacpp/stop`, {
+    method: "POST",
+    headers: headers(server),
+  })
+  return parse<{ stopped: boolean }>(res)
 }
 
 export async function setLlamaCppThinking(server: ServerConnection.HttpBase, thinking: boolean) {

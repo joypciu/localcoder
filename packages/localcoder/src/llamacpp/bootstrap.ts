@@ -72,8 +72,8 @@ export async function getPublicStatus() {
   }
 }
 
-async function applyProvider(modelPath: string, apiUrl: string, ctx: number) {
-  const modelId = path.basename(modelPath)
+async function applyProvider(modelPath: string, apiUrl: string, ctx: number, modelIdOverride?: string) {
+  const modelId = modelIdOverride ?? path.basename(modelPath)
   await AppRuntime.runPromise(
     Config.Service.use((svc) =>
       Effect.gen(function* () {
@@ -133,6 +133,10 @@ export async function configure(input: LlamaCppSetupInput): Promise<LlamaCppSetu
   const started = await Server.start({
     config: { llamaDir: input.llamaDir, modelPath: input.modelPath, ctx },
   })
+
+  if (started.modelId !== modelId) {
+    await applyProvider(input.modelPath, cfg.apiUrl, ctx, started.modelId)
+  }
 
   return {
     model: Server.modelRef(started.modelId),

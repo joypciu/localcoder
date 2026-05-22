@@ -184,7 +184,9 @@ export default function Layout(props: ParentProps) {
   const sortNowTimeout = setTimeout(
     () => {
       setState("sortNow", Date.now())
-      sortNowInterval = setInterval(() => setState("sortNow", Date.now()), 60_000)
+      sortNowInterval = setInterval(() => {
+        if (document.visibilityState !== "hidden") setState("sortNow", Date.now())
+      }, 300_000)
     },
     60_000 - (Date.now() % 60_000),
   )
@@ -2065,7 +2067,7 @@ export default function Layout(props: ParentProps) {
     return (
       <div
         classList={{
-          "flex flex-col min-h-0 min-w-0 box-border rounded-tl-[12px] px-3": true,
+          "flex flex-col min-h-0 min-w-0 box-border px-2": true,
           "border border-b-0 border-border-weak-base": !merged(),
           "border-l border-t border-border-weaker-base": merged(),
           "bg-background-base": merged() || hover(),
@@ -2292,37 +2294,33 @@ export default function Layout(props: ParentProps) {
         </Show>
 
         <div
-          class="shrink-0 px-3 py-3"
+          class="shrink-0 px-2 py-2 border-t border-border-weaker-base"
           classList={{
-            hidden: store.gettingStartedDismissed || !(providers.all().length > 0 && providers.paid().length === 0),
+            hidden: store.gettingStartedDismissed || providers.connected().length > 0,
           }}
         >
-          <div class="rounded-xl bg-background-base shadow-xs-border-base" data-component="getting-started">
-            <div class="p-3 flex flex-col gap-6">
-              <div class="flex flex-col gap-2">
-                <div class="text-14-medium text-text-strong">{language.t("sidebar.gettingStarted.title")}</div>
-                <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
-                  {language.t("sidebar.gettingStarted.line1")}
-                </div>
-                <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
-                  {language.t("sidebar.gettingStarted.line2")}
-                </div>
-                <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
-                  {language.t("sidebar.gettingStarted.llama")}
-                </div>
-              </div>
-              <div data-component="getting-started-actions">
-                <Button size="large" icon="plus-small" onClick={connectProvider}>
-                  {language.t("command.provider.connect")}
-                </Button>
-                <Button size="large" variant="secondary" onClick={() => dialog.show(() => <DialogSetupLlamacpp back="close" />)}
-                >
-                  {language.t("sidebar.gettingStarted.action.llama")}
-                </Button>
-                <Button size="large" variant="ghost" onClick={() => setStore("gettingStartedDismissed", true)}>
-                  {language.t("toast.update.action.notYet")}
-                </Button>
-              </div>
+          <div class="flex flex-col gap-2 px-1 py-1" data-component="getting-started">
+            <div class="text-12-regular text-text-weak leading-normal">
+              {language.t("sidebar.gettingStarted.line1")}
+            </div>
+            <div class="flex flex-wrap gap-1.5" data-component="getting-started-actions">
+              <Button size="small" icon="plus-small" onClick={connectProvider}>
+                {language.t("command.provider.connect")}
+              </Button>
+              <Button
+                size="small"
+                variant="secondary"
+                onClick={() =>
+                  void import("@/components/dialog-setup-llamacpp").then((x) =>
+                    dialog.show(() => <x.DialogSetupLlamacpp back="close" />),
+                  )
+                }
+              >
+                {language.t("sidebar.gettingStarted.action.llama")}
+              </Button>
+              <Button size="small" variant="ghost" onClick={() => setStore("gettingStartedDismissed", true)}>
+                {language.t("toast.update.action.notYet")}
+              </Button>
             </div>
           </div>
         </div>
@@ -2414,7 +2412,7 @@ export default function Layout(props: ParentProps) {
 
             <div
               class="hidden xl:block pointer-events-none absolute top-0 right-0 z-0 border-t border-border-weaker-base"
-              style={{ left: "calc(4rem + 12px)" }}
+              style={{ left: "calc(3.5rem + 8px)" }}
             />
 
             <div class="xl:hidden">
@@ -2451,12 +2449,12 @@ export default function Layout(props: ParentProps) {
                   !state.sizing,
               }}
               style={{
-                "--main-left": layout.sidebar.opened() ? `${side()}px` : "4rem",
+                "--main-left": layout.sidebar.opened() ? `${side()}px` : "3.5rem",
               }}
             >
               <main
                 classList={{
-                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weak-base bg-background-base xl:border-l xl:rounded-tl-[12px]": true,
+                  "size-full overflow-x-hidden flex flex-col items-start contain-strict border-t border-border-weaker-base bg-background-base xl:border-l": true,
                 }}
               >
                 <Show when={!autoselecting.loading} fallback={<div class="size-full" />}>
@@ -2467,7 +2465,7 @@ export default function Layout(props: ParentProps) {
 
             <div
               classList={{
-                "hidden xl:flex absolute inset-y-0 left-16 z-30": true,
+                "hidden xl:flex absolute inset-y-0 left-14 z-30": true,
                 "opacity-100 translate-x-0 pointer-events-auto": state.peeked && !layout.sidebar.opened(),
                 "opacity-0 -translate-x-2 pointer-events-none": !state.peeked || layout.sidebar.opened(),
                 "transition-[opacity,transform] motion-reduce:transition-none": true,
@@ -2498,7 +2496,7 @@ export default function Layout(props: ParentProps) {
                 "duration-180 ease-out": state.peeked && !layout.sidebar.opened(),
                 "duration-120 ease-in": !state.peeked || layout.sidebar.opened(),
               }}
-              style={{ left: `calc(4rem + ${panel()}px)` }}
+              style={{ left: `calc(3.5rem + ${panel()}px)` }}
             >
               <div class="h-full w-px" style={{ "box-shadow": "var(--shadow-sidebar-overlay)" }} />
             </div>
@@ -2510,3 +2508,5 @@ export default function Layout(props: ParentProps) {
     </div>
   )
 }
+
+

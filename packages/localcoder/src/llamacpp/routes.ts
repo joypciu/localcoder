@@ -116,6 +116,6 @@ export const LlamaCppRoutes = lazy(() =>
           },
         },
       }),
-      async (c) => c.json({ stopped: Server.stopIfManaged() }),
+      async (c) => c.json({ stopped: await Server.stopIfManaged() }),
     ),
 )

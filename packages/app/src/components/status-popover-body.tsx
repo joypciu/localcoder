@@ -16,8 +16,7 @@ import { normalizeServerUrl, ServerConnection, useServer } from "@/context/serve
 import { useSync } from "@/context/sync"
 import { useCheckServerHealth, type ServerHealth } from "@/utils/server-health"
 import { loadMcpQuery } from "@/context/global-sync"
-
-const pollMs = 10_000
+import { createVisibilityPoll, HEALTH_POLL_MS } from "@/utils/visibility-poll"
 
 const pluginEmptyMessage = (value: string, file: string): JSXElement => {
   const parts = value.split(file)
@@ -77,10 +76,10 @@ const useServerHealth = (servers: Accessor<ServerConnection.Any[]>, enabled: Acc
     }
 
     void refresh()
-    const id = setInterval(() => void refresh(), pollMs)
+    const stopPoll = createVisibilityPoll(() => void refresh(), HEALTH_POLL_MS)
     onCleanup(() => {
       dead = true
-      clearInterval(id)
+      stopPoll()
     })
   })
 

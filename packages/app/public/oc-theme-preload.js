@@ -1,6 +1,6 @@
-﻿;(function () {
+;(function () {
   var key = "localcoder-theme-id"
-  var themeId = localStorage.getItem(key) || "localcoder"
+  var themeId = localStorage.getItem(key) || "cursor"
 
   if (themeId === "oc-1") {
     themeId = "oc-2"
@@ -10,9 +10,17 @@
   }
 
   if (themeId === "oc-2" && !localStorage.getItem("localcoder-rebrand-v1")) {
-    themeId = "localcoder"
+    themeId = "cursor"
     localStorage.setItem(key, themeId)
     localStorage.setItem("localcoder-rebrand-v1", "1")
+    localStorage.removeItem("localcoder-theme-css-light")
+    localStorage.removeItem("localcoder-theme-css-dark")
+  }
+
+  if (themeId === "localcoder" && !localStorage.getItem("localcoder-cursor-default-v2")) {
+    themeId = "cursor"
+    localStorage.setItem(key, themeId)
+    localStorage.setItem("localcoder-cursor-default-v2", "1")
     localStorage.removeItem("localcoder-theme-css-light")
     localStorage.removeItem("localcoder-theme-css-dark")
   }
@@ -24,12 +32,12 @@
   document.documentElement.dataset.theme = themeId
   document.documentElement.dataset.colorScheme = mode
 
-  if (themeId === "localcoder" || themeId === "oc-2") return
+  if (themeId === "cursor" || themeId === "localcoder" || themeId === "oc-2") return
 
   var css = localStorage.getItem("localcoder-theme-css-" + mode)
   if (css) {
     var style = document.createElement("style")
-    style.id = "oc-theme-preload"
+    style.id = "localcoder-theme-preload"
     style.textContent =
       ":root{color-scheme:" +
       mode +

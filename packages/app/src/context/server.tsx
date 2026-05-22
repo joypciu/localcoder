@@ -3,10 +3,12 @@ import { type Accessor, batch, createEffect, createMemo, onCleanup } from "solid
 import { createStore } from "solid-js/store"
 import { Persist, persisted } from "@/utils/persist"
 import { useCheckServerHealth } from "@/utils/server-health"
+import { createVisibilityPoll } from "@/utils/visibility-poll"
 
 type StoredProject = { worktree: string; expanded: boolean }
 type StoredServer = string | ServerConnection.HttpBase | ServerConnection.Http
-const HEALTH_POLL_INTERVAL_MS = 10_000
+
+const HEALTH_POLL_INTERVAL_MS = 30_000
 
 export function normalizeServerUrl(input: string) {
   const trimmed = input.trim()
@@ -168,11 +170,13 @@ export const { use: useServer, provider: ServerProvider } = createSimpleContext(
           })
       }
 
-      run()
-      const interval = setInterval(run, HEALTH_POLL_INTERVAL_MS)
+      const stopPoll = createVisibilityPoll(() => {
+        if (!alive) return
+        run()
+      }, HEALTH_POLL_INTERVAL_MS)
       return () => {
         alive = false
-        clearInterval(interval)
+        stopPoll()
       }
     }
 

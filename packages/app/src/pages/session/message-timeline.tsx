@@ -48,6 +48,7 @@ const idle = { type: "idle" as const }
 type UserActions = {
   fork?: (input: { sessionID: string; messageID: string }) => Promise<void> | void
   revert?: (input: { sessionID: string; messageID: string }) => Promise<void> | void
+  revertPart?: (input: { sessionID: string; messageID: string; partID: string }) => Promise<void> | void
 }
 
 const messageComments = (parts: Part[]): MessageComment[] =>

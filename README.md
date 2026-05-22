@@ -10,7 +10,7 @@ Runs in your terminal, edits your code, uses your tools.
 This release focuses on **real-world Windows and VS Code installs** (not only monorepo dev tests).
 
 - **npm:** `postinstall` links the Windows binary; `localcoder --version` works after `npm install -g localcoder`
-- **CLI:** double-clicking `localcoder.exe` without a console shows help instead of a blank/hung window
+- **GUI:** double-clicking `localcoder.exe` opens the desktop app (or browser UI); use `build:win-gui` to build it
 - **VS Code:** extension starts `localcoder serve` from the built `.exe` or PATH
 - **Desktop:** Electron build externalizes OAuth deps (CI can produce Win/Mac installers)
 

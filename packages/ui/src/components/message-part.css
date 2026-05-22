@@ -1273,3 +1273,44 @@
     color: var(--icon-weak);
   }
 }
+
+[data-component="tool-undo-button"],
+[data-component="turn-revert-button"] {
+  appearance: none;
+  border: 1px solid var(--border-weak-base);
+  background: var(--surface-raised-base);
+  color: var(--text-weak);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+[data-component="tool-undo-button"]:hover,
+[data-component="turn-revert-button"]:hover {
+  color: var(--text-strong);
+  border-color: var(--border-base);
+  background: var(--surface-raised-base-hover);
+}
+
+[data-component="tool-undo-button"]:active,
+[data-component="turn-revert-button"]:active {
+  transform: translateY(1px);
+}
+
+.group\/session:hover [data-component="tool-undo-button"],
+[data-component="tool-part-wrapper"]:hover [data-component="tool-undo-button"],
+[data-component="session-turn-diffs-group"]:hover [data-component="turn-revert-button"] {
+  opacity: 1;
+}
+
+[data-component="tool-undo-button"] {
+  opacity: 1;
+}
+
+[data-component="session-turn-diffs-group"] [data-component="turn-revert-button"] {
+  margin-left: auto;
+}

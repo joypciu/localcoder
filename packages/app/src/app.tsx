@@ -14,6 +14,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/solid-query"
 import { Effect } from "effect"
 import {
   type Component,
+  createEffect,
   createMemo,
   createResource,
   createSignal,
@@ -245,8 +246,25 @@ function ConnectionError(props: { onRetry?: () => void; onServerSelected?: (key:
   const serverToken = "\u0000server\u0000"
   const unreachable = createMemo(() => language.t("app.server.unreachable", { server: serverToken }).split(serverToken))
 
-  const timer = setInterval(() => props.onRetry?.(), 1000)
-  onCleanup(() => clearInterval(timer))
+  createEffect(() => {
+    let attempt = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let dead = false
+
+    const tick = () => {
+      if (dead) return
+      props.onRetry?.()
+      attempt += 1
+      const delay = Math.min(1000 * 2 ** Math.min(attempt, 5), 30_000)
+      timer = setTimeout(tick, delay)
+    }
+
+    tick()
+    onCleanup(() => {
+      dead = true
+      if (timer) clearTimeout(timer)
+    })
+  })
 
   return (
     <div class="h-dvh w-screen flex flex-col items-center justify-center bg-background-base gap-6 p-6">

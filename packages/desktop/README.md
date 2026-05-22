@@ -1,49 +1,64 @@
 # LocalCoder Desktop
 
-Native desktop app with **Electron** + **SolidJS** (embedded web UI from `packages/app`).
+**Standalone Windows GUI** — one portable `.exe`, no Bun/CLI/terminal required at runtime.
+
+Embeds Electron + SolidJS web UI + LocalCoder server (in-process). Users download a single file and double-click.
+
+## End users (download only)
+
+Get **`LocalCoder-x.y.z-portable.exe`** from [GitHub Releases](https://github.com/joypciu/localcoder/releases).
+
+1. Download the portable exe
+2. Double-click — the app opens (no install, no dependencies)
+3. Use the in-app setup wizard (cloud API or local llama.cpp folder + GGUF)
+
+User data is stored under `%APPDATA%\ai.localcoder.desktop\`.
+
+## Build standalone portable exe (developers)
+
+From repo root:
+
+```powershell
+cd P:\localcoder
+bun install
+bun run build:win-standalone
+```
+
+Output: `packages\desktop\dist\LocalCoder-<version>-portable.exe`
+
+**Fast iteration** (skip portable compression — ~1–2 min, good for dev):
+
+```powershell
+$env:LOCALCODER_FAST_PACK = "1"
+bun run build:win-standalone
+# Double-click: packages\desktop\dist\win-unpacked\LocalCoder.exe
+```
+
+The full portable build compresses into one exe (~4–5 min). Packaging writes to `.pack-tmp` first, then moves into `dist`, so antivirus locks on an old portable exe should not hang the build.
+
+This bundles everything needed at runtime. It does **not** include llama.cpp or GGUF models (too large) — users pick those in the setup wizard if they want local inference.
 
 ## Development
 
 ```bash
 bun install
-bun run ensure-icons   # from packages/desktop (optional; prebuild runs this)
 bun run --cwd packages/desktop dev
 ```
 
-Starts the Electron shell with hot reload via electron-vite.
+## Other Windows artifacts
 
-## Build installers
-
-```bash
+```powershell
 cd packages/desktop
-bun run prebuild    # CLI sidecar + icons
-bun run build       # electron-vite production bundle
-set LOCALCODER_CHANNEL=prod   # Windows CMD
-bun run package:win           # NSIS installer (.exe)
-bun run package:mac           # .dmg + .zip (macOS only)
+bun run prebuild && bun run build
+$env:LOCALCODER_CHANNEL = "prod"
+bun run package:win-portable   # portable exe only
+bun run package:win            # portable + NSIS installer
 ```
 
-Artifacts: `packages/desktop/dist/localcoder-desktop-*`
+## macOS / Linux
 
-## Prerequisites
-
-- [Bun](https://bun.sh)
-- Windows: build on `windows-latest` (or local Windows)
-- macOS: `.dmg` must be built on macOS (see `.github/workflows/release.yml`)
+See `electron-builder.config.ts` — `package:mac`, `package:linux`.
 
 ## Updates
 
-Production builds use `electron-updater` and GitHub Releases (`joypciu/localcoder`).
-
-## Build notes (v1.14.38)
-
-OAuth helper packages (`mcp-oauth`, `poe-oauth`, etc.) are **externalized** in `electron.vite.config.ts` and in `packages/localcoder/script/build-node.ts` (same list as `script/build.ts`). This fixes Rollup errors when running `bun run build`.
-
-```bash
-cd packages/desktop
-bun run prebuild   # builds ../localcoder/dist/node
-bun run build      # electron-vite
-LOCALCODER_CHANNEL=prod bun run package:win   # or package:mac on macOS
-```
-
-CI: push tag `v1.14.38` to run the desktop job in `.github/workflows/release.yml`.
+Production builds use `electron-updater` and GitHub Releases.

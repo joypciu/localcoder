@@ -408,6 +408,7 @@ export function SessionTurn(
                     showReasoningSummaries={showReasoningSummaries()}
                     shellToolDefaultOpen={props.shellToolDefaultOpen}
                     editToolDefaultOpen={props.editToolDefaultOpen}
+                    actions={props.actions}
                   />
                 </div>
               </Show>
@@ -437,6 +438,21 @@ export function SessionTurn(
                       {i18n.t(edited() === 1 ? "ui.common.file.one" : "ui.common.file.other")}
                     </span>
                     <DiffChanges changes={diffs()} />
+                    <Show when={props.actions?.revert && !working()}>
+                      <button
+                        type="button"
+                        data-component="turn-revert-button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          void props.actions?.revert?.({
+                            sessionID: props.sessionID,
+                            messageID: props.messageID,
+                          })
+                        }}
+                      >
+                        {i18n.t("ui.sessionTurn.diffs.revertAll")}
+                      </button>
+                    </Show>
                     <Show when={overflow() > 0}>
                       <span data-slot="session-turn-diffs-toggle" onClick={toggleAll}>
                         {showAll() ? i18n.t("ui.sessionTurn.diffs.showLess") : i18n.t("ui.sessionTurn.diffs.showAll")}

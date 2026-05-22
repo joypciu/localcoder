@@ -35,6 +35,9 @@ import { useFileComponent } from "../context/file"
 import { useDialog } from "../context/dialog"
 import { type UiI18n, useI18n } from "../context/i18n"
 import { BasicTool, GenericTool } from "./basic-tool"
+import { ToolUndoButton } from "./tool-undo-button"
+
+const FILE_UNDO_TOOLS = new Set(["write", "edit", "apply_patch"])
 import { Accordion } from "./accordion"
 import { StickyAccordionHeader } from "./sticky-accordion-header"
 import { Collapsible } from "./collapsible"
@@ -140,9 +143,12 @@ export interface MessageProps {
 
 export type SessionAction = (input: { sessionID: string; messageID: string }) => Promise<void> | void
 
+export type RevertPartAction = (input: { sessionID: string; messageID: string; partID: string }) => Promise<void> | void
+
 export type UserActions = {
   fork?: SessionAction
   revert?: SessionAction
+  revertPart?: RevertPartAction
 }
 
 export interface MessagePartProps {
@@ -152,6 +158,7 @@ export interface MessagePartProps {
   defaultOpen?: boolean
   showAssistantCopyPartID?: string | null
   turnDurationMs?: number
+  actions?: UserActions
 }
 
 export type PartComponent = Component<MessagePartProps>
@@ -593,6 +600,7 @@ export function AssistantParts(props: {
   showReasoningSummaries?: boolean
   shellToolDefaultOpen?: boolean
   editToolDefaultOpen?: boolean
+  actions?: UserActions
 }) {
   const data = useData()
   const emptyParts: PartType[] = []
@@ -674,6 +682,7 @@ export function AssistantParts(props: {
                         showAssistantCopyPartID={props.showAssistantCopyPartID}
                         turnDurationMs={props.turnDurationMs}
                         defaultOpen={partDefaultOpen(item()!, props.shellToolDefaultOpen, props.editToolDefaultOpen)}
+                        actions={props.actions}
                       />
                     </Show>
                   </Show>
@@ -1215,6 +1224,7 @@ export function Part(props: MessagePartProps) {
         defaultOpen={props.defaultOpen}
         showAssistantCopyPartID={props.showAssistantCopyPartID}
         turnDurationMs={props.turnDurationMs}
+        actions={props.actions}
       />
     </Show>
   )
@@ -1230,6 +1240,7 @@ export interface ToolProps {
   defaultOpen?: boolean
   forceOpen?: boolean
   locked?: boolean
+  onUndo?: () => void
 }
 
 export type ToolComponent = Component<ToolProps>
@@ -1325,6 +1336,18 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
   })
 
   const render = createMemo(() => ToolRegistry.render(part().tool) ?? GenericTool)
+  const onUndo = createMemo(() => {
+    const act = props.actions?.revertPart
+    if (!act) return undefined
+    if (part().state.status !== "completed") return undefined
+    if (!FILE_UNDO_TOOLS.has(part().tool)) return undefined
+    return () =>
+      void act({
+        sessionID: props.message.sessionID,
+        messageID: props.message.id,
+        partID: part().id,
+      })
+  })
 
   return (
     <Show when={!hideQuestion()}>
@@ -1364,6 +1387,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
               status={part().state.status}
               hideDetails={props.hideDetails}
               defaultOpen={props.defaultOpen}
+              onUndo={onUndo()}
             />
           </Match>
         </Switch>
@@ -1887,6 +1911,7 @@ ToolRegistry.register({
                 <Show when={!pending() && props.metadata.filediff}>
                   <DiffChanges changes={props.metadata.filediff} />
                 </Show>
+                <ToolUndoButton onUndo={props.onUndo} pending={pending()} />
               </div>
             </div>
           }
@@ -1955,7 +1980,9 @@ ToolRegistry.register({
                   </div>
                 </Show>
               </div>
-              <div data-slot="message-part-actions">{/* <DiffChanges diff={diff} /> */}</div>
+              <div data-slot="message-part-actions">
+                <ToolUndoButton onUndo={props.onUndo} pending={pending()} />
+              </div>
             </div>
           }
         >
@@ -2023,6 +2050,7 @@ ToolRegistry.register({
               trigger={{
                 title: i18n.t("ui.tool.patch"),
                 subtitle: subtitle(),
+                action: <ToolUndoButton onUndo={props.onUndo} pending={pending()} />,
               }}
             >
               <Show when={files().length > 0}>
@@ -2133,6 +2161,7 @@ ToolRegistry.register({
                   <Show when={!pending()}>
                     <DiffChanges changes={{ additions: single()!.additions, deletions: single()!.deletions }} />
                   </Show>
+                  <ToolUndoButton onUndo={props.onUndo} pending={pending()} />
                 </div>
               </div>
             }

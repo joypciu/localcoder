@@ -1,4 +1,4 @@
-import { sentryVitePlugin } from "@sentry/vite-plugin"
+﻿import { sentryVitePlugin } from "@sentry/vite-plugin"
 import { defineConfig } from "vite"
 import desktopPlugin from "./vite"
 
@@ -28,6 +28,17 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
-    sourcemap: true,
+    sourcemap: Boolean(process.env.SENTRY_AUTH_TOKEN),
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return
+          if (id.includes("shiki") || id.includes("@shikijs")) return "vendor-shiki"
+          if (id.includes("@sentry")) return "vendor-sentry"
+          if (id.includes("ghostty-web")) return "vendor-terminal"
+          if (id.includes("luxon")) return "vendor-luxon"
+        },
+      },
+    },
   },
 })

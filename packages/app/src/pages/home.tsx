@@ -1,4 +1,4 @@
-import { createMemo, For, Match, Switch } from "solid-js"
+﻿import { createMemo, For, Match, Switch } from "solid-js"
 import { Button } from "@localcoder-ai/ui/button"
 import { Logo, Splash } from "@localcoder-ai/ui/logo"
 import { useLayout } from "@/context/layout"
@@ -70,11 +70,14 @@ export default function Home() {
     }
   }
 
+  function setupLlama() {
+    dialog.show(() => <DialogSetupLlamacpp back="close" />)
+  }
   return (
-    <div class="mx-auto mt-40 w-full md:w-auto px-4 flex flex-col items-center text-center">
+    <div class="mx-auto mt-24 w-full md:w-auto px-4 flex flex-col items-center text-center">
       <div class="flex flex-col items-center gap-4 mb-2">
-        <Splash class="w-14 h-[4.375rem] opacity-25" />
-        <Logo class="w-full max-w-lg opacity-20" />
+        <Splash class="w-12 h-[3.75rem] opacity-55" />
+        <Logo class="w-full max-w-md opacity-45" />
         <p class="text-13-regular text-text-weak max-w-md leading-normal">
           {language.t("home.tagline")}
         </p>
@@ -93,6 +96,22 @@ export default function Home() {
         />
         {server.name}
       </Button>
+
+      <div class="mt-8 flex flex-col sm:flex-row flex-wrap items-center justify-center gap-2 w-full max-w-xl">
+        <Button size="large" icon="folder-add-left" class="px-4" onClick={chooseProject}>
+          {language.t("command.project.open")}
+        </Button>
+        <Button size="large" variant="secondary" class="px-4" onClick={setupLlama}>
+          {language.t("home.action.setupLocal")}
+        </Button>
+        <Button size="large" variant="ghost" class="px-4" onClick={() => dialog.show(() => <DialogSelectProvider />)}>
+          {language.t("home.action.connectProvider")}
+        </Button>
+      </div>
+      <p class="text-12-regular text-text-weak max-w-md mt-3 leading-normal">
+        {language.t("home.setupHint")}
+      </p>
+
       <Switch>
         <Match when={sync.data.project.length > 0}>
           <div class="mt-20 w-full flex flex-col gap-4">
@@ -124,26 +143,19 @@ export default function Home() {
         <Match when={!sync.ready}>
           <div class="mt-30 mx-auto flex flex-col items-center gap-3">
             <div class="text-12-regular text-text-weak">{language.t("common.loading")}</div>
-            <Button class="px-3" onClick={chooseProject}>
-              {language.t("command.project.open")}
-            </Button>
           </div>
         </Match>
         <Match when={true}>
-          <div class="mt-30 mx-auto flex flex-col items-center gap-3">
+          <div class="mt-20 mx-auto flex flex-col items-center gap-3">
             <Icon name="folder-add-left" size="large" />
             <div class="flex flex-col gap-1 items-center justify-center">
               <div class="text-14-medium text-text-strong">{language.t("home.empty.title")}</div>
-              <div class="text-12-regular text-text-weak">{language.t("home.empty.description")}</div>
+              <div class="text-12-regular text-text-weak max-w-sm">{language.t("home.empty.description")}</div>
             </div>
-            <Button class="px-3 mt-1" onClick={chooseProject}>
-              {language.t("command.project.open")}
-            </Button>
           </div>
         </Match>
       </Switch>
     </div>
   )
 }
-
 

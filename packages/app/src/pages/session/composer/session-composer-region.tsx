@@ -39,6 +39,7 @@ export function SessionComposerRegion(props: {
   }
   revert?: {
     items: { id: string; text: string }[]
+    files?: { filename: string; additions: number; deletions: number }[]
     restoring?: string
     disabled?: boolean
     onRestore: (id: string) => void
@@ -180,6 +181,7 @@ export function SessionComposerRegion(props: {
                     <div class="pb-2">
                       <SessionRevertDock
                         items={revert.items}
+                        files={revert.files}
                         restoring={revert.restoring}
                         disabled={revert.disabled}
                         onRestore={revert.onRestore}

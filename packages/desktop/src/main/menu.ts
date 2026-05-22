@@ -1,4 +1,4 @@
-import { Menu, shell } from "electron"
+import { app, Menu, shell } from "electron"
 
 import { UPDATER_ENABLED } from "./constants"
 import { createMainWindow } from "./windows"
@@ -73,7 +73,7 @@ export function createMenu(deps: Deps) {
         { label: "Toggle File Tree", click: () => deps.trigger("fileTree.toggle") },
         { type: "separator" },
         { role: "reload" },
-        { role: "toggleDevTools" },
+        ...(app.isPackaged ? [] : [{ role: "toggleDevTools" as const }]),
         { type: "separator" },
         { role: "resetZoom" },
         { role: "zoomIn" },
@@ -122,11 +122,11 @@ export function createMenu(deps: Deps) {
         {
           label: "Share Feedback",
           click: () =>
-            shell.openExternal("https://github.com/anomalyco/localcoder/issues/new?template=feature_request.yml"),
+            shell.openExternal("https://github.com/joypciu/localcoder/issues/new?template=feature_request.yml"),
         },
         {
           label: "Report a Bug",
-          click: () => shell.openExternal("https://github.com/anomalyco/localcoder/issues/new?template=bug_report.yml"),
+          click: () => shell.openExternal("https://github.com/joypciu/localcoder/issues/new?template=bug_report.yml"),
         },
       ],
     },
