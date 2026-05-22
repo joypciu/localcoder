@@ -8,8 +8,10 @@ import { ProviderIcon } from "@localcoder-ai/ui/provider-icon"
 import { DialogConnectProvider } from "./dialog-connect-provider"
 import { useLanguage } from "@/context/language"
 import { DialogCustomProvider } from "./dialog-custom-provider"
+import { DialogSetupLlamacpp } from "./dialog-setup-llamacpp"
 
 const CUSTOM_ID = "_custom"
+const LLAMACPP_ID = "_llamacpp"
 
 export const DialogSelectProvider: Component = () => {
   const dialog = useDialog()
@@ -35,11 +37,17 @@ export const DialogSelectProvider: Component = () => {
         key={(x) => x?.id}
         items={() => {
           language.locale()
-          return [{ id: CUSTOM_ID, name: customLabel() }, ...providers.all()]
+          return [
+            { id: LLAMACPP_ID, name: language.t("dialog.provider.llamacpp.name") },
+            { id: CUSTOM_ID, name: customLabel() },
+            ...providers.all(),
+          ]
         }}
         filterKeys={["id", "name"]}
         groupBy={(x) => (popularProviders.includes(x.id) ? popularGroup() : otherGroup())}
         sortBy={(a, b) => {
+          if (a.id === LLAMACPP_ID) return -2
+          if (b.id === LLAMACPP_ID) return 2
           if (a.id === CUSTOM_ID) return -1
           if (b.id === CUSTOM_ID) return 1
           if (popularProviders.includes(a.id) && popularProviders.includes(b.id))
@@ -54,6 +62,10 @@ export const DialogSelectProvider: Component = () => {
         }}
         onSelect={(x) => {
           if (!x) return
+          if (x.id === LLAMACPP_ID) {
+            dialog.show(() => <DialogSetupLlamacpp back="providers" />)
+            return
+          }
           if (x.id === CUSTOM_ID) {
             dialog.show(() => <DialogCustomProvider back="providers" />)
             return
@@ -63,8 +75,14 @@ export const DialogSelectProvider: Component = () => {
       >
         {(i) => (
           <div class="px-1.25 w-full flex items-center gap-x-3">
-            <ProviderIcon data-slot="list-item-extra-icon" id={i.id} />
+            <ProviderIcon data-slot="list-item-extra-icon" id={i.id === LLAMACPP_ID ? "synthetic" : i.id} />
             <span>{i.name}</span>
+            <Show when={i.id === LLAMACPP_ID}>
+              <Tag>{language.t("dialog.provider.tag.recommended")}</Tag>
+            </Show>
+            <Show when={i.id === LLAMACPP_ID}>
+              <div class="text-14-regular text-text-weak">{language.t("dialog.provider.llamacpp.note")}</div>
+            </Show>
             <Show when={i.id === "localcoder"}>
               <div class="text-14-regular text-text-weak">{language.t("dialog.provider.localcoder.tagline")}</div>
             </Show>

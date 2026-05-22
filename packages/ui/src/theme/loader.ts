@@ -1,4 +1,5 @@
-import type { DesktopTheme, ResolvedTheme } from "./types"
+﻿import type { DesktopTheme, ResolvedTheme } from "./types"
+import { DEFAULT_THEME_ID } from "./constants"
 import { resolveThemeVariant, themeToCss } from "./resolve"
 
 let activeTheme: DesktopTheme | null = null
@@ -27,7 +28,7 @@ export function applyTheme(theme: DesktopTheme, themeId?: string): void {
 }
 
 function buildThemeCss(light: ResolvedTheme, dark: ResolvedTheme, themeId: string): string {
-  const isDefaultTheme = themeId === "oc-2"
+  const isDefaultTheme = themeId === DEFAULT_THEME_ID
   const lightCss = themeToCss(light)
   const darkCss = themeToCss(dark)
 
@@ -101,3 +102,4 @@ export function setColorScheme(scheme: "light" | "dark" | "auto"): void {
     document.documentElement.style.setProperty("color-scheme", scheme)
   }
 }
+

@@ -16,6 +16,7 @@ import { lazy } from "../../util/lazy"
 import { Config } from "@/config/config"
 import { errors } from "../error"
 import { disposeAllInstancesAndEmitGlobalDisposed } from "../global-lifecycle"
+import { LlamaCppRoutes } from "@/llamacpp/routes"
 
 const log = Log.create({ service: "server" })
 
@@ -282,5 +283,6 @@ export const GlobalRoutes = lazy(() =>
         })
         return c.json({ success: true, version: target })
       },
-    ),
+    )
+    .route("/llamacpp", LlamaCppRoutes())
 )

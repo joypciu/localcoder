@@ -7,6 +7,7 @@ import { useLocal } from "@tui/context/local"
 import { useDialog } from "@tui/ui/dialog"
 import * as LlamaServer from "@tui/llama-server"
 import * as LlamaSetup from "@tui/llamacpp-setup"
+import * as Bootstrap from "@/llamacpp/bootstrap"
 import { DialogAlert } from "@tui/ui/dialog-alert"
 
 export function DialogLlama() {
@@ -68,7 +69,7 @@ export function DialogLlama() {
           description: "Paths, env vars, and ~/.localcoder/llamacpp.json",
         },
         {
-          title: "Save current paths",
+          title: "Save and configure provider",
           value: "save",
           description: "Persist llama dir + model to user config",
           disabled: !cfg().modelPath,
@@ -92,13 +93,13 @@ export function DialogLlama() {
             return
           }
           if (option.value === "save") {
-            LlamaSetup.saveUserLlamaConfig({
+            await Bootstrap.configure({
               llamaDir: cfg().llamaDir,
               modelPath: cfg().modelPath,
+              autoStart: false,
               ctx: cfg().ctx,
-              mtp: mtp(),
             })
-            toast.show({ message: `Saved to ${LlamaSetup.configPath()}`, variant: "success" })
+            toast.show({ message: `Saved provider config`, variant: "success" })
             return
           }
           if (option.value === "refresh") {
@@ -118,12 +119,13 @@ export function DialogLlama() {
           if (option.value === "start") {
             setLoading(true)
             try {
-              const result = await LlamaServer.start({
-                onLine: (line) => {
-                  if (line.includes("listening on")) refresh()
-                },
+              const result = await Bootstrap.configure({
+                llamaDir: cfg().llamaDir,
+                modelPath: cfg().modelPath,
+                autoStart: true,
+                ctx: cfg().ctx,
               })
-              await afterStart(result.modelId)
+              await afterStart(result.modelId!)
             } catch (err) {
               const message = err instanceof Error ? err.message : String(err)
               toast.show({ message, variant: "error", duration: 8000 })

@@ -2307,10 +2307,17 @@ export default function Layout(props: ParentProps) {
                 <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
                   {language.t("sidebar.gettingStarted.line2")}
                 </div>
+                <div class="text-14-regular text-text-base" style={{ "line-height": "var(--line-height-normal)" }}>
+                  {language.t("sidebar.gettingStarted.llama")}
+                </div>
               </div>
               <div data-component="getting-started-actions">
                 <Button size="large" icon="plus-small" onClick={connectProvider}>
                   {language.t("command.provider.connect")}
+                </Button>
+                <Button size="large" variant="secondary" onClick={() => dialog.show(() => <DialogSetupLlamacpp back="close" />)}
+                >
+                  {language.t("sidebar.gettingStarted.action.llama")}
                 </Button>
                 <Button size="large" variant="ghost" onClick={() => setStore("gettingStartedDismissed", true)}>
                   {language.t("toast.update.action.notYet")}

@@ -1,8 +1,8 @@
-# LocalCoder — Improvements, Fixes & Roadmap
+﻿# LocalCoder — Improvements, Fixes & Roadmap
 
-**Updated:** 2026-05-21 · **Release:** v1.14.39  
-**VS Code tests:** 84/84 (`cd sdks/vscode && bun run test:all`)  
-**Windows smoke:** built `.exe`, `serve` health, npm `postinstall` launcher
+**Updated:** 2026-05-22 · **Release:** v1.14.43+  
+**VS Code tests:** `cd sdks/vscode && bun run test:all`  
+**Windows E2E gate:** `bun run scripts/e2e-full-windows.ts`
 
 ---
 
@@ -10,37 +10,95 @@
 
 | Area | Status | Notes |
 |------|--------|-------|
-| TUI + llama.cpp | Production-ready | No default model until user configures; sessions + `--continue` |
-| VS Code extension | **Fixed for real installs** | Spawns `localcoder.exe` / PATH; live tests use `.exe` on Windows |
-| npm / Windows CLI | **Fixed** | `postinstall` copies platform binary; no-args without console shows help |
-| Desktop Electron | **Build fixed** | OAuth packages externalized in `electron.vite.config.ts` + `build-node.ts` |
-| CI release | Tag `v1.14.38` | `.github/workflows/release.yml` — Win/Mac CLI + desktop + npm |
+| TUI + llama.cpp | Production-ready | Shared module under `packages/localcoder/src/llamacpp/`; CLI `llamacpp setup` |
+| Web / Desktop UI | **Rebranded** | LocalCoder LC monogram, `localcoder` default theme, home + setup wizard |
+| VS Code extension | **llama.cpp wizard** | First-run + `localcoder.setupLlamaCpp`; spawns built `.exe` |
+| npm / Windows CLI | **Fixed** | `postinstall` copies platform binary; Explorer double-click shows help |
+| Desktop Electron | **Shippable** | `LocalCoder.exe` + NSIS installer; OAuth externals fixed |
+| CI release | Tag-driven | `.github/workflows/release.yml` — Win/Mac CLI + desktop + npm |
+
+---
+
+## v1.14.43 — llama.cpp everywhere + LocalCoder identity
+
+### Shared llama.cpp module
+- **Config:** `~/.localcoder/llamacpp.json` (llama dir, GGUF path, autoStart, ctx, MTP).
+- **API:** `GET/POST /global/llamacpp/{status,setup,start,stop}` on `localcoder serve`.
+- **Auto-start:** `maybeAutoStartLlamaCpp()` after server listen when `autoStart` is set.
+- **CLI:** `localcoder llamacpp setup|status|stop` — configure provider + start `llama-server`.
+
+### App / Desktop UI
+- LC monogram logo, favicon v3, enhanced `localcoder` theme (default).
+- Home page: “Set up local llama.cpp” + “Connect cloud provider”.
+- In-app wizard: browse llama.cpp folder + GGUF, discovered models list.
+
+### VS Code extension
+- First-run option: **Local — llama.cpp (GGUF)** — folder + file pickers, runs `localcoder.exe llamacpp setup`.
+- Command: **LocalCoder: Set up llama.cpp** (`localcoder.setupLlamaCpp`).
+- Backend still prefers `dist/localcoder-windows-x64/bin/localcoder.exe`.
+
+### Desktop app
+- Unpacked: `packages/desktop/dist/win-unpacked/LocalCoder.exe`
+- Installer: `packages/desktop/dist/localcoder-desktop-win-x64.exe`
+- NSIS icons use `.ico` (not `.png`).
 
 ---
 
 ## Fixes in v1.14.39
-### Windows double-click (v1.14.39) — root cause fixed
 
-- **Problem:** Double-clicking `localcoder.exe` showed nothing. Bun reports `isTTY: true` even with no visible console; the TUI started invisibly and exited.
-- **Fix:** Early `src/entry.ts` runs before TUI imports. Detect **Explorer** launch via parent process `explorer.exe`, then open a visible `cmd` window with instructions and `--help`.
-- **npm:** `bin/localcoder.cmd` shim; `postinstall` writes the shim on Windows.
+### Windows double-click — root cause fixed
+- **Problem:** Double-clicking `localcoder.exe` showed nothing (invisible TUI under Explorer).
+- **Fix:** Early `src/entry.ts` detects `explorer.exe` parent → visible `cmd` + `--help`.
+- **npm:** `bin/localcoder.cmd` shim via `postinstall`.
 
+---
 
-## Fixes in v1.14.38 (this release)
+## Verify locally (Windows + llama.cpp)
 
-### VS Code extension
-- **Backend resolution:** prefer `dist/localcoder-windows-x64/bin/localcoder.exe`, then PATH `localcoder`, then Bun monorepo fallback.
-- **Stale `none` backend:** auto-migrate to `localcoder`; `startBackend` no longer throws when unconfigured.
-- **First-run skip:** sets `localcoder` backend (not `none`).
-- **Live tests:** `backend-live.test.ts` starts the **built executable** on Windows when present.
+Default paths on this machine:
 
-### Windows / npm CLI
-- **`postinstall.mjs`:** on Windows, copies `localcoder.exe` to `bin/.localcoder` for the Node launcher.
-- **Double-click / no console:** running `localcoder.exe` with no args and no TTY prints version + terminal instructions instead of hanging in the TUI.
+- llama.cpp: `P:\llama cpp\llama-b9222-bin-win-cuda-13.1-x64`
+- GGUF: `P:\gguf models\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf`
 
-### Desktop
-- **`electron.vite.config.ts`:** externalize `mcp-oauth`, `poe-oauth`, `opencode-poe-auth`, `opencode-gitlab-auth` (mirrors `script/build.ts`).
-- **`build-node.ts`:** same externals for the embedded Node server bundle.
+### Full E2E gate (recommended before release)
+
+```powershell
+cd P:\localcoder
+bun run scripts/e2e-full-windows.ts
+```
+
+Steps: `build:win` → `llamacpp setup` → chat smoke → `serve` + API → VS Code `test:all` → desktop artifact check.
+
+Skip slow steps when iterating:
+
+```powershell
+$env:E2E_SKIP_BUILD = "1"
+$env:E2E_SKIP_LLAMA = "1"
+bun run scripts/e2e-full-windows.ts
+```
+
+### Manual checks
+
+```powershell
+cd packages/localcoder
+bun run build:win
+.\dist\localcoder-windows-x64\bin\localcoder.exe llamacpp setup `
+  --dir "P:\llama cpp\llama-b9222-bin-win-cuda-13.1-x64" `
+  --model "P:\gguf models\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"
+
+bun run ..\..\scripts\e2e-llamacpp.ts
+
+cd ..\desktop
+bun run build
+bun run package:win
+
+cd ..\..\sdks\vscode
+bun run test:all
+```
+
+**VS Code:** F5 from `sdks/vscode`, or set `localcoder.packagePath` to `packages/localcoder`.
+
+**Desktop:** double-click `LocalCoder.exe` → use in-app llama setup or connect cloud provider.
 
 ---
 
@@ -48,43 +106,12 @@
 
 | Priority | Item |
 |----------|------|
-| P0 | Publish VSIX to Marketplace; document `localcoder.packagePath` for custom installs |
-| P0 | `script/smoke-windows.ps1` in CI (exe + npm + extension tests) |
+| P0 | Publish VSIX to Marketplace; document `localcoder.packagePath` |
+| P0 | Run `e2e-full-windows.ts` in CI on self-hosted Windows GPU runner |
+| P1 | Regenerate `packages/desktop/icons/prod/icon.png` from favicon v3 (512×512) |
 | P1 | Native diff apply/reject in VS Code (`vscode.diff`) |
 | P1 | SecretStorage for API keys |
-| P1 | Desktop: sign Windows installer; notarize macOS `.dmg` |
-| P2 | MCP panel in VS Code; inline editor chat; context/token bar in webview |
-
----
-
-## Future directions
-
-1. **Release automation** — tag-driven GitHub Actions for all platform binaries and desktop installers; attach to GitHub Releases.
-2. **Real E2E** — extension host smoke that sends a message through `localcoder serve`, not only mocked tool shapes.
-3. **Local-first default** — guided llama.cpp / Qwopus setup wizard in VS Code matching TUI portable setup.
-4. **Parity** — Copilot-class inline chat, MCP, and diff-apply while keeping local agent + undo as differentiators.
-
----
-
-## Verify locally (Windows)
-
-```powershell
-cd packages/localcoder
-bun run build:win
-bun run prepare:npm
-.\dist\localcoder-windows-x64\bin\localcoder.exe --version
-
-cd dist/npm/localcoder
-npm install
-node bin/localcoder --version
-
-cd ..\..\..\sdks\vscode
-bun run test:all
-```
-
-**VS Code:** F5 from `sdks/vscode` or set `localcoder.packagePath` to your `packages/localcoder` folder.
-
-**Note:** Chat requires a configured model (`localcoder` in terminal → pick provider). Server start and chat errors are separate issues.
+| P2 | MCP panel in VS Code; inline editor chat |
 
 ---
 
@@ -92,8 +119,9 @@ bun run test:all
 
 | What tests prove | What they do *not* prove |
 |------------------|---------------------------|
-| 84 VS Code unit/integration tests | Your global npm install path on another machine |
-| Live HTTP against `.exe` (Windows) | Desktop app UX without running Electron |
-| `build:win` smoke in `build.ts` | Double-click TUI (use terminal or `serve`) |
+| `e2e-full-windows.ts` | CLI, llama chat, serve API, VS Code suite, desktop binary exists |
+| VS Code unit + `backend-live.test.ts` | Manual F5 wizard UX on a fresh VS Code profile |
+| `e2e-llamacpp.ts` | Full agent tool loop (use `AGENT_LIVE_E2E=1` for that) |
+| Desktop `package:win` | Code signing / notarization |
 
-See `sdks/vscode/FUTURE_IMPROVEMENTS.md` for the detailed changelog.
+See `sdks/vscode/FUTURE_IMPROVEMENTS.md` for extension changelog detail.

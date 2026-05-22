@@ -1,4 +1,4 @@
-import { createEffect, createMemo, For, Show, type Accessor, type JSX } from "solid-js"
+﻿import { createEffect, createMemo, For, Show, type Accessor, type JSX } from "solid-js"
 import {
   DragDropProvider,
   DragDropSensors,
@@ -9,6 +9,7 @@ import {
 } from "@thisbeyond/solid-dnd"
 import { ConstrainDragXAxis } from "@/utils/solid-dnd"
 import { IconButton } from "@localcoder-ai/ui/icon-button"
+import { Mark } from "@localcoder-ai/ui/logo"
 import { Tooltip, TooltipKeybind } from "@localcoder-ai/ui/tooltip"
 import { type LocalProject } from "@/context/layout"
 
@@ -63,6 +64,9 @@ export const SidebarContent = (props: {
             <DragDropSensors />
             <ConstrainDragXAxis />
             <div class="h-full w-full flex flex-col items-center gap-3 px-3 py-3 overflow-y-auto no-scrollbar">
+              <div class="shrink-0 py-1 opacity-70" aria-hidden="true">
+                <Mark />
+              </div>
               <SortableProvider ids={props.projects().map((p) => p.worktree)}>
                 <For each={props.projects()}>{(project) => props.renderProject(project)}</For>
               </SortableProvider>
@@ -123,3 +127,5 @@ export const SidebarContent = (props: {
     </div>
   )
 }
+
+

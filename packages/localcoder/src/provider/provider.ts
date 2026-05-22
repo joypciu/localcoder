@@ -1394,6 +1394,20 @@ const layer: Layer.Layer<
           mergeProvider(providerID, partial)
         }
 
+
+        const llamacpp = ProviderID.make("llamacpp")
+        if (discoveryLoaders[llamacpp] && providers[llamacpp] && isProviderAllowed(llamacpp)) {
+          yield* Effect.promise(async () => {
+            try {
+              const discovered = await discoveryLoaders[llamacpp]()
+              for (const [modelID, model] of Object.entries(discovered)) {
+                providers[llamacpp].models[modelID] = model
+              }
+            } catch (e) {
+              log.warn("state discovery error", { id: "llamacpp", error: e })
+            }
+          })
+        }
         const gitlab = ProviderID.make("gitlab")
         if (discoveryLoaders[gitlab] && providers[gitlab] && isProviderAllowed(gitlab)) {
           yield* Effect.promise(async () => {

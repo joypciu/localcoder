@@ -1,7 +1,7 @@
 {
   "name": "localcoder",
   "displayName": "LocalCoder",
-  "description": "AI coding agent \u2014 chat, tool calls, file edits, and terminal TUI in VS Code",
+  "description": "AI coding agent — chat, tool calls, file edits, and terminal TUI in VS Code",
   "version": "1.0.0",
   "publisher": "joypciu",
   "repository": {
@@ -66,6 +66,10 @@
           "light": "images/button-dark.svg",
           "dark": "images/button-light.svg"
         }
+      },
+      {
+        "command": "localcoder.setupLlamaCpp",
+        "title": "LocalCoder: Set up llama.cpp (GGUF)"
       },
       {
         "command": "localcoder.openTerminal",

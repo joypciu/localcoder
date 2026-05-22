@@ -1,0 +1,57 @@
+import { authTokenFromCredentials } from "@/utils/server"
+import type { ServerConnection } from "@/context/server"
+
+export type LlamaCppPublicStatus = {
+  running: boolean
+  modelId?: string
+  managed: boolean
+  apiUrl: string
+  logPath?: string
+  llamaDir: string
+  modelPath: string
+  ctx: number
+  saved: Record<string, unknown>
+  discoveredModels: string[]
+  serverExe: string
+}
+
+export type LlamaCppSetupResult = {
+  model: string
+  modelId?: string
+  running: boolean
+  alreadyRunning?: boolean
+  apiUrl: string
+  logPath?: string
+  error?: string
+}
+
+function headers(server: ServerConnection.HttpBase) {
+  const next: Record<string, string> = { "Content-Type": "application/json" }
+  if (server.password) {
+    next.Authorization = `Basic ${authTokenFromCredentials({ username: server.username, password: server.password })}`
+  }
+  return next
+}
+
+async function parse<T>(res: Response): Promise<T> {
+  const data = (await res.json()) as T & { error?: string }
+  if (!res.ok) throw new Error(data.error ?? res.statusText)
+  return data
+}
+
+export async function getLlamaCppStatus(server: ServerConnection.HttpBase) {
+  const res = await fetch(`${server.url}/global/llamacpp/status`, { headers: headers(server) })
+  return parse<LlamaCppPublicStatus>(res)
+}
+
+export async function setupLlamaCpp(
+  server: ServerConnection.HttpBase,
+  body: { llamaDir: string; modelPath: string; autoStart?: boolean; ctx?: number },
+) {
+  const res = await fetch(`${server.url}/global/llamacpp/setup`, {
+    method: "POST",
+    headers: headers(server),
+    body: JSON.stringify(body),
+  })
+  return parse<LlamaCppSetupResult>(res)
+}

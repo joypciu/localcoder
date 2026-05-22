@@ -1,6 +1,6 @@
 import { createMemo, For, Match, Switch } from "solid-js"
 import { Button } from "@localcoder-ai/ui/button"
-import { Logo } from "@localcoder-ai/ui/logo"
+import { Logo, Splash } from "@localcoder-ai/ui/logo"
 import { useLayout } from "@/context/layout"
 import { useNavigate } from "@solidjs/router"
 import { base64Encode } from "@localcoder-ai/core/util/encode"
@@ -10,6 +10,8 @@ import { DateTime } from "luxon"
 import { useDialog } from "@localcoder-ai/ui/context/dialog"
 import { DialogSelectDirectory } from "@/components/dialog-select-directory"
 import { DialogSelectServer } from "@/components/dialog-select-server"
+import { DialogSetupLlamacpp } from "@/components/dialog-setup-llamacpp"
+import { DialogSelectProvider } from "@/components/dialog-select-provider"
 import { useServer } from "@/context/server"
 import { useGlobalSync } from "@/context/global-sync"
 import { useLanguage } from "@/context/language"
@@ -69,8 +71,14 @@ export default function Home() {
   }
 
   return (
-    <div class="mx-auto mt-55 w-full md:w-auto px-4">
-      <Logo class="md:w-xl opacity-12" />
+    <div class="mx-auto mt-40 w-full md:w-auto px-4 flex flex-col items-center text-center">
+      <div class="flex flex-col items-center gap-4 mb-2">
+        <Splash class="w-14 h-[4.375rem] opacity-25" />
+        <Logo class="w-full max-w-lg opacity-20" />
+        <p class="text-13-regular text-text-weak max-w-md leading-normal">
+          {language.t("home.tagline")}
+        </p>
+      </div>
       <Button
         size="large"
         variant="ghost"
@@ -137,3 +145,5 @@ export default function Home() {
     </div>
   )
 }
+
+

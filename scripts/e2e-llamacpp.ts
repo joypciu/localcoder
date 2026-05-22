@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+﻿#!/usr/bin/env bun
 /**
  * E2E: llama-server + OpenAI-compatible API smoke test.
  *
@@ -50,16 +50,17 @@ async function chat(modelId: string) {
     body: JSON.stringify({
       model: modelId,
       messages: [{ role: "user", content: "Say hello in one short sentence." }],
-      max_tokens: 64,
+      max_tokens: 512,
       temperature: 0.2,
     }),
     signal: AbortSignal.timeout(180_000),
   })
   if (!res.ok) throw new Error(`chat failed: ${res.status} ${await res.text()}`)
   const json = (await res.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
+    choices?: Array<{ message?: { content?: string; reasoning_content?: string } }>
   }
-  const text = json.choices?.[0]?.message?.content?.trim() ?? ""
+  const msg = json.choices?.[0]?.message
+  const text = (msg?.content?.trim() || msg?.reasoning_content?.trim() || "")
   log(`model reply: ${text.slice(0, 300) || "(empty)"}`)
   if (!text) throw new Error(`empty model reply: ${JSON.stringify(json)}`)
 }

@@ -1,10 +1,18 @@
-;(function () {
+﻿;(function () {
   var key = "localcoder-theme-id"
-  var themeId = localStorage.getItem(key) || "oc-2"
+  var themeId = localStorage.getItem(key) || "localcoder"
 
   if (themeId === "oc-1") {
     themeId = "oc-2"
     localStorage.setItem(key, themeId)
+    localStorage.removeItem("localcoder-theme-css-light")
+    localStorage.removeItem("localcoder-theme-css-dark")
+  }
+
+  if (themeId === "oc-2" && !localStorage.getItem("localcoder-rebrand-v1")) {
+    themeId = "localcoder"
+    localStorage.setItem(key, themeId)
+    localStorage.setItem("localcoder-rebrand-v1", "1")
     localStorage.removeItem("localcoder-theme-css-light")
     localStorage.removeItem("localcoder-theme-css-dark")
   }
@@ -16,7 +24,7 @@
   document.documentElement.dataset.theme = themeId
   document.documentElement.dataset.colorScheme = mode
 
-  if (themeId === "oc-2") return
+  if (themeId === "localcoder" || themeId === "oc-2") return
 
   var css = localStorage.getItem("localcoder-theme-css-" + mode)
   if (css) {

@@ -68,8 +68,8 @@ const getBase = (): Configuration => ({
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
-    installerIcon: `resources/icons/icon.png`,
-    installerHeaderIcon: `resources/icons/icon.png`,
+    installerIcon: `resources/icons/icon.ico`,
+    installerHeaderIcon: `resources/icons/icon.ico`,
   },
   linux: {
     icon: `resources/icons`,

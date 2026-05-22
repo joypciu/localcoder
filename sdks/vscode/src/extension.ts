@@ -1,6 +1,98 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as fs from "fs";
+import * as cp from "child_process";
+import * as os from "os";
 import { ChatPanelProvider, ChatSidebarProvider, chatProviderRef } from "./chat-panel";
+
+
+
+async function resolveLocalcoderExe(): Promise<string | undefined> {
+  const cfg = vscode.workspace.getConfiguration("localcoder");
+  const configured = cfg.get<string>("packagePath");
+  const candidates: string[] = [];
+  if (configured) {
+    candidates.push(path.join(path.resolve(configured), "dist", "localcoder-windows-x64", "bin", "localcoder.exe"));
+  }
+  candidates.push(path.resolve(__dirname, "..", "..", "packages", "localcoder", "dist", "localcoder-windows-x64", "bin", "localcoder.exe"));
+  for (const c of candidates) {
+    if (fs.existsSync(c)) { return c; }
+  }
+  return undefined;
+}
+
+async function configureLlamaCpp(ctx: vscode.ExtensionContext): Promise<boolean> {
+  const defaultDir = process.platform === "win32"
+    ? "P:\\llama cpp\\llama-b9222-bin-win-cuda-13.1-x64"
+    : path.join(os.homedir(), "llama.cpp");
+  const defaultModel = process.platform === "win32"
+    ? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"
+    : "";
+
+  const dirUri = await vscode.window.showOpenDialog({
+    title: "Select llama.cpp folder (contains llama-server)",
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    defaultUri: fs.existsSync(defaultDir) ? vscode.Uri.file(defaultDir) : undefined,
+  });
+  if (!dirUri?.[0]) { return false; }
+
+  const modelUri = await vscode.window.showOpenDialog({
+    title: "Select GGUF model file",
+    canSelectFiles: true,
+    canSelectFolders: false,
+    canSelectMany: false,
+    filters: { "GGUF models": ["gguf"] },
+    defaultUri: defaultModel && fs.existsSync(defaultModel)
+      ? vscode.Uri.file(defaultModel)
+      : dirUri[0],
+  });
+  if (!modelUri?.[0]) { return false; }
+
+  const llamaDir = dirUri[0].fsPath;
+  const modelPath = modelUri[0].fsPath;
+  const exe = await resolveLocalcoderExe();
+  if (!exe) {
+    void vscode.window.showErrorMessage(
+      "LocalCoder CLI not found. Run bun run build:win in packages/localcoder or set localcoder.packagePath.",
+    );
+    return false;
+  }
+
+  try {
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: "Configuring llama.cpp (first load may take a few minutes)…",
+        cancellable: false,
+      },
+      () => new Promise<void>((resolve, reject) => {
+        const proc = cp.spawn(exe, ["llamacpp", "setup", "--dir", llamaDir, "--model", modelPath], {
+          stdio: ["ignore", "pipe", "pipe"],
+        });
+        let out = "";
+        proc.stdout?.on("data", (d: Buffer) => { out += d.toString(); });
+        proc.stderr?.on("data", (d: Buffer) => { out += d.toString(); });
+        proc.on("error", reject);
+        proc.on("close", (code: number | null) => {
+          if (code === 0) { resolve(); return; }
+          reject(new Error(out.trim() || `llamacpp setup exited ${code}`));
+        });
+      }),
+    );
+  } catch (err) {
+    void vscode.window.showErrorMessage(`llama.cpp setup failed: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
+  }
+
+  await ctx.globalState.update("chatBackendConfig", { type: "localcoder" });
+  await ctx.globalState.update("localcoder.hasSetup", true);
+  void vscode.window.showInformationMessage(
+    "LocalCoder: llama.cpp is ready. Open the LocalCoder icon in the Activity Bar to chat.",
+  );
+  return true;
+}
 
 const TERMINAL_NAME = "localcoder";
 
@@ -112,6 +204,11 @@ export function activate(context: vscode.ExtensionContext) {
     if (!pick || pick.label.includes("Skip")) {
       await ctx.globalState.update("localcoder.hasSetup", true);
       await ctx.globalState.update("chatBackendConfig", { type: "localcoder" });
+      return;
+    }
+
+    if (pick.label.includes("llama.cpp")) {
+      await configureLlamaCpp(ctx);
       return;
     }
 

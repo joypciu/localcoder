@@ -36,6 +36,7 @@ import { JsonMigration } from "@/storage/json-migration"
 import { Database } from "@/storage/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
+import { LlamacppCommand } from "./cli/cmd/llamacpp"
 import { Heap } from "./cli/heap"
 import { drizzle } from "drizzle-orm/bun-sqlite"
 import { ensureProcessMetadata } from "@localcoder-ai/core/util/localcoder-process"
@@ -177,6 +178,7 @@ const cli = yargs(args)
   .command(SessionCommand)
   .command(PluginCommand)
   .command(DbCommand)
+  .command(LlamacppCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

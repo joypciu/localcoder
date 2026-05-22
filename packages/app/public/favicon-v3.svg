@@ -1,7 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512"><svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="512" height="512" fill="#131010"></rect>
-<path d="M320 224V352H192V224H320Z" fill="#5A5858"></path>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z" fill="white"></path>
-</svg><style>@media (prefers-color-scheme: light) { :root { filter: none; } }
-@media (prefers-color-scheme: dark) { :root { filter: none; } }
-</style></svg>
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="112" fill="#121018"/>
+  <rect x="96" y="96" width="320" height="320" rx="24" stroke="#2a2438" stroke-width="8"/>
+  <path d="M176 352V160H256V352H176Z" fill="#fab283"/>
+  <path d="M256 160H176V352H256V160ZM320 416H112V96H320V416Z" fill="#ece6df"/>
+  <path d="M336 192H304V224H336V192Z" fill="#9d7cd8"/>
+  <path d="M336 224H304V288H336V224Z" fill="#56b6c2"/>
+  <path d="M336 288H304V320H336V288Z" fill="#9d7cd8"/>
+</svg>
