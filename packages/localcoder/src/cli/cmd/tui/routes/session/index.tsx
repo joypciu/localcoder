@@ -1635,7 +1635,7 @@ function ToolPart(props: { last: boolean; part: ToolPart; message: AssistantMess
       void sdk.client.session.revert({
         sessionID: ctx.sessionID,
         messageID: props.message.id,
-        partID: props.part.callID,
+        partID: props.part.id,
       })
     }
   })

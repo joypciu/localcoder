@@ -5,7 +5,7 @@ Runs in your terminal, edits your code, uses your tools — with an optional des
 
 ---
 
-## Release v1.14.43
+## Release v1.14.44
 
 Recent highlights:
 

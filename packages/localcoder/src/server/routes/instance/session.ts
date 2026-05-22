@@ -1047,8 +1047,12 @@ export const SessionRoutes = lazy(() =>
         const body = c.req.valid("json") as Omit<SessionRevert.RevertInput, "sessionID">
         log.info("revert", body)
         return jsonRequest("SessionRoutes.revert", c, function* () {
-          const svc = yield* SessionRevert.Service
-          return yield* svc.revert({ sessionID, ...body })
+          const revertSvc = yield* SessionRevert.Service
+          const sessionSvc = yield* Session.Service
+          yield* revertSvc.revert({ sessionID, ...body })
+          const updated = yield* sessionSvc.get(sessionID)
+          yield* revertSvc.cleanup(updated)
+          return yield* sessionSvc.get(sessionID)
         })
       },
     )

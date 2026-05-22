@@ -1,4 +1,5 @@
 import { Effect, Layer, Context, Schema } from "effect"
+import { NamedError } from "@localcoder-ai/core/util/error"
 import { Bus } from "../bus"
 import { Snapshot } from "../snapshot"
 import { Storage } from "@/storage/storage"
@@ -70,7 +71,11 @@ export const layer = Layer.effect(
         }
       }
 
-      if (!rev) return session
+      if (!rev) {
+        throw new NamedError.Unknown({
+          message: "Nothing to revert at the requested message or tool part",
+        })
+      }
 
       rev.snapshot = session.revert?.snapshot ?? (yield* snap.track())
       if (session.revert?.snapshot) yield* snap.restore(session.revert.snapshot)

@@ -210,7 +210,10 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
       })
 
       return {
-        autoload: isRunning,
+        autoload:
+          isRunning ||
+          Object.keys(config.provider?.llamacpp?.models ?? {}).length > 0 ||
+          !!LlamaSetup.loadUserLlamaConfig().modelPath,
         options: {
           baseURL: apiUrl,
           apiKey,
@@ -230,6 +233,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
                 providerID: ProviderID.make("llamacpp"),
                 status: "active",
                 family: "",
+                release_date: "",
                 headers: {},
                 options: {},
                 variants: {},
@@ -250,8 +254,33 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
                 cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
               }
             }
-            return models
+            if (Object.keys(models).length > 0) return models
+            const saved = LlamaSetup.loadUserLlamaConfig()
+            if (saved.modelPath) {
+              const modelId = path.basename(saved.modelPath)
+              return {
+                [modelId]: llamaCppConfiguredModel({
+                  modelId,
+                  modelPath: saved.modelPath,
+                  apiUrl,
+                  ctx: saved.ctx ?? Number(process.env.LLAMACPP_CTX ?? 16384),
+                }),
+              }
+            }
+            return {}
           } catch {
+            const saved = LlamaSetup.loadUserLlamaConfig()
+            if (saved.modelPath) {
+              const modelId = path.basename(saved.modelPath)
+              return {
+                [modelId]: llamaCppConfiguredModel({
+                  modelId,
+                  modelPath: saved.modelPath,
+                  apiUrl,
+                  ctx: saved.ctx ?? Number(process.env.LLAMACPP_CTX ?? 16384),
+                }),
+              }
+            }
             return {}
           }
         },
@@ -1104,6 +1133,47 @@ function fromModelsDevModel(provider: ModelsDev.Provider, model: ModelsDev.Model
   }
 }
 
+function llamaCppConfiguredModel(input: {
+  modelId: string
+  modelPath: string
+  apiUrl: string
+  ctx: number
+}): Model {
+  const thinking = LlamaSetup.resolveThinkingEnabled(input.modelPath)
+  const output = Number(process.env.LLAMACPP_MAX_OUTPUT ?? 4096)
+  const idLower = input.modelId.toLowerCase()
+  return {
+    id: ModelID.make(input.modelId),
+    name: input.modelId,
+    providerID: ProviderID.make("llamacpp"),
+    status: "active",
+    family: "",
+    release_date: "",
+    headers: {},
+    options: {},
+    variants: {},
+    api: {
+      npm: "@ai-sdk/openai-compatible",
+      id: input.modelId,
+      url: input.apiUrl,
+    },
+    limit: {
+      context: input.ctx,
+      output,
+    },
+    capabilities: {
+      reasoning: thinking,
+      temperature: true,
+      toolcall: true,
+      attachment: false,
+      input: { text: true, audio: false, image: false, video: false, pdf: false },
+      output: { text: true, audio: false, image: false, video: false, pdf: false },
+      interleaved: /qwen|qwopus/i.test(idLower) ? { field: "reasoning_content" } : false,
+    },
+    cost: { input: 0, output: 0, cache: { read: 0, write: 0 } },
+  }
+}
+
 export function fromModelsDevProvider(provider: ModelsDev.Provider): Info {
   const models: Record<string, Model> = {}
   for (const [key, model] of Object.entries(provider.models)) {
@@ -1159,6 +1229,34 @@ const layer: Layer.Layer<
         const cfg = yield* config.get()
         const modelsDev = yield* modelsDevSvc.get()
         const database = mapValues(modelsDev, fromModelsDevProvider)
+
+        const llamacppID = ProviderID.make("llamacpp")
+        if (!database[llamacppID]) {
+          database[llamacppID] = {
+            id: llamacppID,
+            name: "llama.cpp (local)",
+            env: ["LLAMACPP_API_URL"],
+            models: {},
+            options: {},
+            source: "config",
+          }
+        }
+        const savedLlama = LlamaSetup.loadUserLlamaConfig()
+        const llamacppApiUrl =
+          process.env.LLAMACPP_API_URL ??
+          cfg.provider?.llamacpp?.options?.baseURL ??
+          "http://127.0.0.1:8080/v1"
+        if (savedLlama.modelPath) {
+          const modelId = path.basename(savedLlama.modelPath)
+          if (!database[llamacppID].models[modelId]) {
+            database[llamacppID].models[modelId] = llamaCppConfiguredModel({
+              modelId,
+              modelPath: savedLlama.modelPath,
+              apiUrl: llamacppApiUrl,
+              ctx: savedLlama.ctx ?? Number(process.env.LLAMACPP_CTX ?? 16384),
+            })
+          }
+        }
 
         const providers: Record<ProviderID, Info> = {} as Record<ProviderID, Info>
         const languages = new Map<string, LanguageModelV3>()

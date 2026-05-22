@@ -225,7 +225,7 @@
     },
     "packages/desktop": {
       "name": "@localcoder-ai/desktop",
-      "version": "1.14.43",
+      "version": "1.14.44",
       "dependencies": {
         "drizzle-orm": "catalog:",
         "effect": "catalog:",
@@ -316,9 +316,9 @@
     },
     "packages/localcoder": {
       "name": "localcoder",
-      "version": "1.14.43",
+      "version": "1.14.44",
       "bin": {
-        "localcoder": "./bin/localcoder",
+        "localcoder": "./bin/localcoder.cjs",
       },
       "dependencies": {
         "@actions/core": "1.11.1",

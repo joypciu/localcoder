@@ -17,8 +17,10 @@ export async function refreshLlamaProviders(input: {
 }) {
   await input.globalSDK.client.global.dispose().catch(() => undefined)
   await input.queryClient.invalidateQueries({ queryKey: [null, "providers"] })
+  await input.queryClient.invalidateQueries({ queryKey: ["bootstrap"] })
   if (input.directory) {
     await input.queryClient.invalidateQueries({ queryKey: [input.directory, "providers"] })
+    await input.queryClient.invalidateQueries({ queryKey: [input.directory] })
   }
   await input.queryClient.fetchQuery({ queryKey: ["bootstrap"] })
 

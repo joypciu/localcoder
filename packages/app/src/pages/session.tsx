@@ -1624,30 +1624,30 @@ export default function Page() {
   const revertMutation = useMutation(() => ({
     mutationFn: async (input: { sessionID: string; messageID: string; partID?: string }) => {
       const prev = prompt.current().slice()
-      const last = info()?.revert
-      const value = draft(input.messageID)
-      batch(() => {
-        roll(input.sessionID, { messageID: input.messageID })
-        prompt.set(value)
-      })
       await halt(input.sessionID)
-        .then(() => sdk.client.session.revert(input))
-        .then((result) => {
-          if (result.data) merge(result.data)
-          void sync.session.diff(input.sessionID, { force: true })
-          const tab = activeFileTab()
-          if (tab) {
-            const path = file.pathFromTab(tab)
-            if (path) void file.load(path, { force: true })
-          }
+      try {
+        const result = await sdk.client.session.revert(input)
+        if (!result.data) throw new Error("Revert failed")
+        batch(() => {
+          merge(result.data)
+          prompt.reset()
         })
-        .catch((err) => {
-          batch(() => {
-            roll(input.sessionID, last)
-            prompt.set(prev)
-          })
-          fail(err)
+        await sync.session.sync(input.sessionID, { force: true })
+        await sync.session.diff(input.sessionID, { force: true })
+        const tab = activeFileTab()
+        if (tab) {
+          const filePath = file.pathFromTab(tab)
+          if (filePath) await file.load(filePath, { force: true })
+        }
+        showToast({
+          variant: "success",
+          title: language.t("command.session.undo"),
         })
+      } catch (err) {
+        prompt.set(prev)
+        fail(err)
+        throw err
+      }
     },
   }))
 
@@ -1658,43 +1658,30 @@ export default function Page() {
 
       const next = userMessages().find((item) => item.id > id)
       const prev = prompt.current().slice()
-      const last = info()?.revert
 
-      batch(() => {
-        roll(sessionID, next ? { messageID: next.id } : undefined)
-        if (next) {
-          prompt.set(draft(next.id))
-          return
+      await halt(sessionID)
+      try {
+        const result = !next
+          ? await sdk.client.session.unrevert({ sessionID })
+          : await sdk.client.session.revert({ sessionID, messageID: next.id })
+        if (!result.data) throw new Error("Restore failed")
+        batch(() => {
+          merge(result.data)
+          if (next) prompt.set(draft(next.id))
+          else prompt.reset()
+        })
+        await sync.session.sync(sessionID, { force: true })
+        await sync.session.diff(sessionID, { force: true })
+        const tab = activeFileTab()
+        if (tab) {
+          const filePath = file.pathFromTab(tab)
+          if (filePath) await file.load(filePath, { force: true })
         }
-        prompt.reset()
-      })
-
-      const task = !next
-        ? halt(sessionID).then(() => sdk.client.session.unrevert({ sessionID }))
-        : halt(sessionID).then(() =>
-            sdk.client.session.revert({
-              sessionID,
-              messageID: next.id,
-            }),
-          )
-
-      await task
-        .then((result) => {
-          if (result.data) merge(result.data)
-          void sync.session.diff(sessionID, { force: true })
-          const tab = activeFileTab()
-          if (tab) {
-            const path = file.pathFromTab(tab)
-            if (path) void file.load(path, { force: true })
-          }
-        })
-        .catch((err) => {
-          batch(() => {
-            roll(sessionID, last)
-            prompt.set(prev)
-          })
-          fail(err)
-        })
+      } catch (err) {
+        prompt.set(prev)
+        fail(err)
+        throw err
+      }
     },
   }))
 
