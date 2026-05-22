@@ -17,6 +17,54 @@ const outDir = path.join(distDir, "npm", "localcoder")
 const version = pkg.version
 const forRegistry = process.env.NPM_PREPARE_REGISTRY === "1"
 
+function platformBinaryName(platform: string) {
+  return platform === "windows" ? "localcoder.exe" : "localcoder"
+}
+
+function embedLocalBinary(outDir: string, distDir: string) {
+  const { platform, arch } = (() => {
+    switch (process.platform) {
+      case "darwin":
+        return { platform: "darwin", arch: process.arch === "arm64" ? "arm64" : "x64" }
+      case "win32":
+        return { platform: "windows", arch: process.arch === "arm64" ? "arm64" : "x64" }
+      case "linux":
+        return { platform: "linux", arch: process.arch === "arm64" ? "arm64" : "x64" }
+      default:
+        return { platform: process.platform, arch: process.arch }
+    }
+  })()
+
+  const packageName = `localcoder-${platform}-${arch}`
+  const source = path.join(distDir, packageName, "bin", platformBinaryName(platform))
+  if (!fs.existsSync(source)) {
+    console.warn(`Local embed skipped: ${source} not found`)
+    return false
+  }
+
+  const binDir = path.join(outDir, "bin")
+  fs.mkdirSync(binDir, { recursive: true })
+  const target = path.join(binDir, ".localcoder")
+  fs.copyFileSync(source, target)
+
+  if (platform === "windows") {
+    fs.writeFileSync(
+      path.join(binDir, "localcoder.cmd"),
+      `@echo off
+
+"%~dp0.localcoder" %*
+
+exit /b %ERRORLEVEL%
+
+`,
+    )
+  }
+
+  console.log(`Embedded ${packageName} binary for local npm install`)
+  return true
+}
+
+
 const optionalDependencies: Record<string, string> = {}
 for (const name of fs.readdirSync(distDir)) {
   if (!name.startsWith("localcoder-")) continue
@@ -36,9 +84,20 @@ if (!hasBinaries) {
   console.warn("npm install will fall back to Bun when run from the monorepo")
 }
 
-fs.rmSync(outDir, { recursive: true, force: true })
+function resetOutDir(target: string) {
+  if (!fs.existsSync(target)) return
+  const stale = `${target}.old-${Date.now()}`
+  try {
+    fs.rmSync(target, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  } catch {
+    fs.renameSync(target, stale)
+    fs.rmSync(stale, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+  }
+}
+
+resetOutDir(outDir)
 fs.mkdirSync(path.join(outDir, "bin"), { recursive: true })
-fs.copyFileSync(path.join(root, "bin", "localcoder"), path.join(outDir, "bin", "localcoder"))
+fs.copyFileSync(path.join(root, "bin", "localcoder.cjs"), path.join(outDir, "bin", "localcoder.cjs"))
 if (fs.existsSync(path.join(root, "bin", "localcoder.cmd"))) {
   fs.copyFileSync(path.join(root, "bin", "localcoder.cmd"), path.join(outDir, "bin", "localcoder.cmd"))
 }
@@ -67,10 +126,16 @@ const npmPkg = {
   homepage: "https://github.com/joypciu/localcoder",
   bugs: { url: "https://github.com/joypciu/localcoder/issues" },
   keywords: ["ai", "coding", "agent", "cli", "llm", "localcoder"],
-  bin: { localcoder: "./bin/localcoder", ...(fs.existsSync(path.join(outDir, "bin", "localcoder.cmd")) ? { "localcoder.cmd": "./bin/localcoder.cmd" } : {}) },
+  bin: { localcoder: "./bin/localcoder.cjs", ...(fs.existsSync(path.join(outDir, "bin", "localcoder.cmd")) ? { "localcoder.cmd": "./bin/localcoder.cmd" } : {}) },
   scripts: { postinstall: "node ./postinstall.mjs" },
   optionalDependencies,
   engines: { node: ">=18" },
+}
+
+const embedded = !forRegistry && embedLocalBinary(outDir, distDir)
+if (embedded) {
+  delete (npmPkg as { optionalDependencies?: Record<string, string> }).optionalDependencies
+  npmPkg.scripts = {}
 }
 
 fs.writeFileSync(path.join(outDir, "package.json"), JSON.stringify(npmPkg, null, 2) + "\n")

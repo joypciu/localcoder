@@ -47,6 +47,26 @@ function detectPlatformAndArch() {
   return { platform, arch }
 }
 
+
+function findBinaryFromDistSibling() {
+  const { platform, arch } = detectPlatformAndArch()
+  const packageName = `localcoder-${platform}-${arch}`
+  const binaryName = platform === "windows" ? "localcoder.exe" : "localcoder"
+
+  let current = __dirname
+  for (let i = 0; i < 6; i++) {
+    const candidate = path.join(current, packageName, "bin", binaryName)
+    if (fs.existsSync(candidate)) {
+      return { binaryPath: candidate, binaryName }
+    }
+    const parent = path.dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+
+  throw new Error(`Could not find sibling platform package ${packageName}`)
+}
+
 function findBinary() {
   const { platform, arch } = detectPlatformAndArch()
   const packageName = `localcoder-${platform}-${arch}`
@@ -64,7 +84,7 @@ function findBinary() {
 
     return { binaryPath, binaryName }
   } catch (error) {
-    throw new Error(`Could not find package ${packageName}: ${error.message}`, { cause: error })
+    return findBinaryFromDistSibling()
   }
 }
 
@@ -76,9 +96,12 @@ async function main() {
       fs.copyFileSync(binaryPath, target)
       console.log("Windows: linked platform binary for npm launcher")
       const cmdShim = path.join(__dirname, "bin", "localcoder.cmd")
-      const shim = `@echo off
-"%~dp0.localcoder" %*
-exit /b %ERRORLEVEL%
+      const shim = `@echo off
+
+"%~dp0.localcoder" %*
+
+exit /b %ERRORLEVEL%
+
 `
       fs.writeFileSync(cmdShim, shim)
       console.log("Windows: wrote bin/localcoder.cmd shim")

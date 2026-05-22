@@ -17,7 +17,8 @@
                     "prepare":  "husky",
                     "test":  "echo \u0027do not run tests from root\u0027 \u0026\u0026 exit 1",
                     "build:win-gui": "bun run --cwd packages/localcoder build:win-standalone",
-                    "build:win-standalone": "bun run --cwd packages/localcoder build:win-standalone"
+                    "build:win-standalone": "bun run --cwd packages/localcoder build:win-standalone",
+                    "install:cli": "bun run --cwd packages/localcoder install:cli"
                 },
     "workspaces":  {
                        "packages":  [

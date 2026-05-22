@@ -21,10 +21,11 @@
                     "prepare:npm":  "bun run script/prepare-npm-package.ts",
                     "prepare:npm:registry":  "NPM_PREPARE_REGISTRY=1 bun run script/prepare-npm-package.ts",
                     "build:win-gui": "bun run script/build-win-standalone.ts",
-                    "build:win-standalone": "bun run script/build-win-standalone.ts"
+                    "build:win-standalone": "bun run script/build-win-standalone.ts",
+        "install:cli": "bun run build:win && bun run prepare:npm && npm install -g ./dist/npm/localcoder"
                 },
     "bin":  {
-                "localcoder":  "./bin/localcoder"
+                "localcoder": "./bin/localcoder.cjs"
             },
     "exports":  {
                     "./*":  "./src/*.ts"
