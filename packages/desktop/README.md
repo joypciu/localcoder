@@ -10,16 +10,23 @@ Download **`LocalCoder-*-portable.exe`** from [GitHub Releases](https://github.c
 
 1. Download the portable exe
 2. Double-click — no install, no dependencies
-3. Set up cloud API or local llama.cpp (folder + GGUF) in the wizard
+3. **First-run wizard:** cloud API key or local llama.cpp (any folder + any `.gguf`)
 
 User data: `%APPDATA%\ai.localcoder.desktop\`
 
-### UI highlights (v1.14.43+)
+### Setup wizard (no manual config)
+
+| Step | What you do | What LocalCoder does |
+|------|-------------|----------------------|
+| **llama.cpp** | Pick folder with `llama-server`, pick `.gguf`, set context size | Saves config, starts server, registers provider |
+| **Cloud** | Paste API key (OpenRouter, etc.) | Stores in auth, lists models |
+
+### UI highlights
 
 - Cursor-style default theme, flat IDE layout
 - **Undo change** on each Write/Edit/Patch tool
 - **Undo all changes** on turn diff summaries
-- llama.cpp setup dialog with model discovery
+- llama.cpp dialog: browse paths, discovered GGUF list, context tokens, thinking toggle
 
 ---
 
@@ -28,7 +35,6 @@ User data: `%APPDATA%\ai.localcoder.desktop\`
 From repo root:
 
 ```powershell
-cd P:\localcoder
 bun install
 bun run build:win-standalone
 ```
@@ -43,9 +49,7 @@ bun run build:win-standalone
 # Run: packages\desktop\dist\win-unpacked\LocalCoder.exe
 ```
 
-Full portable build ~2–4 min. Packaging uses `.pack-tmp` first to avoid antivirus locks on the output exe.
-
-Does **not** bundle llama.cpp or GGUF models — users select paths in the setup wizard.
+Full portable build ~2–4 min. Does **not** bundle llama.cpp or GGUF models.
 
 ---
 
@@ -61,7 +65,7 @@ bun run --cwd packages/desktop dev
 cd packages/desktop
 bun run prebuild && bun run build
 $env:LOCALCODER_CHANNEL = "prod"
-bun run package:win-portable   # portable only
+bun run package:win-portable
 bun run package:win            # portable + NSIS installer
 ```
 

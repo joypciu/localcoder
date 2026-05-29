@@ -1,9 +1,17 @@
-#!/usr/bin/env bun
+﻿#!/usr/bin/env bun
 /**
  * End-to-end Windows gate: CLI build, llama.cpp setup, serve API, VS Code tests, desktop artifact.
  *
  * Usage:
  *   bun run scripts/e2e-full-windows.ts
+ *
+ * Env:
+ *   LOCALCODER_LLAMACPP_DIR   — llama-server directory (must contain llama-server.exe)
+ *   LOCALCODER_LLAMACPP_MODEL — path to .gguf model
+ *   E2E_SKIP_BUILD=1          — skip build:win
+ *   E2E_SKIP_LLAMA=1          — skip llama setup + chat smoke
+ *   E2E_SKIP_STANDALONE=1     — skip build:win-standalone portable gate
+ *   LLAMACPP_API_URL          — default http://127.0.0.1:8080/v1
  */
 import { spawn, type ChildProcess } from "child_process"
 import crypto from "crypto"
@@ -13,14 +21,22 @@ import path from "path"
 
 const ROOT = path.join(import.meta.dir, "..")
 const PKG = path.join(ROOT, "packages", "localcoder")
+const DESKTOP = path.join(ROOT, "packages", "desktop")
 const EXE = path.join(PKG, "dist", "localcoder-windows-x64", "bin", "localcoder.exe")
-const DESKTOP_EXE = path.join(ROOT, "packages", "desktop", "dist", "win-unpacked", "LocalCoder.exe")
-const DESKTOP_INSTALLER = path.join(ROOT, "packages", "desktop", "dist", "localcoder-desktop-win-x64.exe")
+const DESKTOP_EXE = path.join(DESKTOP, "dist", "win-unpacked", "LocalCoder.exe")
+const DESKTOP_INSTALLER = path.join(DESKTOP, "dist", "localcoder-desktop-win-x64.exe")
 const VSCODE = path.join(ROOT, "sdks", "vscode")
-const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"
-const MODEL_PATH = process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"
 const SKIP_BUILD = process.env.E2E_SKIP_BUILD === "1"
 const SKIP_LLAMA = process.env.E2E_SKIP_LLAMA === "1"
+const SKIP_STANDALONE = process.env.E2E_SKIP_STANDALONE === "1"
+
+function resolveLlamaDir(): string {
+  return process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9354-bin-win-cuda-13.1-x64"
+}
+
+function resolveModelPath(): string {
+  return process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"
+}
 
 function resolveBun(): string {
   const exe = process.execPath
@@ -110,15 +126,36 @@ async function waitForHealth(port: number, password: string, timeoutMs = 60_000)
   throw new Error("localcoder serve did not become healthy")
 }
 
+function findPortableExe(): string | undefined {
+  const dist = path.join(DESKTOP, "dist")
+  if (!fs.existsSync(dist)) return undefined
+  return fs.readdirSync(dist).find((f) => f.endsWith("-portable.exe"))
+}
+
 async function main() {
   if (process.platform !== "win32") {
     fail("preflight", "this script is intended for Windows")
   }
 
+  const LLAMA_DIR = resolveLlamaDir()
+  const MODEL_PATH = resolveModelPath()
+
   log("preflight", "checking llama.cpp paths")
+  log("preflight", `LOCALCODER_LLAMACPP_DIR=${LLAMA_DIR}`)
+  log("preflight", `LOCALCODER_LLAMACPP_MODEL=${MODEL_PATH}`)
   const serverExe = path.join(LLAMA_DIR, "llama-server.exe")
-  if (!fs.existsSync(serverExe)) fail("preflight", `missing ${serverExe}`)
-  if (!fs.existsSync(MODEL_PATH)) fail("preflight", `missing ${MODEL_PATH}`)
+  if (!fs.existsSync(serverExe)) {
+    fail(
+      "preflight",
+      `missing ${serverExe} — set LOCALCODER_LLAMACPP_DIR to your llama.cpp bin folder`,
+    )
+  }
+  if (!fs.existsSync(MODEL_PATH)) {
+    fail(
+      "preflight",
+      `missing ${MODEL_PATH} — set LOCALCODER_LLAMACPP_MODEL to your .gguf file`,
+    )
+  }
 
   if (!SKIP_BUILD) {
     log("build", "bun run build:win")
@@ -131,6 +168,12 @@ async function main() {
   {
     const code = await run(EXE, ["--version"])
     if (code !== 0) fail("cli", `--version exited ${code}`)
+  }
+
+  log("cli", "session search smoke")
+  {
+    const code = await run(EXE, ["session", "search", "test", "--limit", "1"])
+    if (code !== 0) fail("cli", `session search exited ${code}`)
   }
 
   if (!SKIP_LLAMA) {
@@ -172,12 +215,33 @@ async function main() {
   const testCode = await run(BUN, ["run", "test:all"], { cwd: VSCODE })
   if (testCode !== 0) fail("vscode", `test:all exited ${testCode}`)
 
+  if (!SKIP_STANDALONE) {
+    log("standalone", "bun run build:win-standalone (LOCALCODER_FAST_PACK=1)")
+    const standaloneCode = await run(BUN, ["run", "build:win-standalone"], {
+      cwd: PKG,
+      env: { LOCALCODER_FAST_PACK: "1" },
+    })
+    if (standaloneCode !== 0) fail("standalone", `build:win-standalone exited ${standaloneCode}`)
+
+    const portable = findPortableExe()
+    const unpacked = fs.existsSync(DESKTOP_EXE)
+    if (portable) {
+      const portablePath = path.join(DESKTOP, "dist", portable)
+      const sizeMb = (fs.statSync(portablePath).size / (1024 * 1024)).toFixed(1)
+      log("standalone", `portable OK: ${portablePath} (${sizeMb} MB)`)
+    } else if (unpacked) {
+      const sizeMb = (fs.statSync(DESKTOP_EXE).size / (1024 * 1024)).toFixed(1)
+      log("standalone", `fast-pack GUI OK: ${DESKTOP_EXE} (${sizeMb} MB)`)
+    } else {
+      fail("standalone", "no portable exe or win-unpacked/LocalCoder.exe after build:win-standalone")
+    }
+  }
+
   log("desktop", "checking desktop artifacts")
   if (!fs.existsSync(DESKTOP_EXE)) {
     log("desktop", "LocalCoder.exe missing — running package:win")
-    const deskPkg = path.join(ROOT, "packages", "desktop")
     for (const script of ["prebuild", "build", "package:win"]) {
-      const code = await run(BUN, ["run", script], { cwd: deskPkg })
+      const code = await run(BUN, ["run", script], { cwd: DESKTOP })
       if (code !== 0) fail("desktop", `${script} exited ${code}`)
     }
   }

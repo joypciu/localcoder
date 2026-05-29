@@ -933,6 +933,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       }
 
       const model = input.model ?? ag.model ?? (yield* lastModel(input.sessionID))
+      yield* getModel(model.providerID, model.modelID, input.sessionID)
       const same = ag.model && model.providerID === ag.model.providerID && model.modelID === ag.model.modelID
       const full =
         !input.variant && ag.variant && same

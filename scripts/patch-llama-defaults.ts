@@ -14,3 +14,4 @@ if (!t.includes("DEFAULT_MODEL_12B")) {
   await Bun.write(p, t)
   console.log("updated llama-server defaults")
 } else console.log("already updated")
+

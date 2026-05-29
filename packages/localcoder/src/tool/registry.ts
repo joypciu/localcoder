@@ -47,6 +47,7 @@ import { Bus } from "../bus"
 import { Agent } from "../agent/agent"
 import { Skill } from "../skill"
 import { Permission } from "@/permission"
+import { SessionSearchTool } from "./session-search"
 
 const log = Log.create({ service: "tool.registry" })
 
@@ -116,6 +117,7 @@ export const layer: Layer.Layer<
     const greptool = yield* GrepTool
     const patchtool = yield* ApplyPatchTool
     const skilltool = yield* SkillTool
+    const sessionSearch = yield* SessionSearchTool
     const agent = yield* Agent.Service
 
     const state = yield* InstanceState.make<State>(
@@ -215,6 +217,7 @@ export const layer: Layer.Layer<
           lsp: Tool.init(lsptool),
           planEnter: Tool.init(planEnter),
           planExit: Tool.init(planExit),
+          sessionSearch: Tool.init(sessionSearch),
         })
 
         return {
@@ -235,6 +238,7 @@ export const layer: Layer.Layer<
             tool.search,
             tool.skill,
             tool.patch,
+            tool.sessionSearch,
             ...(Flag.LOCALCODER_EXPERIMENTAL_LSP_TOOL ? [tool.lsp] : []),
             ...(Flag.LOCALCODER_EXPERIMENTAL_PLAN_MODE ? [tool.planEnter, tool.planExit] : []),
           ],
@@ -289,6 +293,13 @@ export const layer: Layer.Layer<
 
     const tools: Interface["tools"] = Effect.fn("ToolRegistry.tools")(function* (input) {
       const filtered = (yield* all()).filter((tool) => {
+        // Pre-filter: tools explicitly denied in the agent's permission ruleset must never
+        // appear in the model schema.  Checking against the wildcard pattern "*" is
+        // sufficient because a "deny *" rule covers every invocation pattern; more
+        // specific allow rules for individual paths are irrelevant at the schema level.
+        const perm = Permission.evaluate(tool.id, "*", input.agent.permission)
+        if (perm.action === "deny") return false
+
         if (tool.id === WebSearchTool.id) {
           return input.providerID === ProviderID.localcoder || Flag.LOCALCODER_ENABLE_EXA
         }

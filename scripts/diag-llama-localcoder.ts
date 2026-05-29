@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+﻿#!/usr/bin/env bun
 /** Stage 1: llama.cpp + GGUF only. Stage 2: LocalCoder + llama.cpp + GGUF. */
 import { spawn } from "child_process"
 import fs from "fs"
@@ -122,3 +122,4 @@ async function stage2() {
 await stage1()
 await stage2()
 log("done", "ALL DIAGNOSTIC STAGES COMPLETE")
+

@@ -8,6 +8,7 @@ export type GlobalEventEnvelope = {
 
 export type StreamEventAction =
   | { kind: "delta"; delta: string }
+  | { kind: "reasoning_delta"; delta: string }
   | { kind: "tool_call"; tool: ToolCall }
   | { kind: "tool_result"; id: string; status: "completed" | "error"; output?: unknown };
 
@@ -16,6 +17,43 @@ export function directoryMatches(workspaceDir: string, dir?: string): boolean {
   if (!workspaceDir) { return true; }
   const norm = (p: string) => path.normalize(p).toLowerCase();
   return norm(dir) === norm(workspaceDir);
+}
+
+export type PushEventAction =
+  | { kind: "todos"; sessionId: string; todos: Array<{ content: string; status: string; priority: string }> }
+  | { kind: "session_status"; sessionId: string; status: string };
+
+export function parseGlobalPushEvent(
+  raw: string,
+  workspaceDir: string,
+  activeSessionId?: string,
+): PushEventAction[] {
+  let envelope: GlobalEventEnvelope;
+  try {
+    envelope = JSON.parse(raw) as GlobalEventEnvelope;
+  } catch {
+    return [];
+  }
+  if (!directoryMatches(workspaceDir, envelope.directory)) { return []; }
+  const payload = envelope.payload;
+  if (!payload?.type) { return []; }
+  const props = payload.properties || {};
+
+  if (payload.type === "todo.updated") {
+    const sessionId = props.sessionID as string | undefined;
+    if (!sessionId || (activeSessionId && sessionId !== activeSessionId)) { return []; }
+    const todos = (props.todos as Array<{ content: string; status: string; priority: string }>) || [];
+    return [{ kind: "todos", sessionId, todos }];
+  }
+
+  if (payload.type === "session.status") {
+    const sessionId = props.sessionID as string | undefined;
+    const status = props.status as string | undefined;
+    if (!sessionId || !status || (activeSessionId && sessionId !== activeSessionId)) { return []; }
+    return [{ kind: "session_status", sessionId, status }];
+  }
+
+  return [];
 }
 
 export function parseGlobalEvent(
@@ -45,6 +83,9 @@ export function parseGlobalEvent(
   if (payload.type === "message.part.delta") {
     const delta = props.delta as string | undefined;
     const field = props.field as string | undefined;
+    if (delta && field === "reasoning") {
+      return [{ kind: "reasoning_delta", delta }];
+    }
     if (delta && (field === "text" || !field)) {
       return [{ kind: "delta", delta }];
     }
@@ -63,6 +104,7 @@ export function parseGlobalEvent(
       status: status === "error" ? "error" : status === "completed" ? "completed" : "running",
       output: state.output ?? state.content,
       error: state.error as string | undefined,
+      metadata: (part.metadata ?? state.metadata) as Record<string, unknown> | undefined,
     };
     if (status === "pending" || status === "running") {
       return [{ kind: "tool_call", tool: tc }];

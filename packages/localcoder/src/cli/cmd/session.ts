@@ -12,6 +12,7 @@ import { Process } from "@/util/process"
 import { EOL } from "os"
 import path from "path"
 import { which } from "../../util/which"
+import { searchSessions } from "@/session/search"
 
 function pagerCmd(): string[] {
   const lessOptions = ["-R", "-S"]
@@ -43,8 +44,84 @@ function pagerCmd(): string[] {
 export const SessionCommand = cmd({
   command: "session",
   describe: "manage sessions",
-  builder: (yargs: Argv) => yargs.command(SessionListCommand).command(SessionDeleteCommand).demandCommand(),
+  builder: (yargs: Argv) =>
+    yargs.command(SessionListCommand).command(SessionSearchCommand).command(SessionDeleteCommand).demandCommand(),
   async handler() {},
+})
+
+export const SessionSearchCommand = effectCmd({
+  command: "search <query>",
+  describe: "search past sessions by title or message content",
+  builder: (yargs) =>
+    yargs
+      .positional("query", {
+        describe: "search terms",
+        type: "string",
+        demandOption: true,
+      })
+      .option("limit", {
+        alias: "n",
+        describe: "maximum results (default 10, max 50)",
+        type: "number",
+      })
+      .option("scope", {
+        describe: "search scope",
+        type: "string",
+        choices: ["title", "content", "all"] as const,
+        default: "all" as const,
+      })
+      .option("format", {
+        describe: "output format",
+        type: "string",
+        choices: ["table", "json"],
+        default: "table",
+      }),
+  handler: Effect.fn("Cli.session.search")(function* (args) {
+    const hits = searchSessions({
+      query: args.query,
+      limit: args.limit,
+      scope: args.scope,
+    })
+
+    if (hits.length === 0) {
+      UI.println(UI.Style.TEXT_DIM + `No sessions matching "${args.query}"` + UI.Style.TEXT_NORMAL)
+      return
+    }
+
+    if (args.format === "json") {
+      console.log(
+        JSON.stringify(
+          hits.map((h) => ({
+            id: h.sessionID,
+            title: h.title,
+            directory: h.directory,
+            updated: h.timeUpdated,
+            match: h.matchSource,
+            snippet: h.snippet,
+          })),
+          null,
+          2,
+        ),
+      )
+      return
+    }
+
+    const lines: string[] = []
+    lines.push(UI.Style.TEXT_SUCCESS_BOLD + `Found ${hits.length} session(s) matching "${args.query}"` + UI.Style.TEXT_NORMAL)
+    lines.push("")
+    for (const hit of hits) {
+      const date = Locale.todayTimeOrDateTime(hit.timeUpdated)
+      const excerpt =
+        hit.matchSource === "content" && hit.snippet !== hit.title
+          ? Locale.truncate(hit.snippet.replace(/\s+/g, " ").trim(), 60)
+          : ""
+      lines.push(`${UI.Style.TEXT_HIGHLIGHT}${hit.title}${UI.Style.TEXT_NORMAL}`)
+      lines.push(`  ${UI.Style.TEXT_DIM}${hit.sessionID}${UI.Style.TEXT_NORMAL}  ·  ${date}  ·  ${hit.matchSource}`)
+      if (excerpt) { lines.push(`  ${UI.Style.TEXT_DIM}${excerpt}${UI.Style.TEXT_NORMAL}`) }
+      lines.push("")
+    }
+    console.log(lines.join(EOL))
+  }),
 })
 
 export const SessionDeleteCommand = effectCmd({

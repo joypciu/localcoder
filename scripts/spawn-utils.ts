@@ -1,4 +1,4 @@
-import type { Subprocess } from "bun"
+﻿import type { Subprocess } from "bun"
 
 /** Drain stdout/stderr while waiting — avoids pipe deadlock when child writes heavily. */
 export async function waitForProcess(proc: Subprocess, timeoutMs: number) {
@@ -16,3 +16,4 @@ export async function waitForProcess(proc: Subprocess, timeoutMs: number) {
   const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise])
   return { stdout, stderr, code, timedOut }
 }
+

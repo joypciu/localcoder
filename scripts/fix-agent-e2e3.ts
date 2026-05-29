@@ -7,3 +7,4 @@ t = t.replace(
 )
 await Bun.write(p, t)
 console.log("fixed bun path")
+

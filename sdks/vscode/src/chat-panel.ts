@@ -27,10 +27,12 @@ abstract class ChatProviderBase {
   protected _config: BackendConfig;
   protected _extensionPath: string;
   protected _inited = false;
+  protected _configLoaded = false;
   protected _disposables: vscode.Disposable[] = [];
 
   // Undo: map of absolutePath → file content BEFORE the current turn's edits
   private _turnSnapshots = new Map<string, Uint8Array | null>();
+  private _runningTools = new Map<string, { name: string; input?: Record<string, unknown> }>();
   private _hasUndo = false;
 
   constructor(protected readonly _context: vscode.ExtensionContext) {
@@ -47,6 +49,15 @@ abstract class ChatProviderBase {
     // Older builds defaulted to "none" and broke the sidebar; recover automatically
     if (c.type === "none") { return { ...c, type: "localcoder" }; }
     return c;
+  }
+
+  protected async ensureSecretsLoaded() {
+    if (this._configLoaded) { return; }
+    try {
+      const key = await this._context.secrets.get("localcoder.openaiKey");
+      if (key) { this._config.openaiKey = key; }
+    } catch { /* ignore */ }
+    this._configLoaded = true;
   }
 
   protected workspaceKey(): string {
@@ -71,10 +82,18 @@ abstract class ChatProviderBase {
     backend.setActiveSessionId(last);
     const messages = await backend.loadMessages(last);
     this.postMessage({ type: "messages", messages, sessionId: last });
+    this.postUsage(messages);
   }
 
-  protected saveConfig() {
-    this._context.globalState.update("chatBackendConfig", this._config);
+  protected async saveConfig() {
+    const { openaiKey, ...rest } = this._config;
+    await this._context.globalState.update("chatBackendConfig", {
+      ...rest,
+      openaiKey: openaiKey ? "***" : undefined,
+    });
+    if (openaiKey && openaiKey !== "***") {
+      await this._context.secrets.store("localcoder.openaiKey", openaiKey);
+    }
   }
 
   protected getOrCreateBackend(): ChatBackend | undefined {
@@ -92,17 +111,40 @@ abstract class ChatProviderBase {
         if (stored?.length) { backend.restoreSessions(stored); }
         this._backend = backend;
       } else {
-        this._backend = new LocalcoderBackend(this._extensionPath);
+        const backend = new LocalcoderBackend(this._extensionPath);
+        this.wireBackendEvents(backend);
+        this._backend = backend;
       }
     }
     return this._backend;
   }
 
+  protected wireBackendEvents(backend: ChatBackend) {
+    if (backend instanceof LocalcoderBackend) {
+      backend.setPushListener((msg) => this.postMessage(msg));
+    }
+  }
+
+  protected async postWorkspaceMeta(backend: ChatBackend) {
+    if (!(backend instanceof LocalcoderBackend)) { return; }
+    try {
+      const meta = await backend.fetchWorkspaceMeta();
+      this.postMessage({ type: "workspaceMeta", meta });
+      const sid = backend.getActiveSessionId();
+      if (sid) {
+        const todos = await backend.getTodos(sid);
+        this.postMessage({ type: "todos", sessionId: sid, todos });
+      }
+    } catch { /* ignore */ }
+  }
+
   protected buildInitPayload(backend?: ChatBackend, error?: string) {
+    const defaultAgent = vscode.workspace.getConfiguration("localcoder").get<string>("defaultAgent") || "build";
     return {
       type: "init" as const,
       backend: backend?.type ?? this._config.type,
       error,
+      defaultAgent,
       config: {
         openaiKey: this._config.openaiKey ? "***" : "",
         openaiEndpoint: this._config.openaiEndpoint || "",
@@ -112,6 +154,7 @@ abstract class ChatProviderBase {
   }
 
   protected async startBackend() {
+    await this.ensureSecretsLoaded();
     if (this._config.type === "none") {
       this.postMessage({
         ...this.buildInitPayload(undefined, "No provider configured. Open settings (gear) and choose LocalCoder backend or an API."),
@@ -135,6 +178,7 @@ abstract class ChatProviderBase {
       await backend.start();
       log(`CHAT backend started`);
       this.postMessage(this.buildInitPayload(backend));
+      await this.postWorkspaceMeta(backend);
       this._inited = true;
       await this.restoreLastChatSession(backend);
       this.sendActiveFile();
@@ -221,6 +265,33 @@ abstract class ChatProviderBase {
   }
 
 
+  private async openFileInEditor(filePath: string) {
+    const abs = this.resolveFilePath(filePath);
+    try {
+      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(abs));
+      await vscode.window.showTextDocument(doc, { preview: false });
+    } catch (e: any) {
+      this.postMessage({ type: "error", message: `Cannot open ${filePath}: ${e.message}` });
+    }
+  }
+
+  private computeUsage(messages: import("./backends/types").ChatMessage[]) {
+    let input = 0;
+    let output = 0;
+    for (const m of messages) {
+      if (m.role === "assistant" && m.tokens) {
+        input += m.tokens.input ?? 0;
+        output += m.tokens.output ?? 0;
+      }
+    }
+    return { input, output, messages: messages.length };
+  }
+
+  private postUsage(messages?: import("./backends/types").ChatMessage[]) {
+    const msgs = messages ?? [];
+    this.postMessage({ type: "usage", ...this.computeUsage(msgs) });
+  }
+
   private resolveFilePath(filePath: string): string {
     const wf = vscode.workspace.workspaceFolders?.[0];
     if (!wf) { return filePath; }
@@ -261,12 +332,15 @@ abstract class ChatProviderBase {
     const abs = this.resolveFilePath(fp);
     const uri = vscode.Uri.file(abs);
     try {
-      const doc = await vscode.workspace.openTextDocument(uri);
+      const afterDoc = await vscode.workspace.openTextDocument(uri);
       const before = this._turnSnapshots.get(abs);
       if (before === undefined) { return; }
-      const left = vscode.Uri.parse(`localcoder-snap:${abs}?${encodeURIComponent(Buffer.from(before ?? new Uint8Array()).toString("base64"))}`);
-      // Open file directly; native diff needs content provider — open editor instead
-      await vscode.window.showTextDocument(doc, { preview: false });
+      const beforeDoc = await vscode.workspace.openTextDocument({
+        content: before === null ? "" : Buffer.from(before).toString("utf8"),
+        language: afterDoc.languageId,
+      });
+      const title = `${path.basename(abs)} (LocalCoder)`;
+      await vscode.commands.executeCommand("vscode.diff", beforeDoc.uri, afterDoc.uri, title);
     } catch { /* ignore */ }
   }
 
@@ -291,7 +365,19 @@ abstract class ChatProviderBase {
   async commandSendText(text: string) {
     if (!this._inited) { await this.startBackend(); }
     const agent = vscode.workspace.getConfiguration("localcoder").get<string>("defaultAgent") || "build";
+    this.postMessage({ type: "streamStart", text, agent });
     await this.handleMessage({ type: "sendMessage", text, agent, history: [], files: [] });
+  }
+
+  getBackend(): ChatBackend | undefined {
+    return this._backend;
+  }
+
+  async restartBackend(): Promise<void> {
+    this._backend?.dispose();
+    this._backend = undefined;
+    this._inited = false;
+    await this.startBackend();
   }
 
 
@@ -313,6 +399,14 @@ abstract class ChatProviderBase {
           break;
         }
 
+        case "connectProvider":
+          await vscode.commands.executeCommand("localcoder.connectProvider");
+          break;
+
+        case "setupLlamaCpp":
+          await vscode.commands.executeCommand("localcoder.setupLlamaCpp");
+          break;
+
         case "setConfig":
           if (msg.config) {
             if (msg.config.openaiKey && msg.config.openaiKey !== "***") {
@@ -320,7 +414,7 @@ abstract class ChatProviderBase {
             }
             if (msg.config.openaiEndpoint) { this._config.openaiEndpoint = msg.config.openaiEndpoint; }
             if (msg.config.openaiModel) { this._config.openaiModel = msg.config.openaiModel; }
-            this.saveConfig();
+            await this.saveConfig();
 
             if (backend && backend.type === "openai" && backend instanceof OpenAIBackend) {
               backend.updateConfig({
@@ -342,7 +436,7 @@ abstract class ChatProviderBase {
 
           const fallbackType = this._config.type;
           this._config.type = requested;
-          this.saveConfig();
+          await this.saveConfig();
 
           this._backend?.dispose();
           this._backend = undefined;
@@ -352,12 +446,14 @@ abstract class ChatProviderBase {
           try {
             await newBackend.start();
             this._inited = true;
+            this.wireBackendEvents(newBackend);
             this.postMessage(this.buildInitPayload(newBackend));
+            await this.postWorkspaceMeta(newBackend);
           } catch (e: any) {
             log(`CHAT switch error: ${e.message}`);
             this.postMessage({ type: "error", message: e.message });
             this._config.type = fallbackType;
-            this.saveConfig();
+            await this.saveConfig();
             this._backend = undefined;
             const fallback = this.getOrCreateBackend();
             if (!fallback) { break; }
@@ -373,7 +469,7 @@ abstract class ChatProviderBase {
 
         case "listSessions": {
           if (!backend) { break; }
-          const sessions = await backend.listSessions();
+          const sessions = await backend.listSessions(msg.query);
           this.postMessage({ type: "sessions", sessions });
           break;
         }
@@ -383,8 +479,50 @@ abstract class ChatProviderBase {
           const messages = await backend.loadMessages(msg.sessionId);
           await this.persistChatSession(msg.sessionId);
           this.postMessage({ type: "messages", messages, sessionId: msg.sessionId });
+          this.postUsage(messages);
+          if (backend instanceof LocalcoderBackend) {
+            const todos = await backend.getTodos(msg.sessionId);
+            this.postMessage({ type: "todos", sessionId: msg.sessionId, todos });
+          }
           break;
         }
+
+        case "setAgent": {
+          const agent = msg.agent as string;
+          if (agent === "build" || agent === "plan") {
+            await vscode.workspace.getConfiguration("localcoder").update("defaultAgent", agent, true);
+          }
+          break;
+        }
+
+        case "compactSession": {
+          if (!backend?.compactSession) {
+            this.postMessage({ type: "error", message: "Compact is only available with the LocalCoder backend." });
+            break;
+          }
+          try {
+            await backend.compactSession();
+            const sid = backend.getActiveSessionId();
+            if (sid) {
+              const messages = await backend.loadMessages(sid);
+              this.postMessage({ type: "messages", messages, sessionId: sid });
+              this.postUsage(messages);
+            }
+            this.postMessage({ type: "compactDone" });
+          } catch (e: any) {
+            this.postMessage({ type: "error", message: e.message || "Compact failed" });
+          }
+          break;
+        }
+
+        case "openFile":
+          if (msg.path) { await this.openFileInEditor(String(msg.path)); }
+          break;
+
+        case "newSession":
+          backend?.setActiveSessionId(null);
+          await this.persistChatSession(null);
+          break;
 
         case "sendMessage": {
           if (this._config.type === "none") {
@@ -394,6 +532,7 @@ abstract class ChatProviderBase {
           if (!backend) { break; }
           // Clear undo snapshots for new turn
           this._turnSnapshots.clear();
+          this._runningTools.clear();
           this._hasUndo = false;
 
           const sessionId = backend.getActiveSessionId() || msg.sessionId;
@@ -402,6 +541,7 @@ abstract class ChatProviderBase {
           const agent = msg.agent || vscode.workspace.getConfiguration("localcoder").get<string>("defaultAgent") || "build";
           await backend.sendMessage(msg.text, msg.history || [], msg.files || [], {
             onDelta: (delta) => this.postMessage({ type: "streamDelta", delta }),
+            onReasoningDelta: (delta) => this.postMessage({ type: "streamReasoningDelta", delta }),
             onToolCall: async (tool) => {
               // Snapshot files BEFORE they are modified, so we can undo later
               if (WRITE_TOOLS.has(tool.name)) {
@@ -410,10 +550,20 @@ abstract class ChatProviderBase {
                   await this.snapshotFile(filePath);
                 }
               }
+              this.postMessage({ type: "agentStatus", status: "tool", tool: tool.name });
+              this._runningTools.set(tool.id, { name: tool.name, input: tool.input });
               this.postMessage({ type: "toolCall", tool });
             },
-            onToolResult: (id, status, output) => { this.postMessage({ type: "toolResult", id, status, output }); },
+            onToolResult: async (id, status, output) => {
+              this.postMessage({ type: "toolResult", id, status, output });
+              if (status === "completed") {
+                const t = this._runningTools.get(id);
+                if (t) { await this.maybeOpenDiff(t); }
+              }
+              this._runningTools.delete(id);
+            },
             onDone: (message) => {
+              this.postMessage({ type: "agentStatus", status: "idle" });
               // Mark undo available if any files were snapshotted
               if (this._turnSnapshots.size > 0) {
                 this._hasUndo = true;
@@ -422,17 +572,27 @@ abstract class ChatProviderBase {
               const sid = backend.getActiveSessionId();
               if (sid) { void this.persistChatSession(sid); this.postMessage({ type: "sessionCreated", sessionId: sid }); }
               backend.listSessions().then((s) => this.postMessage({ type: "sessions", sessions: s }));
+              if (message.content || message.toolCalls?.length) {
+                this.postUsage([...(msg.history || []), { role: "user", content: msg.text }, {
+                  role: "assistant",
+                  content: message.content || "",
+                  tokens: message.tokens,
+                }]);
+              }
             },
             onError: (error) => {
+              this.postMessage({ type: "agentStatus", status: "idle" });
               this.postMessage({ type: "error", message: error });
               this.postMessage({ type: "streamDone", message: {}, canUndo: false });
             },
           }, backend.type === "localcoder" ? { agent } : undefined);
+          this.postMessage({ type: "agentStatus", status: "thinking" });
           break;
         }
 
         case "abort":
           backend?.abort();
+          this.postMessage({ type: "agentStatus", status: "idle" });
           this.postMessage({ type: "streamDone", message: {}, canUndo: false });
           break;
 
@@ -566,6 +726,7 @@ export class ChatPanelProvider extends ChatProviderBase {
         ChatPanelProvider.viewType, "LocalCoder Chat", vscode.ViewColumn.Beside,
         { enableScripts: true, retainContextWhenHidden: true },
       );
+      chatProviderRef = this;
 
       this._panel.iconPath = {
         light: vscode.Uri.file(this._context.asAbsolutePath("images/button-dark.svg")),

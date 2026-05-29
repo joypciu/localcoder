@@ -1,82 +1,49 @@
 ﻿# LocalCoder VS Code Extension — Changelog & Roadmap
 
-**Last updated:** 2026-05-22  
-**Test status:** **84/84 passing** (`bun run test` — unit + live HTTP + VS Code host integration)
+**Last updated:** 2026-05-29  
+**Test status:** 84+ passing (`bun run test:unit` ~48 contract tests in ~5s; full `bun run test` includes Electron integration)
 
 ---
 
-## Completed
+## Completed (2026-05-29)
 
+### Zero-config providers
+- **First-run wizard** — llama.cpp, OpenRouter, OpenCode Go, Groq, Gemini, Ollama, OpenAI-compatible
+- **`LocalCoder: Set up llama.cpp`** — folder picker, GGUF discovery, context presets, thinking toggle
+- **`LocalCoder: Connect cloud provider`** — API key → `localcoder auth set-api` (no manual JSON)
+- **Settings (⚙)** — "Set up llama.cpp" and "Connect cloud provider" buttons in chat overlay
 
-### Desktop UI parity (2026-05-22)
-- Desktop app now has **Undo change** per file tool and **Undo all changes** per turn (same revert API as VS Code/TUI)
-- Cursor-style default theme in desktop; portable build via `bun run build:win-standalone`
+### Agent UX (2026-05-22 – 2026-05-29)
+- Live reasoning stream (`reasoning_delta` SSE)
+- Composer-style input, usage bar, message queue while busy
+- Regenerate, compact (`/compact`), slash commands
+- SecretStorage for API keys (not plaintext globalState)
+- CodeLens: Explain, Fix, Ask, Edit on selections
+- Todo panel via SSE `todo.updated`
+- Native `vscode.diff` on edit/write tool completion
+- Session search in overlay; model/agents/MCP badge in settings
 
-### Install-path fixes (v1.14.38)
-- **LocalcoderBackend** resolves built `localcoder.exe`, PATH, then Bun fallback
-- Migrates stale `chatBackendConfig.type === "none"` to `localcoder`
-- Live tests use Windows `.exe` when `dist/localcoder-windows-x64` exists
-- `needsSetup` opens settings when backend fails to start
-
-### Agentic core (2026-05-20)
-- **Live SSE streaming** — `/global/event` parsed via `src/backends/sse-events.ts`; tokens and tools stream to the webview during turns
-- **Abort** — `AbortController` + server `/session/{id}/abort`
-- **Build / Plan agent** — header selector; `agent` sent on message POST
-- **@ file mentions** — autocomplete (`listFiles`) + file parts embedded in prompts
-- **Undo** — turn-level “Revert all” + per-file ↩ on the changes bar
-- **VS Code settings** — `localcoder.packagePath`, `bunPath`, `defaultAgent`, `openDiffOnEdit`
-- **Commands** — undo (`Ctrl+Shift+U`), add selection (`Ctrl+Shift+A`), explain/fix selection
-- **Activation** — `onView:localcoder.chatView` (sidebar loads without extra command)
-- **Marketplace icon** — `images/icon.png`
-
-### UX (prior)
-- Activity Bar sidebar + floating panel (`Ctrl+Shift+L`)
-- First-run provider wizard (Gemini, Groq, Ollama, OpenAI-compatible, LocalCoder backend)
-- Self-contained webview (no CDN), tool cards, diff rendering, thinking blocks, sessions
-- Terminal TUI bridge + active file context badge
-
-### Test suite (84 tests, 10 suites)
-
-| Suite | Tests | Coverage |
-|-------|-------|----------|
-| Tool read/glob | 7 | Read, Glob shapes, history |
-| Tool write/edit | 6 | FS I/O, diff fields |
-| Tool shell | 8 | stdout/stderr, exit codes, truncation |
-| Tool agent | 7 | delegation, metadata |
-| Conversation + search | 17 | multi-turn, Grep/WebSearch/WebFetch |
-| SSE events parser | 9 | deltas, tools, session filter, SSE blocks |
-| Extension manifest | 6 | package.json, commands, config, keybindings |
-| OpenAI backend | 5 | config, abort, API key validation |
-| Undo snapshots | 4 | write tools, restore simulation |
-| Chat HTML contract | 7 | DOM ids, message handlers, @mentions |
-| Backend live HTTP | 3 | health, session CRUD, SSE connect |
-| Extension integration | 5 | activate, commands, config (Electron) |
-
-**Run tests:**
-```bash
-cd sdks/vscode
-bun run test              # full suite (downloads VS Code once)
-bun run test:unit         # mocha only (no Electron)
-bun run ../../scripts/vscode-extension-e2e.ts   # compile + unit + optional vscode-test
-```
+### Core (2026-05-20 – 2026-05-22)
+- Live SSE streaming, abort, Build/Plan agent, @ mentions, undo per turn/file
+- Desktop UI parity — click-to-undo matches VS Code/TUI
+- Install-path fixes — resolves `localcoder.exe`, migrates stale `none` backend
+- 84+ unit/integration tests (SSE parser, chat HTML contract, OpenAI backend, manifest)
 
 ---
 
 ## High priority (next)
 
-- [ ] **Native diff apply/reject** — `vscode.diff` + snapshot content provider
-- [ ] **MCP** — expose LocalCoder MCP config in the extension
-- [ ] **Inline chat** — editor gutter / selection actions
-- [ ] **SecretStorage** for API keys (replace `globalState` plaintext)
-- [ ] **Context bar in webview** — token usage + `/compact` (parity with TUI)
+- [ ] **Native diff apply/reject** — inline accept/reject in editor (beyond snapshot undo)
+- [ ] **MCP panel** — expose configured MCP servers in extension settings
+- [ ] **Model picker** — dropdown from connected provider model list
+- [ ] **Reliable stop-button sync** during abort
 
 ## Medium priority
 
-- [ ] OpenAI session persistence across reloads
-- [ ] Model picker from connected provider
-- [ ] Reliable stop-button UI sync during abort
+- [ ] OpenAI backend session persistence across reloads
 - [ ] Anthropic Messages API backend
 - [ ] Drag-and-drop file / image upload
+- [ ] Real llama.cpp VS Code E2E stable tool-calling (Qwopus prompt tuning)
 
 ## Low priority
 
@@ -87,10 +54,21 @@ bun run ../../scripts/vscode-extension-e2e.ts   # compile + unit + optional vsco
 
 ## Known issues
 
-1. **Monorepo layout required** — LocalCoder backend expects `packages/localcoder` or `localcoder.packagePath`.
-2. **Bun required** — for spawning the local agent server.
+1. **Monorepo layout** — LocalCoder backend expects `packages/localcoder` or `localcoder.packagePath`.
+2. **Bun or built exe** — required to spawn the local agent server.
 3. **OpenAI backend** — chat only, no tools; sessions in-memory until persisted.
-4. **Windows paths with spaces** — rare Bash tool quoting issues.
+4. **Cloud provider cold start** — first `run` may take 10–15s; use Settings wizard to pre-configure keys.
 5. **Shift+Enter in terminal TUI** — use `Ctrl+Enter` / `Ctrl+J` for newline.
 
-See also: [IMPROVEMENT_AND_FIX.md](../../IMPROVEMENT_AND_FIX.md)
+---
+
+## Test suites
+
+| Command | What it runs |
+|---------|----------------|
+| `bun run test:unit` | Mocha contract tests (~5s, no Electron) |
+| `bun run test` | Full suite + VS Code host integration |
+| `bun run test:llama-e2e` | Live llama.cpp (`VSCODE_LLAMA_E2E=1`) |
+| `bun run ../../scripts/vscode-extension-e2e.ts` | compile + unit + optional Electron |
+
+See [IMPROVEMENT_AND_FIX.md](../../IMPROVEMENT_AND_FIX.md)

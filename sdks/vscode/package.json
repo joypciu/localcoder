@@ -72,6 +72,10 @@
         "title": "LocalCoder: Set up llama.cpp (GGUF)"
       },
       {
+        "command": "localcoder.connectProvider",
+        "title": "LocalCoder: Connect cloud provider (OpenRouter, OpenCode Go…)"
+      },
+      {
         "command": "localcoder.openTerminal",
         "title": "Open LocalCoder Terminal",
         "icon": {
@@ -106,6 +110,10 @@
       {
         "command": "localcoder.fixSelection",
         "title": "LocalCoder: Fix Selection"
+      },
+      {
+        "command": "localcoder.editSelection",
+        "title": "LocalCoder: Edit Selection"
       }
     ],
     "menus": {
@@ -117,6 +125,27 @@
         {
           "command": "localcoder.openNewTerminal",
           "group": "navigation@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "localcoder.explainSelection",
+          "group": "localcoder@1",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "localcoder.fixSelection",
+          "group": "localcoder@2",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "localcoder.editSelection",
+          "group": "localcoder@3",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "localcoder.addSelectionToChat",
+          "group": "localcoder@4"
         }
       ]
     },
@@ -194,7 +223,9 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test",
-    "test:unit": "bun run compile-tests && npx mocha out/test/suite/**/*.test.js --ui tdd --timeout 120000 --exclude out/test/suite/extension-integration.test.js",
+    "test:unit": "bun run compile-tests && npx mocha out/test/suite/**/*.test.js --ui tdd --timeout 120000 --exclude out/test/suite/localcoder-llamacpp.test.js --exclude out/test/suite/extension-llamacpp.test.js",
+    "test:llama-e2e": "bun run compile-tests && bun run compile && npx mocha out/test/suite/localcoder-llamacpp.test.js --ui tdd --timeout 300000 --require src/test/vscode-shim.cjs",
+    "test:llama-vscode": "bun run pretest && node -e \"try{require('fs').rmSync('.vscode-test/user-data',{recursive:true,force:true})}catch(e){}\" && vscode-test --label llama-extension",
     "test:all": "bun run pretest && vscode-test"
   },
   "devDependencies": {

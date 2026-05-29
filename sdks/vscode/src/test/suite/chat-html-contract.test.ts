@@ -12,13 +12,13 @@ suite("Chat webview contract", () => {
   });
 
   test("required DOM ids present", () => {
-    for (const id of ["hdr", "msgs", "inp", "snd", "conn-dot", "agent-sel", "mention-box", "cfg-overlay", "ses-overlay"]) {
+    for (const id of ["hdr", "msgs", "inp", "snd", "conn-dot", "agent-sel", "mention-box", "cfg-overlay", "ses-overlay", "usage-bar", "status-bar", "attach-row", "todo-panel", "model-badge", "queue-badge"]) {
       assert.ok(html.includes(`id="${id}"`), `missing #${id}`);
     }
   });
 
   test("message types handled in webview", () => {
-    for (const t of ["streamDelta", "toolCall", "toolResult", "streamDone", "undone", "fileSuggestions", "insertText", "fileUndone"]) {
+    for (const t of ["streamDelta", "streamReasoningDelta", "streamStart", "toolCall", "toolResult", "streamDone", "undone", "fileSuggestions", "insertText", "fileUndone", "usage", "agentStatus", "compactDone", "workspaceMeta", "todos", "sessionStatus"]) {
       assert.ok(html.includes(`'${t}'`) || html.includes(`"${t}"`), `missing handler ${t}`);
     }
   });
@@ -39,6 +39,18 @@ suite("Chat webview contract", () => {
   test("@ mention triggers listFiles", () => {
     assert.ok(html.includes("listFiles"));
     assert.ok(html.includes("insertMention"));
+  });
+
+  test("slash commands and message queue", () => {
+    assert.ok(html.includes("handleSlashCommand"));
+    assert.ok(html.includes("msgQueue"));
+    assert.ok(html.includes("/compact"));
+  });
+  test("regenerate and open file actions", () => {
+    assert.ok(html.includes("regenerateTurn"));
+    assert.ok(html.includes("openToolFile"));
+    assert.ok(html.includes("compactSession"));
+    assert.ok(html.includes("keepChanges"));
   });
 
   test("sendMessage includes agent and files", () => {

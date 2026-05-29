@@ -1,0 +1,13 @@
+Search past conversation sessions by keyword or topic to recall prior work, decisions, and context across sessions.
+
+Searches session titles and message content (user prompts) for the given query. Returns matching sessions with their title, directory, timestamp, and a relevant text snippet.
+
+Use this tool when:
+- The user references previous work ("like we did before", "remember when", "similar to last time")
+- You need context from a prior session to avoid repeating mistakes or to reuse patterns
+- You want to check if a task has been attempted before
+
+IMPORTANT:
+- Results are ordered by recency (most recent first)
+- Search is case-insensitive and uses partial matching
+- Set limit to a small number (5–10) for focused recall; larger (20+) for broad surveys

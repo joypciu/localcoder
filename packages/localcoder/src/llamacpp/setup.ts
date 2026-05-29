@@ -13,7 +13,7 @@ export type LlamaCppUserConfig = {
 
 const CONFIG_PATH = path.join(os.homedir(), ".localcoder", "llamacpp.json")
 
-export const DEFAULT_WINDOWS_LLAMACPP_DIR = "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64"
+export const DEFAULT_WINDOWS_LLAMACPP_DIR = "P:\\llama cpp\\llama-b9354-bin-win-cuda-13.1-x64"
 
 export function loadUserLlamaConfig(): LlamaCppUserConfig {
   try {
@@ -167,6 +167,17 @@ export function modelUsesMtp(modelPath: string) {
   if (saved === false) return false
   if (saved === true) return true
   return /mtp/i.test(path.basename(modelPath))
+}
+
+export const CONTEXT_PRESETS = [4096, 8192, 16384, 32768, 65536, 131072] as const
+
+export function defaultContextSize(modelPath?: string) {
+  const saved = loadUserLlamaConfig().ctx
+  if (saved) return saved
+  const env = Number(process.env.LLAMACPP_CTX)
+  if (env > 0) return env
+  void modelPath
+  return 16384
 }
 
 export function setupHint(): string {

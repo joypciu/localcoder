@@ -51,6 +51,7 @@ export interface ChatBackend {
     files: FileAttachment[],
     callbacks: {
       onDelta: (delta: string) => void;
+      onReasoningDelta?: (delta: string) => void;
       onToolCall: (tool: ToolCall) => void;
       onToolResult: (id: string, status: "completed" | "error", output?: any) => void;
       onDone: (message: Partial<ChatMessage>) => void;
@@ -63,7 +64,7 @@ export interface ChatBackend {
   abort(): void;
 
   /** List previous sessions/conversations */
-  listSessions(): Promise<{ id: string; title: string }[]>;
+  listSessions(query?: string): Promise<{ id: string; title: string }[]>;
 
   /** Load messages for a session */
   loadMessages(sessionId: string): Promise<ChatMessage[]>;
@@ -76,6 +77,9 @@ export interface ChatBackend {
 
   /** Clean up resources */
   dispose(): void;
+
+  /** Compact session context (localcoder backend) */
+  compactSession?(): Promise<void>;
 }
 
 /** Events the backend can emit to the webview */

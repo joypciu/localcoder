@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+﻿#!/usr/bin/env bun
 /**
  * Fast Windows readiness gate — target <5 minutes (llama already loaded).
  *   bun run scripts/readiness-windows.ts
@@ -88,7 +88,7 @@ async function main() {
   checkBudget("llama")
   const llamaCode = await run(EXE, [
     "llamacpp", "setup",
-    "--dir", process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9284-bin-win-cuda-13.1-x64",
+    "--dir", process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9354-bin-win-cuda-13.1-x64",
     "--model", process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf",
   ])
   if (llamaCode !== 0) fail("llama", "llamacpp setup failed")
@@ -161,3 +161,4 @@ main().catch((e) => {
   console.error(e)
   process.exit(1)
 })
+

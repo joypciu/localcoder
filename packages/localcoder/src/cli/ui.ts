@@ -32,11 +32,23 @@ export const Style = {
 export function println(...message: string[]) {
   print(...message)
   process.stderr.write(EOL)
+  flush(process.stderr)
 }
 
 export function print(...message: string[]) {
   blank = false
   process.stderr.write(message.join(" "))
+  flush(process.stderr)
+}
+
+function flush(stream: NodeJS.WriteStream) {
+  if (typeof (stream as NodeJS.WriteStream & { flush?: () => void }).flush === "function") {
+    ;(stream as NodeJS.WriteStream & { flush: () => void }).flush()
+  }
+}
+
+export function flushStdout() {
+  flush(process.stdout)
 }
 
 let blank = false

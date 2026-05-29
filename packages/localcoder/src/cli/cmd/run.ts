@@ -3,7 +3,7 @@ import path from "path"
 import { pathToFileURL } from "url"
 import { Effect } from "effect"
 import { UI } from "../ui"
-import { effectCmd } from "../effect-cmd"
+import { effectCmd, fail } from "../effect-cmd"
 import { Flag } from "@localcoder-ai/core/flag/flag"
 import { ServerAuth } from "@/server/auth"
 import { EOL } from "os"
@@ -305,6 +305,20 @@ export const RunCommand = effectCmd({
       }),
   handler: Effect.fn("Cli.run")(function* (args) {
     const agentSvc = yield* Agent.Service
+
+    if (args.model && !args.attach) {
+      const parsed = Provider.parseModel(args.model)
+      const providerSvc = yield* Provider.Service
+      yield* providerSvc.getModel(parsed.providerID, parsed.modelID).pipe(
+        Effect.catchIf(Provider.ModelNotFoundError.isInstance, (err) => {
+          const hint = err.data.suggestions?.length ? `\nDid you mean: ${err.data.suggestions.join(", ")}` : ""
+          return fail(
+            `Model not found: ${err.data.providerID}/${err.data.modelID}.${hint}\nTry: \`localcoder models\` to list available models`,
+          )
+        }),
+      )
+    }
+
     yield* Effect.promise(async () => {
       let message = [...args.message, ...(args["--"] || [])]
         .map((arg) => (arg.includes(" ") ? `"${arg.replace(/"/g, '\\"')}"` : arg))
@@ -438,6 +452,11 @@ export const RunCommand = effectCmd({
           return false
         }
 
+        function writeStdout(text: string) {
+          process.stdout.write(text + EOL)
+          UI.flushStdout()
+        }
+
         const eventAbort = new AbortController()
         const events = await sdk.event.subscribe({ signal: eventAbort.signal })
         let error: string | undefined
@@ -499,7 +518,7 @@ export const RunCommand = effectCmd({
                 const text = part.text.trim()
                 if (!text) continue
                 if (!process.stdout.isTTY) {
-                  process.stdout.write(text + EOL)
+                  writeStdout(text)
                   continue
                 }
                 UI.empty()
@@ -519,6 +538,7 @@ export const RunCommand = effectCmd({
                   continue
                 }
                 process.stdout.write(line + EOL)
+                UI.flushStdout()
               }
             }
 
@@ -530,16 +550,21 @@ export const RunCommand = effectCmd({
                 err = String(props.error.data.message)
               }
               error = error ? error + EOL + err : err
-              if (emit("error", { error: props.error })) continue
+              if (emit("error", { error: props.error })) break
               UI.error(err)
+              break
             }
 
-            if (
-              event.type === "session.status" &&
-              event.properties.sessionID === sessionID &&
-              event.properties.status.type === "idle"
-            ) {
-              break
+            if (event.type === "session.status") {
+              const props = event.properties
+              if (props.sessionID !== sessionID) continue
+              if (props.status.type === "busy" && args.format !== "json" && toggles.get("progress") !== true) {
+                UI.println(UI.Style.TEXT_DIM + "… working" + UI.Style.TEXT_NORMAL)
+                toggles.set("progress", true)
+              }
+              if (props.status.type === "idle") {
+                break
+              }
             }
 
             if (event.type === "permission.asked") {
@@ -641,24 +666,33 @@ export const RunCommand = effectCmd({
           process.exit(1)
         })
 
-        if (args.command) {
-          await sdk.session.command({
-            sessionID,
-            agent,
-            model: args.model,
-            command: args.command,
-            arguments: message,
-            variant: args.variant,
-          })
-        } else {
-          const model = args.model ? Provider.parseModel(args.model) : undefined
-          await sdk.session.prompt({
-            sessionID,
-            agent,
-            model,
-            variant: args.variant,
-            parts: [...files, { type: "text", text: message }],
-          })
+        try {
+          if (args.command) {
+            await sdk.session.command({
+              sessionID,
+              agent,
+              model: args.model,
+              command: args.command,
+              arguments: message,
+              variant: args.variant,
+            })
+          } else {
+            const model = args.model ? Provider.parseModel(args.model) : undefined
+            await sdk.session.prompt({
+              sessionID,
+              agent,
+              model,
+              variant: args.variant,
+              parts: [...files, { type: "text", text: message }],
+            })
+          }
+        } catch (e) {
+          eventAbort.abort()
+          const msg = e instanceof Error ? e.message : String(e)
+          if (!error) {
+            UI.error(msg)
+            error = msg
+          }
         }
 
         await loopDone

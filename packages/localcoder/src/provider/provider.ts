@@ -1489,7 +1489,7 @@ const layer: Layer.Layer<
           if (disabled.has(providerID)) continue
           const data = database[providerID]
           if (!data) {
-            log.error("Provider does not exist in model list " + providerID)
+            log.debug("skipping custom provider loader; not in model list", { providerID })
             continue
           }
           const result = yield* fn(data)

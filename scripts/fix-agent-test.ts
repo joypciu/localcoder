@@ -18,3 +18,4 @@ const neu = `    yield* prompt.loop({ sessionID: session.id })
 if (!t.includes(old)) throw new Error("old block missing")
 await Bun.write(p, t.replace(old, neu))
 console.log("fixed")
+

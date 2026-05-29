@@ -17,7 +17,8 @@ For desktop-embedded UI, use `bun run dev:desktop` from the repo root.
 
 - Cursor-style default theme, flat IDE layout
 - Session chat with tool diffs and **click-to-undo** for file changes
-- llama.cpp setup wizard, provider selection
+- **llama.cpp setup dialog** — folder picker, GGUF list, context size, thinking toggle
+- Provider selection and model picker
 - File review side panel
 
 ## E2E testing
@@ -33,3 +34,5 @@ bun run --cwd packages/app test:e2e:local
 | `PLAYWRIGHT_SERVER_PORT` | `4096` | Backend port |
 
 Build output: static `dist/` for any static host or Electron renderer bundle.
+
+See [packages/desktop/README.md](../desktop/README.md) for portable build.

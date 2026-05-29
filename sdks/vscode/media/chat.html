@@ -91,6 +91,14 @@ html, body {
   padding: 6px 16px; font-size: 12px; cursor: pointer; font-weight: 500; transition: background .15s;
 }
 .cfg-save-btn:hover { background: var(--acc-h) }
+.cfg-hint { font-size: 11px; color: var(--fg2); line-height: 1.4; margin: 0 0 8px }
+.cfg-actions { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px }
+.cfg-action-btn {
+  font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 4px;
+  border: 1px solid var(--brd); background: var(--bg2); color: var(--fg); cursor: pointer; text-align: left;
+}
+.cfg-action-btn:hover { border-color: var(--foc); background: var(--bg3) }
+#localcoder-fields { margin-top: 4px }
 
 /* ── SESSION PANEL ── */
 #ses-overlay {
@@ -116,6 +124,65 @@ html, body {
   transition: background .1s;
 }
 .ses-item-new:hover { background: var(--bg4) }
+#ses-search-wrap { padding: 8px 10px; border-bottom: 1px solid var(--bdr); }
+#ses-search {
+  width: 100%; background: var(--bg3); color: var(--fg); border: 1px solid var(--bdr2);
+  border-radius: 4px; padding: 6px 9px; font-size: 12px; font-family: var(--ff); outline: none;
+}
+#ses-search:focus { border-color: var(--foc); box-shadow: 0 0 0 1px var(--foc) }
+#ses-search::placeholder { color: var(--fg3) }
+.ses-empty { padding: 12px 14px; font-size: 11px; color: var(--fg3); text-align: center; }
+
+/* ── AGENT STATUS BAR ── */
+#status-bar {
+  display: none; align-items: center; gap: 8px; padding: 6px 12px;
+  font-size: 11px; color: var(--fg2); background: rgba(0,120,212,.08);
+  border-bottom: 1px solid rgba(0,120,212,.18); flex-shrink: 0;
+}
+#status-bar.show { display: flex }
+#status-bar .spin { width: 10px; height: 10px; border-width: 1.5px }
+.tp-subagent {
+  flex-shrink: 0; margin-left: 4px; font-size: 10px; color: var(--acc);
+  background: rgba(0,120,212,.12); border: 1px solid rgba(0,120,212,.25);
+  border-radius: 4px; padding: 1px 6px; cursor: pointer; font-weight: 500;
+}
+.tp-subagent:hover { background: rgba(0,120,212,.22) }
+
+/* ── TODO PANEL (Hermes / Cursor task strip) ── */
+#todo-panel {
+  display: none; flex-direction: column; gap: 2px; padding: 6px 10px;
+  border-bottom: 1px solid var(--bdr); background: rgba(46,204,113,.04); flex-shrink: 0;
+}
+#todo-panel.show { display: flex }
+#todo-panel-hd {
+  display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 600;
+  color: var(--fg2); text-transform: uppercase; letter-spacing: .05em;
+}
+.todo-item {
+  display: flex; align-items: flex-start; gap: 8px; font-size: 11px; padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.todo-item:last-child { border-bottom: none }
+.todo-st {
+  flex-shrink: 0; width: 14px; text-align: center; font-size: 10px;
+}
+.todo-st.pending { color: var(--fg3) }
+.todo-st.in_progress { color: var(--warn) }
+.todo-st.completed { color: var(--ok); text-decoration: line-through; opacity: .7 }
+.todo-st.cancelled { color: var(--fg3); opacity: .5; text-decoration: line-through }
+.todo-txt { flex: 1; color: var(--fg2); line-height: 1.4 }
+.todo-txt.done { text-decoration: line-through; opacity: .65 }
+
+#queue-badge {
+  display: none; font-size: 10px; color: var(--warn); padding: 0 10px 4px;
+}
+#queue-badge.show { display: block }
+
+#model-badge {
+  font-size: 10px; color: var(--fg3); background: var(--bg3); border: 1px solid var(--bdr2);
+  padding: 1px 6px; border-radius: 8px; max-width: 140px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
 
 /* ── MESSAGES ── */
 #msgs {
@@ -202,6 +269,8 @@ html, body {
 .tp-icon { font-size: 13px; flex-shrink: 0 }
 .tp-name { font-weight: 600; flex-shrink: 0; font-size: 11px; color: var(--fg2) }
 .tp-arg  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ffm); font-size: 11px; color: var(--fg3) }
+.tp-arg.clickable { color: var(--acc); cursor: pointer; text-decoration: underline; text-decoration-color: rgba(0,120,212,.35) }
+.tp-arg.clickable:hover { text-decoration-color: var(--acc) }
 .tp-status { flex-shrink: 0; margin-left: 4px }
 .tp-expand { flex-shrink: 0; color: var(--fg3); font-size: 10px; transition: transform .2s }
 .tool-pill.expanded .tp-expand { transform: rotate(180deg) }
@@ -355,11 +424,47 @@ html, body {
 #ctx-badge.show { display: flex }
 #ctx-badge-icon { font-size: 11px }
 
+/* ── USAGE BAR (Cursor-style context meter) ── */
+#usage-bar {
+  display: none; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 4px 12px; font-size: 10px; color: var(--fg3); flex-shrink: 0;
+  border-bottom: 1px solid var(--bdr); background: var(--bg);
+}
+#usage-bar.show { display: flex }
+#usage-bar .usage-nums { font-family: var(--ffm) }
+#usage-bar button {
+  background: transparent; border: 1px solid var(--bdr2); color: var(--fg2);
+  border-radius: 4px; padding: 1px 8px; font-size: 10px; cursor: pointer; font-family: var(--ff);
+}
+#usage-bar button:hover { color: var(--fg); border-color: var(--acc) }
+
+/* ── ATTACHMENTS ── */
+#attach-row { display: none; flex-wrap: wrap; gap: 4px; padding: 6px 10px 0; }
+#attach-row.show { display: flex }
+.attach-chip {
+  display: inline-flex; align-items: center; gap: 4px; background: var(--bg3);
+  border: 1px solid var(--bdr2); border-radius: 12px; padding: 2px 8px; font-size: 10px;
+  font-family: var(--ffm); color: var(--fg2); max-width: 180px;
+}
+.attach-chip button { border: none; background: transparent; color: var(--fg3); cursor: pointer; font-size: 11px; padding: 0 2px; }
+.attach-chip button:hover { color: var(--err); }
+
 /* ── INPUT AREA ── */
 #inp-wrap {
   display: flex; flex-direction: column; flex-shrink: 0;
   border-top: 1px solid var(--bdr); background: var(--bg);
+  border-radius: 8px 8px 0 0; margin: 0 8px 8px; border: 1px solid var(--bdr2);
+  box-shadow: 0 -2px 12px rgba(0,0,0,.15);
 }
+#inp-toolbar {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px 0; font-size: 10px; color: var(--fg3);
+}
+#inp-toolbar .tb-btn {
+  background: transparent; border: none; color: var(--fg2); cursor: pointer;
+  padding: 3px 6px; border-radius: 4px; font-size: 11px; font-family: var(--ff);
+}
+#inp-toolbar .tb-btn:hover { background: var(--bg4); color: var(--fg) }
+#inp-toolbar .tb-spacer { flex: 1 }
 #inp-row { display: flex; gap: 8px; padding: 8px 10px; align-items: flex-end }
 #inp {
   flex: 1; background: var(--bg3); color: var(--fg); border: 1px solid var(--bdr2); border-radius: 8px;
@@ -403,8 +508,10 @@ button:focus:not(:focus-visible) { outline: none }
 <div id="hdr" style="position:relative">
   <div id="conn-dot" class="wait"></div>
   <div id="hdr-title">LocalCoder</div>
+  <span id="model-badge" title="Active model"></span>
   <button class="hdr-btn" id="btn-ses" title="Session history">🕐</button>
   <select id="agent-sel" title="Agent mode"><option value="build">Build</option><option value="plan">Plan</option></select>
+  <button class="hdr-btn" id="btn-compact" title="Compact session context">⊟</button>
   <button class="hdr-btn" id="btn-new" title="New session">✚</button>
   <button class="hdr-btn" id="btn-cfg" title="Settings">⚙</button>
 
@@ -431,8 +538,19 @@ button:focus:not(:focus-visible) { outline: none }
         <input id="cfg-key" type="password" placeholder="sk-…">
       </div>
     </div>
+    <div id="localcoder-fields">
+      <p class="cfg-hint">LocalCoder backend supports llama.cpp, OpenRouter, OpenCode Go, and 50+ providers — no manual config.</p>
+      <div class="cfg-actions">
+        <button type="button" class="cfg-action-btn" id="cfg-llama">Set up llama.cpp…</button>
+        <button type="button" class="cfg-action-btn" id="cfg-cloud">Connect cloud provider…</button>
+      </div>
+    </div>
     <div class="cfg-footer">
       <button class="cfg-save-btn" id="cfg-save">Save</button>
+    </div>
+    <div id="mcp-info" class="cfg-row" style="margin-top:8px;display:none">
+      <label>MCP servers</label>
+      <div id="mcp-list" style="font-size:11px;color:var(--fg2);font-family:var(--ffm)"></div>
     </div>
   </div>
 
@@ -441,8 +559,16 @@ button:focus:not(:focus-visible) { outline: none }
     <div class="ses-item-new" id="btn-new2">
       <span>✚</span><span>New session</span>
     </div>
+    <div id="ses-search-wrap">
+      <input id="ses-search" type="search" placeholder="Search sessions…" autocomplete="off">
+    </div>
     <div id="ses-list"></div>
   </div>
+</div>
+
+<div id="todo-panel">
+  <div id="todo-panel-hd"><span>✅</span><span>Agent tasks</span><span id="todo-count" style="margin-left:auto;color:var(--fg3);font-weight:400"></span></div>
+  <div id="todo-list"></div>
 </div>
 
 <div id="msgs">
@@ -466,8 +592,22 @@ button:focus:not(:focus-visible) { outline: none }
   <span id="ctx-badge-text"></span>
 </div>
 
+<div id="usage-bar">
+  <span class="usage-nums" id="usage-text"></span>
+  <button type="button" id="btn-compact2" title="Summarize and compact context">Compact</button>
+</div>
+
+<div id="status-bar"><div class="spin"></div><span id="status-text">Agent working…</span></div>
+<div id="queue-badge"></div>
+
 <div id="inp-wrap" style="position:relative">
   <div id="mention-box"></div>
+  <div id="attach-row"></div>
+  <div id="inp-toolbar">
+    <button type="button" class="tb-btn" id="tb-mention" title="Reference a file (@)">@ File</button>
+    <span class="tb-spacer"></span>
+    <span id="tb-hint">Ask, @mention, or paste code</span>
+  </div>
   <div id="inp-row">
     <textarea id="inp" rows="1" placeholder="Ask anything…" disabled></textarea>
     <button id="snd" disabled title="Send">
@@ -476,8 +616,8 @@ button:focus:not(:focus-visible) { outline: none }
     </button>
   </div>
   <div id="inp-hint">
-    <span><kbd>Enter</kbd> send</span>
-    <span><kbd>Ctrl+Enter</kbd> newline</span>
+    <span><kbd>Enter</kbd> send · <kbd>Shift+Enter</kbd> newline</span>
+    <span id="inp-hint-stop" style="display:none;color:var(--warn)">Click stop to cancel</span>
   </div>
 </div>
 
@@ -491,12 +631,15 @@ var vsc = acquireVsCodeApi();
 var _persisted = {};
 var S = {
   ready: false, busy: false, session: null, messages: [],
-  streamTurn: null, streamAccum: '', streamTimer: null,
+  streamTurn: null, streamAccum: '', streamReasoningAccum: '', streamTimer: null,
   sessions: [],
+  sesSearch: '',
   promptHistory: [],
   promptHistIdx: -1,
   defaultAgent: 'build',
+  workspaceMeta: null,
 };
+var msgQueue = [];
 try { _persisted = vsc.getState() || {}; } catch (e) {}
 if (_persisted.sessionId) { S.session = _persisted.sessionId; }
 if (_persisted.promptHistory) { S.promptHistory = _persisted.promptHistory; }
@@ -519,6 +662,18 @@ var $ctxT   = document.getElementById('ctx-badge-text');
 var $cfgO   = document.getElementById('cfg-overlay');
 var $sesO   = document.getElementById('ses-overlay');
 var $sesList = document.getElementById('ses-list');
+var $statusBar = document.getElementById('status-bar');
+var $statusText = document.getElementById('status-text');
+var $sesSearch = document.getElementById('ses-search');
+var $usageBar = document.getElementById('usage-bar');
+var $usageText = document.getElementById('usage-text');
+var $attachRow = document.getElementById('attach-row');
+var $todoPanel = document.getElementById('todo-panel');
+var $todoList = document.getElementById('todo-list');
+var $todoCount = document.getElementById('todo-count');
+var $modelBadge = document.getElementById('model-badge');
+var $queueBadge = document.getElementById('queue-badge');
+var sesSearchTimer = null;
 
 /* ── Util ── */
 function esc(s) {
@@ -546,6 +701,136 @@ function hideEmpty() {
     $msgs.removeChild($empty);
     $empty = null;
   }
+}
+
+function renderAttachRow() {
+  if (!$attachRow) { return; }
+  $attachRow.innerHTML = '';
+  if (!attachedFiles.length) { $attachRow.classList.remove('show'); return; }
+  $attachRow.classList.add('show');
+  attachedFiles.forEach(function(f, i) {
+    var chip = document.createElement('span');
+    chip.className = 'attach-chip';
+    chip.innerHTML = esc(f.name || f.path || 'file')
+      + '<button type="button" title="Remove">×</button>';
+    chip.querySelector('button').addEventListener('click', function() {
+      attachedFiles.splice(i, 1);
+      renderAttachRow();
+    });
+    $attachRow.appendChild(chip);
+  });
+}
+
+function updateUsage(input, output, messages) {
+  if (!$usageBar || !$usageText) { return; }
+  if (!input && !output && !messages) { $usageBar.classList.remove('show'); return; }
+  $usageBar.classList.add('show');
+  var parts = [];
+  if (messages) { parts.push(messages + ' msg'); }
+  if (input || output) { parts.push((input||0) + ' in · ' + (output||0) + ' out'); }
+  $usageText.textContent = parts.join(' · ');
+}
+
+function beginTurn(text, agent) {
+  hideEmpty();
+  addUser(text);
+  setBusy(true);
+  var id = uid();
+  S.streamTurn = id; S.streamAccum = ''; S.streamReasoningAccum = ''; toolStore = {}; turnFiles = [];
+  addAsst(id, agent || S.defaultAgent, null);
+  var hintStop = document.getElementById('inp-hint-stop');
+  if (hintStop) { hintStop.style.display = ''; }
+  return id;
+}
+
+function renderQueueBadge() {
+  if (!$queueBadge) { return; }
+  if (!msgQueue.length) { $queueBadge.classList.remove('show'); $queueBadge.textContent = ''; return; }
+  $queueBadge.classList.add('show');
+  $queueBadge.textContent = msgQueue.length + ' message' + (msgQueue.length === 1 ? '' : 's') + ' queued';
+}
+
+function flushQueue() {
+  if (S.busy || !msgQueue.length || !S.ready) { return; }
+  var next = msgQueue.shift();
+  renderQueueBadge();
+  S.messages.push({ role: 'user', content: next.text });
+  attachedFiles = next.files || [];
+  renderAttachRow();
+  beginTurn(next.text, next.agent);
+  post({ type: 'sendMessage', text: next.text, sessionId: S.session, history: S.messages.slice(0, -1), files: next.files || [], agent: next.agent });
+}
+
+var TODO_ICON = { pending: '○', in_progress: '◐', completed: '●', cancelled: '⊘' };
+
+function renderTodos(todos) {
+  if (!$todoPanel || !$todoList) { return; }
+  if (!todos || !todos.length) {
+    $todoPanel.classList.remove('show');
+    $todoList.innerHTML = '';
+    if ($todoCount) { $todoCount.textContent = ''; }
+    return;
+  }
+  $todoPanel.classList.add('show');
+  var done = todos.filter(function(t){ return t.status === 'completed' || t.status === 'cancelled'; }).length;
+  if ($todoCount) { $todoCount.textContent = done + '/' + todos.length; }
+  $todoList.innerHTML = '';
+  todos.forEach(function(t) {
+    var st = (t.status || 'pending').toLowerCase().replace(/\s+/g, '_');
+    var row = document.createElement('div');
+    row.className = 'todo-item';
+    row.innerHTML = '<span class="todo-st ' + esc(st) + '">' + (TODO_ICON[st] || '○') + '</span>'
+      + '<span class="todo-txt' + (st === 'completed' || st === 'cancelled' ? ' done' : '') + '">' + esc(t.content) + '</span>';
+    $todoList.appendChild(row);
+  });
+}
+
+function applyWorkspaceMeta(meta) {
+  if (!meta) { return; }
+  S.workspaceMeta = meta;
+  if ($modelBadge && meta.model) {
+    var short = String(meta.model).split('/').pop() || meta.model;
+    $modelBadge.textContent = short;
+    $modelBadge.title = meta.model;
+    $modelBadge.style.display = '';
+  }
+  var ag = document.getElementById('agent-sel');
+  if (ag && meta.agents && meta.agents.length) {
+    var cur = ag.value;
+    ag.innerHTML = '';
+    meta.agents.forEach(function(a) {
+      if (a.mode && a.mode !== 'primary' && a.mode !== 'all') { return; }
+      var o = document.createElement('option');
+      o.value = a.name; o.textContent = a.name.charAt(0).toUpperCase() + a.name.slice(1);
+      if (a.description) { o.title = a.description; }
+      ag.appendChild(o);
+    });
+    if (cur && [].some.call(ag.options, function(o){ return o.value === cur; })) { ag.value = cur; }
+    else if (S.defaultAgent) { ag.value = S.defaultAgent; }
+  }
+  var mcpInfo = document.getElementById('mcp-info');
+  var mcpList = document.getElementById('mcp-list');
+  if (mcpInfo && mcpList) {
+    if (meta.mcpServers && meta.mcpServers.length) {
+      mcpInfo.style.display = '';
+      mcpList.textContent = meta.mcpServers.join(', ');
+    } else {
+      mcpInfo.style.display = 'none';
+    }
+  }
+}
+
+function handleSlashCommand(text) {
+  var parts = text.trim().split(/\s+/);
+  var cmd = (parts[0] || '').toLowerCase();
+  if (cmd === '/compact') { doCompact(); return true; }
+  if (cmd === '/new') { newSession(); return true; }
+  if (cmd === '/undo') { post({ type: 'undoLastTurn' }); return true; }
+  if (cmd === '/help') {
+    addSys('Commands: /compact · /new · /undo · /help');
+    return true;
+  }
+  return false;
 }
 
 function closeOverlays() {
@@ -722,11 +1007,22 @@ function buildPill(tool) {
   var n = tool.name || 'tool';
   var st = tool.status || 'running';
   var arg = toolArg(n, tool.input);
+  var fp = tool.input && (tool.input.file_path || tool.input.path || tool.input.filename);
+  var argHtml = arg
+    ? (fp ? '<span class="tp-arg clickable" onclick="openToolFile(\'' + esc(String(fp)).replace(/'/g, "\\'") + '\',event)">' + esc(arg) + '</span>'
+      : '<span class="tp-arg">' + esc(arg) + '</span>')
+    : '';
 
   var pillClass = 'tool-pill tp-' + n + (st === 'error' ? ' error' : st === 'running' ? ' running' : '');
   var stHtml = st === 'running'
     ? '<div class="spin"></div>'
     : (st === 'error' ? '<span style="color:var(--err)">✗</span>' : '<span style="color:var(--ok)">✓</span>');
+
+  var subHtml = '';
+  var subId = (tool.metadata && (tool.metadata.sessionId || tool.metadata.session_id)) || '';
+  if (/^task$/i.test(n) && subId) {
+    subHtml = '<button type="button" class="tp-subagent" onclick="openSubagent(\'' + esc(subId).replace(/'/g, "\\'") + '\',event)" title="Open subagent session">↗ subagent</button>';
+  }
 
   var bodyHtml = '';
   if (tool.input != null) {
@@ -742,7 +1038,8 @@ function buildPill(tool) {
     '<div class="' + pillClass + '" id="tp-' + esc(tool.id) + '" onclick="togglePill(\'' + esc(tool.id) + '\')">'
       + '<span class="tp-icon">' + toolIcon(n) + '</span>'
       + '<span class="tp-name">' + esc(n) + '</span>'
-      + (arg ? '<span class="tp-arg">' + esc(arg) + '</span>' : '')
+      + argHtml
+      + subHtml
       + '<span class="tp-status" id="tpst-' + esc(tool.id) + '">' + stHtml + '</span>'
       + (bodyHtml ? '<span class="tp-expand">▾</span>' : '')
     + '</div>'
@@ -797,6 +1094,61 @@ window.togglePill = function(id) {
   pill.classList.toggle('expanded');
 };
 
+window.openToolFile = function(fp, ev) {
+  if (ev) { ev.stopPropagation(); }
+  post({ type: 'openFile', path: fp });
+};
+
+window.openSubagent = function(sessionId, ev) {
+  if (ev) { ev.stopPropagation(); }
+  closeOverlays();
+  S.session = sessionId; S.messages = []; persistUiState();
+  post({ type: 'loadMessages', sessionId: sessionId });
+};
+
+function setAgentStatus(text, show) {
+  if (!$statusBar || !$statusText) { return; }
+  if (show) {
+    $statusText.textContent = text || 'Agent working…';
+    $statusBar.classList.add('show');
+  } else {
+    $statusBar.classList.remove('show');
+  }
+}
+
+function flushStreamBody() {
+  if (!S.streamTurn) { return; }
+  var body = document.getElementById('ab-' + S.streamTurn);
+  if (!body) { return; }
+  var dots = body.querySelector('.ldots');
+  if (dots && S.streamAccum) { dots.parentNode.removeChild(dots); }
+  var mdEl = body.querySelector('.stream-md');
+  if (!mdEl) {
+    mdEl = document.createElement('div');
+    mdEl.className = 'stream-md';
+    body.appendChild(mdEl);
+  }
+  mdEl.innerHTML = S.streamAccum ? renderMd(S.streamAccum) + '<span class="cur"></span>' : '<span class="cur"></span>';
+  scroll();
+}
+
+function flushStreamReasoning() {
+  if (!S.streamTurn || !S.streamReasoningAccum) { return; }
+  var body = document.getElementById('ab-' + S.streamTurn);
+  if (!body) { return; }
+  var thinkEl = body.querySelector('.stream-think');
+  if (!thinkEl) {
+    thinkEl = document.createElement('div');
+    thinkEl.className = 'think open stream-think';
+    thinkEl.innerHTML = '<div class="think-hd" onclick="this.parentElement.classList.toggle(\'open\')">'
+      + '<span>🧠</span><span style="flex:1">Thinking</span><span>▾</span></div>'
+      + '<div class="think-bd"></div>';
+    body.insertBefore(thinkEl, body.firstChild);
+  }
+  var bd = thinkEl.querySelector('.think-bd');
+  if (bd) { bd.innerHTML = renderMd(S.streamReasoningAccum); }
+}
+
 /* ── Message DOM ── */
 function addSys(text) {
   var d = document.createElement('div');
@@ -830,6 +1182,7 @@ function addAsst(id, agent, model) {
     + '<div class="abody" id="ab-' + id + '"><div class="ldots"><span></span><span></span><span></span></div></div>'
     + '<div class="turn-acts">'
       + '<button class="act-btn" title="Copy" onclick="cpTurn(this)">⎘</button>'
+      + '<button class="act-btn" title="Regenerate" onclick="regenerateTurn(this)">↻</button>'
       + '<button class="act-btn" title="Good" onclick="rate(this,1)">👍</button>'
       + '<button class="act-btn" title="Bad" onclick="rate(this,-1)">👎</button>'
     + '</div>';
@@ -850,6 +1203,25 @@ window.rate = function(btn, v) {
   btn.style.opacity = '1';
   btn.style.color = v > 0 ? 'var(--ok)' : 'var(--err)';
   btn.disabled = true;
+};
+
+window.regenerateTurn = function(btn) {
+  if (S.busy || !S.messages.length) { return; }
+  var lastUser = null;
+  for (var i = S.messages.length - 1; i >= 0; i--) {
+    if (S.messages[i].role === 'user') { lastUser = S.messages[i].content; break; }
+  }
+  if (!lastUser) { return; }
+  if (S.messages.length && S.messages[S.messages.length - 1].role === 'assistant') { S.messages.pop(); }
+  if (S.messages.length && S.messages[S.messages.length - 1].role === 'user') { S.messages.pop(); }
+  var turns = $msgs.querySelectorAll('.turn');
+  if (turns.length) { turns[turns.length - 1].parentNode.removeChild(turns[turns.length - 1]); }
+  if (turns.length) { turns[turns.length - 1].parentNode.removeChild(turns[turns.length - 1]); }
+  S.messages.push({ role: 'user', content: lastUser });
+  var agentEl = document.getElementById('agent-sel');
+  var agent = agentEl ? agentEl.value : (S.defaultAgent || 'build');
+  beginTurn(lastUser, agent);
+  post({ type: 'sendMessage', text: lastUser, sessionId: S.session, history: S.messages.slice(0, -1), files: [], agent: agent });
 };
 
 function renderAsst(id, content, agent, model, tokens, error, tools, reasoning) {
@@ -922,6 +1294,7 @@ function showChangesBar(turnId, files) {
       + '<div class="chbar-files">' + chips + '</div>'
     + '</div>'
     + '<div class="chbar-acts">'
+      + '<button class="revert-btn" style="background:rgba(46,204,113,.12);border-color:rgba(46,204,113,.35);color:var(--ok)" onclick="keepChanges(\'' + bid + '\',this)">✓ Keep</button>'
       + '<button class="revert-btn" onclick="doRevert(\'' + bid + '\',this)">↩ Revert</button>'
     + '</div>';
 
@@ -940,9 +1313,23 @@ window.doRevert = function(bid, btn) {
   post({ type: 'undoLastTurn' });
 };
 
+window.keepChanges = function(bid, btn) {
+  var bar = document.getElementById(bid);
+  if (!bar) { return; }
+  bar.innerHTML = '<span class="chbar-done">✓ Changes kept</span>';
+  setTimeout(function(){ if (bar.parentNode) { bar.parentNode.removeChild(bar); } }, 1800);
+};
+
 /* ── Session list ── */
 function renderSessions() {
   $sesList.innerHTML = '';
+  if (!S.sessions.length) {
+    var empty = document.createElement('div');
+    empty.className = 'ses-empty';
+    empty.textContent = S.sesSearch ? 'No sessions match your search' : 'No past sessions';
+    $sesList.appendChild(empty);
+    return;
+  }
   S.sessions.forEach(function(s) {
     var d = document.createElement('div');
     d.className = 'ses-item' + (s.id === S.session ? ' active' : '');
@@ -969,16 +1356,42 @@ function setBusy(b) {
   S.busy = b;
   var si = document.getElementById('snd-icon');
   var st = document.getElementById('stop-icon');
-  if (b) { si.style.display = 'none'; st.style.display = ''; $snd.title = 'Stop'; }
-  else   { si.style.display = ''; st.style.display = 'none'; $snd.title = 'Send'; S.streamTurn = null; S.streamAccum = ''; if (S.streamTimer) { clearTimeout(S.streamTimer); S.streamTimer = null; } }
+  var hintStop = document.getElementById('inp-hint-stop');
+  if (b) {
+    si.style.display = 'none'; st.style.display = ''; $snd.title = 'Stop';
+    setAgentStatus('Agent working…', true);
+    if (hintStop) { hintStop.style.display = ''; }
+  } else {
+    si.style.display = ''; st.style.display = 'none'; $snd.title = 'Send';
+    S.streamTurn = null; S.streamAccum = ''; S.streamReasoningAccum = '';
+    setAgentStatus('', false);
+    if (hintStop) { hintStop.style.display = 'none'; }
+    if (S.streamTimer) { clearTimeout(S.streamTimer); S.streamTimer = null; }
+  }
 }
 
 /* ── Send ── */
 function doSend() {
-  if (S.busy) { post({ type: 'abort' }); setBusy(false); return; }
+  if (S.busy) {
+    var qtext = $inp.value.trim();
+    if (!qtext) { post({ type: 'abort' }); setAgentStatus('Stopping…', true); return; }
+    var agentEl = document.getElementById('agent-sel');
+    var qagent = agentEl ? agentEl.value : (S.defaultAgent || 'build');
+    msgQueue.push({ text: qtext, files: attachedFiles.slice(), agent: qagent });
+    attachedFiles = [];
+    renderAttachRow();
+    $inp.value = '';
+    resizeInp();
+    renderQueueBadge();
+    return;
+  }
   var text = $inp.value.trim();
   if (!text || !S.ready) { return; }
-  addUser(text);
+  if (text.startsWith('/')) {
+    $inp.value = '';
+    resizeInp();
+    if (handleSlashCommand(text)) { return; }
+  }
   if (text && (!S.promptHistory.length || S.promptHistory[0] !== text)) {
     S.promptHistory.unshift(text);
     if (S.promptHistory.length > 40) S.promptHistory.pop();
@@ -987,32 +1400,34 @@ function doSend() {
   persistUiState();
   S.messages.push({ role: 'user', content: text });
   $inp.value = ''; resizeInp();
-  setBusy(true);
-  var id = uid();
-  S.streamTurn = id; S.streamAccum = ''; toolStore = {}; turnFiles = [];
-  addAsst(id);
   var agentEl = document.getElementById('agent-sel');
   var agent = agentEl ? agentEl.value : (S.defaultAgent || 'build');
   var files = attachedFiles.slice();
   attachedFiles = [];
+  renderAttachRow();
+  beginTurn(text, agent);
   post({ type: 'sendMessage', text: text, sessionId: S.session, history: S.messages.slice(0,-1), files: files, agent: agent });
 }
 
 function newSession() {
   closeOverlays();
   S.session = null; S.messages = []; persistUiState();
+  post({ type: 'newSession' });
   $msgs.innerHTML = '';
   var e = document.createElement('div');
-  e.id = 'empty'; e.innerHTML = $empty ? '' :
-    '<div class="empty-icon">✚</div><div class="empty-title">New session</div>'
-    + '<div class="empty-sub">Start a fresh conversation.</div>'
+  e.id = 'empty';
+  e.innerHTML = '<div class="empty-icon">✚</div><div class="empty-title">New session</div>'
+    + '<div class="empty-sub">Start a fresh conversation. Use @ to reference files.</div>'
     + '<div class="sugs">'
     + '<button class="sug" data-p="Explain this file">📄 Explain file</button>'
     + '<button class="sug" data-p="Find bugs in my code">🐛 Find bugs</button>'
     + '<button class="sug" data-p="Write tests for this code">🧪 Write tests</button>'
     + '<button class="sug" data-p="Refactor this function">✨ Refactor</button>'
     + '</div>';
-  if (!$empty || !$empty.parentNode) { $msgs.appendChild(e); $empty = e; wireSugs(); }
+  $msgs.appendChild(e);
+  $empty = e;
+  wireSugs();
+  updateUsage(0, 0, 0);
 }
 
 function resizeInp() {
@@ -1028,6 +1443,22 @@ function resizeInp() {
   }
 }
 
+function updateUsageFromMessages(msgs) {
+  var input = 0, output = 0;
+  (msgs || []).forEach(function(m) {
+    if (m.role === 'assistant' && m.tokens) {
+      input += m.tokens.input || 0;
+      output += m.tokens.output || 0;
+    }
+  });
+  updateUsage(input, output, (msgs || []).length);
+}
+
+function doCompact() {
+  if (S.busy) { return; }
+  post({ type: 'compactSession' });
+}
+
 /* ── Message handler ── */
 window.addEventListener('message', function(e) {
   var m = e.data;
@@ -1040,7 +1471,7 @@ window.addEventListener('message', function(e) {
         setReady(false); addSys('Error: ' + m.error);
         if (m.needsSetup) { $inp.disabled = false; $cfgO.classList.add('open'); }
       } else {
-        setReady(true, m.backend); addSys('Connected · ' + (m.backend || 'localcoder'));
+        setReady(true, m.backend);
       }
       if (m.config) {
         document.getElementById('cfg-ep').value  = m.config.openaiEndpoint || '';
@@ -1049,6 +1480,33 @@ window.addEventListener('message', function(e) {
       }
       if (m.defaultAgent) { S.defaultAgent = m.defaultAgent; var ag = document.getElementById('agent-sel'); if (ag) ag.value = m.defaultAgent; }
       post({ type: 'listSessions' }); break;
+
+    case 'streamStart':
+      if (S.busy) { break; }
+      S.messages.push({ role: 'user', content: m.text || '' });
+      beginTurn(m.text || '', m.agent);
+      break;
+
+    case 'usage':
+      updateUsage(m.input || 0, m.output || 0, m.messages || 0);
+      break;
+
+    case 'compactDone':
+      addSys('Context compacted');
+      break;
+
+    case 'workspaceMeta':
+      applyWorkspaceMeta(m.meta);
+      break;
+
+    case 'todos':
+      if (!m.sessionId || !S.session || m.sessionId === S.session) { renderTodos(m.todos || []); }
+      break;
+
+    case 'sessionStatus':
+      if (m.status === 'busy' || m.status === 'running') { setAgentStatus('Agent working…', true); }
+      else if (m.status === 'idle') { setAgentStatus('', false); }
+      break;
 
     case 'configSaved': addSys('Settings saved'); closeOverlays(); break;
 
@@ -1077,25 +1535,49 @@ window.addEventListener('message', function(e) {
           S.messages.push(msg);
         }
       });
-      scroll(); break;
+      scroll();
+      updateUsageFromMessages(S.messages);
+      break;
 
     case 'streamDelta': {
       if (!S.streamTurn) { break; }
       S.streamAccum += (m.delta || '');
+      setAgentStatus('Generating response…', true);
       if (!S.streamTimer) {
         S.streamTimer = setTimeout(function() {
           S.streamTimer = null;
-          var body = document.getElementById('ab-' + S.streamTurn);
-          if (body) { body.innerHTML = renderMd(S.streamAccum) + '<span class="cur"></span>'; scroll(); }
-        }, 40); // throttle to ~25fps
+          flushStreamBody();
+        }, 40);
       }
+      break;
+    }
+
+    case 'streamReasoningDelta': {
+      if (!S.streamTurn) { break; }
+      S.streamReasoningAccum += (m.delta || '');
+      setAgentStatus('Thinking…', true);
+      if (!S.streamTimer) {
+        S.streamTimer = setTimeout(function() {
+          S.streamTimer = null;
+          flushStreamReasoning();
+          flushStreamBody();
+        }, 40);
+      }
+      break;
+    }
+
+    case 'agentStatus': {
+      if (!S.busy) { break; }
+      if (m.status === 'idle') { setAgentStatus('', false); }
+      else if (m.status === 'tool' && m.tool) { setAgentStatus('Running ' + m.tool + '…', true); }
+      else if (m.status === 'thinking') { setAgentStatus('Agent working…', true); }
       break;
     }
 
     case 'toolCall': {
       var tc = m.tool || {};
       var tcid = tc.id || ('t' + Date.now());
-      toolStore[tcid] = { id: tcid, name: tc.name, input: tc.input, status: 'running' };
+      toolStore[tcid] = { id: tcid, name: tc.name, input: tc.input, status: 'running', metadata: tc.metadata };
       // Track write tools for undo
       var WRITES = ['Edit','Write','edit','write','edit_file','write_file'];
       if (WRITES.indexOf(tc.name) >= 0 && tc.input) {
@@ -1122,16 +1604,20 @@ window.addEventListener('message', function(e) {
 
     case 'streamDone':
       if (S.streamTimer) { clearTimeout(S.streamTimer); S.streamTimer = null; }
+      flushStreamReasoning();
+      flushStreamBody();
       setBusy(false);
       if (S.streamTurn) {
         var sid2 = S.streamTurn;
         var msg2 = m.message || {};
         var allT = Object.values(toolStore);
-        renderAsst(sid2, msg2.content || S.streamAccum, msg2.agent, msg2.model, msg2.tokens, msg2.error, allT.length ? allT : msg2.toolCalls, msg2.reasoning);
+        renderAsst(sid2, msg2.content || S.streamAccum, msg2.agent, msg2.model, msg2.tokens, msg2.error, allT.length ? allT : msg2.toolCalls, msg2.reasoning || S.streamReasoningAccum || undefined);
         if (m.canUndo && turnFiles.length > 0) { showChangesBar(sid2, turnFiles.slice()); }
       }
-      S.messages.push({ role: 'assistant', content: S.streamAccum });
-      toolStore = {}; break;
+      S.messages.push({ role: 'assistant', content: msg2.content || S.streamAccum || '' });
+      toolStore = {};
+      flushQueue();
+      break;
 
     case 'undone': {
       var bars = document.querySelectorAll('.chbar');
@@ -1224,6 +1710,23 @@ $inp.addEventListener('keydown', function(e) {
 $inp.addEventListener('input', resizeInp);
 $snd.addEventListener('click', doSend);
 
+document.getElementById('btn-compact').addEventListener('click', function(e) {
+  e.stopPropagation();
+  doCompact();
+});
+document.getElementById('btn-compact2').addEventListener('click', doCompact);
+
+document.getElementById('agent-sel').addEventListener('change', function() {
+  S.defaultAgent = this.value;
+  post({ type: 'setAgent', agent: this.value });
+});
+
+document.getElementById('tb-mention').addEventListener('click', function() {
+  $inp.value = ($inp.value ? $inp.value + ' ' : '') + '@';
+  $inp.focus();
+  post({ type: 'listFiles', query: '' });
+});
+
 document.getElementById('btn-new').addEventListener('click', newSession);
 document.getElementById('btn-new2').addEventListener('click', newSession);
 
@@ -1231,7 +1734,20 @@ document.getElementById('btn-ses').addEventListener('click', function(e) {
   e.stopPropagation();
   $cfgO.classList.remove('open');
   $sesO.classList.toggle('open');
+  if ($sesO.classList.contains('open')) { post({ type: 'listSessions', query: S.sesSearch || undefined }); }
 });
+
+if ($sesSearch) {
+  $sesSearch.addEventListener('input', function() {
+    S.sesSearch = $sesSearch.value.trim();
+    if (sesSearchTimer) { clearTimeout(sesSearchTimer); }
+    sesSearchTimer = setTimeout(function() {
+      sesSearchTimer = null;
+      post({ type: 'listSessions', query: S.sesSearch || undefined });
+    }, 250);
+  });
+  $sesSearch.addEventListener('click', function(e) { e.stopPropagation(); });
+}
 
 document.getElementById('btn-cfg').addEventListener('click', function(e) {
   e.stopPropagation();
@@ -1245,11 +1761,19 @@ $sesO.addEventListener('click', function(e) { e.stopPropagation(); });
 
 function toggleOpenAIFields(show) {
   document.getElementById('openai-fields').style.display = show ? '' : 'none';
+  document.getElementById('localcoder-fields').style.display = show ? 'none' : '';
 }
 
 document.getElementById('besel').addEventListener('change', function() {
   toggleOpenAIFields(this.value === 'openai');
   post({ type: 'switchBackend', backend: this.value });
+});
+
+document.getElementById('cfg-llama').addEventListener('click', function() {
+  post({ type: 'setupLlamaCpp' });
+});
+document.getElementById('cfg-cloud').addEventListener('click', function() {
+  post({ type: 'connectProvider' });
 });
 
 document.getElementById('cfg-save').addEventListener('click', function() {
@@ -1280,6 +1804,7 @@ function insertMention(rel) {
   if (!attachedFiles.some(function(f){ return f.name === rel; })) {
     attachedFiles.push({ uri: 'file:///' + rel.replace(/\\/g, '/'), mime: 'text/plain', name: rel });
   }
+  renderAttachRow();
   var box = document.getElementById('mention-box');
   if (box) box.classList.remove('open');
   resizeInp();

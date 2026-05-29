@@ -34,10 +34,13 @@ suite("Extension manifest", () => {
     const cmds = (pkg.contributes?.commands || []).map((c: { command: string }) => c.command);
     for (const id of [
       "localcoder.openChat",
+      "localcoder.setupLlamaCpp",
+      "localcoder.connectProvider",
       "localcoder.undoLastTurn",
       "localcoder.addSelectionToChat",
       "localcoder.explainSelection",
       "localcoder.fixSelection",
+      "localcoder.editSelection",
     ]) {
       assert.ok(cmds.includes(id), `missing ${id}`);
     }

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://localcoder.ai/config.json",
+  "model": "llamacpp/Qwopus3.5-9B-Coder-MTP-Q6_K.gguf",
+  "provider": {
+    "llamacpp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://127.0.0.1:8080/v1",
+        "apiKey": "not-needed"
+      },
+      "models": {
+        "Qwopus3.5-9B-Coder-MTP-Q6_K.gguf": {
+          "id": "Qwopus3.5-9B-Coder-MTP-Q6_K.gguf",
+          "name": "Qwopus3.5-9B-Coder-MTP-Q6_K.gguf",
+          "tool_call": true,
+          "reasoning": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "temperature": true,
+          "limit": {
+            "context": 16384,
+            "output": 2048
+          }
+        }
+      }
+    }
+  },
+  "permission": {
+    "*": "allow",
+    "write": "deny",
+    "session_search": "deny",
+    "list": "deny",
+    "grep": "deny",
+    "glob": "deny"
+  }
+}

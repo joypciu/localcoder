@@ -159,8 +159,11 @@ export class OpenAIBackend implements ChatBackend {
     this._abortController?.abort();
   }
 
-  async listSessions(): Promise<{ id: string; title: string }[]> {
-    return this._sessions.map((s) => ({ id: s.id, title: s.title }));
+  async listSessions(query?: string): Promise<{ id: string; title: string }[]> {
+    const items = this._sessions.map((s) => ({ id: s.id, title: s.title }));
+    const q = query?.trim().toLowerCase();
+    if (!q) { return items; }
+    return items.filter((s) => s.title.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
   }
 
   async loadMessages(sessionId: string): Promise<ChatMessage[]> {

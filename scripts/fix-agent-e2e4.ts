@@ -25,3 +25,4 @@ const neu = `      provider: {
 if (!t.includes(old)) throw new Error("config block missing")
 await Bun.write(p, t.replace(old, neu))
 console.log("config models added")
+

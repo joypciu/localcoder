@@ -63,6 +63,7 @@ export function DialogSetupLlamacpp(props: Props) {
 
   const [llamaDir, setLlamaDir] = createSignal("")
   const [modelPath, setModelPath] = createSignal("")
+  const [ctx, setCtx] = createSignal(16384)
   const [thinking, setThinking] = createSignal(false)
 
   const statusQuery = useQuery(() => ({
@@ -77,6 +78,7 @@ export function DialogSetupLlamacpp(props: Props) {
     if (!data) return
     if (!llamaDir()) setLlamaDir(data.llamaDir ?? "")
     if (!modelPath()) setModelPath(data.modelPath ?? "")
+    if (data.ctx) setCtx(data.ctx)
     if (data.thinking !== undefined) setThinking(data.thinking)
   })
 
@@ -163,6 +165,7 @@ export function DialogSetupLlamacpp(props: Props) {
         llamaDir: llamaDir().trim(),
         modelPath: modelPath().trim(),
         autoStart: true,
+        ctx: ctx(),
         thinking: thinkingSupported() ? thinking() : undefined,
       })
     },
@@ -190,6 +193,7 @@ export function DialogSetupLlamacpp(props: Props) {
         llamaDir: llamaDir().trim(),
         modelPath: modelPath().trim(),
         autoStart: true,
+        ctx: ctx(),
         thinking: thinkingSupported() ? thinking() : undefined,
       })
     },
@@ -296,6 +300,22 @@ export function DialogSetupLlamacpp(props: Props) {
             {language.t("dialog.llamacpp.action.browseModel")}
           </Button>
         </Show>
+
+        <TextField
+          label={language.t("dialog.llamacpp.field.ctx", { defaultValue: "Context size (tokens)" })}
+          type="number"
+          value={String(ctx())}
+          onInput={(e) => {
+            const n = Number(e.currentTarget.value)
+            if (Number.isInteger(n) && n >= 512) setCtx(n)
+          }}
+          placeholder="16384"
+        />
+        <p class="text-12-regular text-text-weak -mt-2">
+          {language.t("dialog.llamacpp.field.ctx.description", {
+            defaultValue: "4096–131072 typical. Lower if you run out of VRAM.",
+          })}
+        </p>
 
         <Show when={thinkingSupported()}>
           <Switch

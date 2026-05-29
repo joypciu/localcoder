@@ -6,7 +6,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as vscode from "vscode";
 import type { ChatBackend, ChatMessage, FileAttachment, ToolCall } from "./types";
-import { directoryMatches, parseGlobalEvent, parseSseBlocks } from "./sse-events";
+import { directoryMatches, parseGlobalEvent, parseGlobalPushEvent, parseSseBlocks } from "./sse-events";
 
 const DEBUG_FILE = path.join(__dirname, "..", "debug.txt");
 function log(msg: string) {
@@ -18,11 +18,22 @@ function log(msg: string) {
 
 type StreamCallbacks = {
   onDelta: (delta: string) => void;
+  onReasoningDelta?: (delta: string) => void;
   onToolCall: (tool: ToolCall) => void;
   onToolResult: (id: string, status: "completed" | "error", output?: any) => void;
 };
 
 export interface LocalcoderSendOptions { agent?: string; }
+
+export type TodoItem = { content: string; status: string; priority: string };
+
+export type WorkspaceMeta = {
+  model?: string;
+  agents?: Array<{ name: string; description?: string; mode?: string }>;
+  mcpServers?: string[];
+  skills?: string[];
+  llamacppRunning?: boolean;
+};
 
 export class LocalcoderBackend implements ChatBackend {
   readonly type = "localcoder";
@@ -37,20 +48,26 @@ export class LocalcoderBackend implements ChatBackend {
   private _streamCallbacks?: StreamCallbacks;
   private _streamSessionId?: string;
   private _streamedText = "";
+  private _streamedReasoning = "";
   private _seenToolIds = new Set<string>();
   private _serverStderr = "";
+  private _workspaceDirOverride?: string;
+  private _pushListener?: (msg: Record<string, unknown>) => void;
 
-  constructor(extensionPath: string) {
+  constructor(extensionPath: string, workspaceDirOverride?: string) {
     const cfg = vscode.workspace.getConfiguration("localcoder");
     const configured = cfg.get<string>("packagePath");
     this._extensionPath = extensionPath;
+    this._workspaceDirOverride = workspaceDirOverride;
     this._localcoderDir = configured
       ? path.resolve(configured)
       : path.resolve(extensionPath, "..", "..", "packages", "localcoder");
   }
 
   private get workspaceDir(): string {
-    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+    return this._workspaceDirOverride
+      ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+      ?? "";
   }
 
   private resolveBunPath(): string {
@@ -200,11 +217,22 @@ export class LocalcoderBackend implements ChatBackend {
 
 
   private handleGlobalEvent(raw: string) {
+    for (const action of parseGlobalPushEvent(raw, this.workspaceDir, this._activeSessionId || undefined)) {
+      if (action.kind === "todos") {
+        this._pushListener?.({ type: "todos", sessionId: action.sessionId, todos: action.todos });
+      } else if (action.kind === "session_status") {
+        this._pushListener?.({ type: "sessionStatus", sessionId: action.sessionId, status: action.status });
+      }
+    }
+
     if (!this._streamCallbacks || !this._streamSessionId) { return; }
     for (const action of parseGlobalEvent(raw, this.workspaceDir, this._streamSessionId)) {
       if (action.kind === "delta") {
         this._streamedText += action.delta;
         this._streamCallbacks.onDelta(action.delta);
+      } else if (action.kind === "reasoning_delta") {
+        this._streamedReasoning += action.delta;
+        this._streamCallbacks.onReasoningDelta?.(action.delta);
       } else if (action.kind === "tool_call") {
         if (!this._seenToolIds.has(action.tool.id)) {
           this._seenToolIds.add(action.tool.id);
@@ -245,6 +273,7 @@ export class LocalcoderBackend implements ChatBackend {
     files: FileAttachment[],
     callbacks: {
       onDelta: (delta: string) => void;
+      onReasoningDelta?: (delta: string) => void;
       onToolCall: (tool: ToolCall) => void;
       onToolResult: (id: string, status: "completed" | "error", output?: any) => void;
       onDone: (message: Partial<ChatMessage>) => void;
@@ -256,6 +285,7 @@ export class LocalcoderBackend implements ChatBackend {
     this._abortController = controller;
     this._streamCallbacks = callbacks;
     this._streamedText = "";
+    this._streamedReasoning = "";
     this._seenToolIds.clear();
 
     try {
@@ -340,6 +370,7 @@ export class LocalcoderBackend implements ChatBackend {
               status: state.status === "error" ? "error" : "completed",
               output: state.output ?? state.content,
               error: state.error as string | undefined,
+              metadata: part.metadata as Record<string, any> | undefined,
             };
             toolCalls.push(tc);
             callbacks.onToolCall(tc);
@@ -360,6 +391,7 @@ export class LocalcoderBackend implements ChatBackend {
         error: info.error as ChatMessage["error"],
         toolCalls: toolCalls.length ? toolCalls : undefined,
         agent: info.agent as string | undefined,
+        reasoning: this._streamedReasoning || undefined,
       });
     } catch (error: unknown) {
       if (error instanceof Error && error.name === "AbortError") { return; }
@@ -374,44 +406,49 @@ export class LocalcoderBackend implements ChatBackend {
   }
 
   private mapMessage(m: any): ChatMessage {
-    const isUser = m.type === "user";
+    const info = m.info ?? m;
+    const parts: any[] = m.parts ?? m.content ?? [];
+    const isUser = info.role === "user" || info.type === "user";
+
     if (isUser) {
-      return { role: "user", id: m.id, content: m.text || "" };
+      const text = parts
+        .filter((p) => p.type === "text")
+        .map((p) => p.text || "")
+        .join("\n");
+      return { role: "user", id: info.id, content: text || info.text || "" };
     }
-    // Extract reasoning from parts if available
+
     let reasoning: string | undefined;
-    const textParts = [];
+    const textParts: string[] = [];
     const toolParts: ToolCall[] = [];
-    
-    if (m.content && Array.isArray(m.content)) {
-      for (const part of m.content) {
-        if (part.type === "reasoning") {
-          reasoning = (reasoning || "") + (part.text || part.reasoning || "");
-        } else if (part.type === "text") {
-          textParts.push(part.text);
-        } else if (part.type === "tool") {
-          toolParts.push({
-            id: part.id || part.callID,
-            name: String(part.tool || part.name || ""),
-            input: part.state?.input,
-            status: part.state?.status || "completed",
-            output: part.state?.content,
-            error: part.state?.error,
-            metadata: part.metadata,
-          });
-        }
+
+    for (const part of parts) {
+      if (part.type === "reasoning") {
+        reasoning = (reasoning || "") + (part.text || part.reasoning || "");
+      } else if (part.type === "text") {
+        textParts.push(part.text || "");
+      } else if (part.type === "tool") {
+        toolParts.push({
+          id: part.id || part.callID,
+          name: String(part.tool || part.name || ""),
+          input: part.state?.input,
+          status: part.state?.status || "completed",
+          output: part.state?.output ?? part.state?.content,
+          error: part.state?.error,
+          metadata: part.metadata,
+        });
       }
     }
-    
+
     return {
       role: "assistant",
-      id: m.id,
-      content: textParts.join("\n\n") || m.text || "",
-      agent: m.agent,
-      model: m.model?.id,
-      tokens: m.tokens,
-      cost: m.cost,
-      error: m.error,
+      id: info.id,
+      content: textParts.join("\n\n") || info.text || "",
+      agent: info.agent,
+      model: info.model?.modelID ?? info.model?.id,
+      tokens: info.tokens,
+      cost: info.cost,
+      error: info.error,
       toolCalls: toolParts,
       reasoning,
     };
@@ -424,17 +461,75 @@ export class LocalcoderBackend implements ChatBackend {
     }
   }
 
-  async listSessions(): Promise<{ id: string; title: string }[]> {
-    const r = await this.apiFetch("/api/session");
+  async listSessions(query?: string): Promise<{ id: string; title: string }[]> {
+    const qs = query?.trim() ? `?search=${encodeURIComponent(query.trim())}` : "";
+    const r = await this.apiFetch(`/api/session${qs}`);
     const d = (await r.json()) as any;
     return (d.items || d || []).map((s: any) => ({ id: s.id, title: s.title || s.id }));
   }
 
+  setPushListener(listener?: (msg: Record<string, unknown>) => void): void {
+    this._pushListener = listener;
+  }
+
+  async getTodos(sessionId: string): Promise<TodoItem[]> {
+    const r = await this.apiFetch(`/session/${sessionId}/todo`);
+    if (!r.ok) { return []; }
+    const d = (await r.json()) as TodoItem[];
+    return Array.isArray(d) ? d : [];
+  }
+
+  async fetchWorkspaceMeta(): Promise<WorkspaceMeta> {
+    const meta: WorkspaceMeta = {};
+    try {
+      const [cfgRes, agentRes, skillRes, llamaRes] = await Promise.all([
+        this.apiFetch("/global/config").catch(() => undefined),
+        this.apiFetch("/agent").catch(() => undefined),
+        this.apiFetch("/skill").catch(() => undefined),
+        this.apiFetch("/global/llamacpp/status").catch(() => undefined),
+      ]);
+      if (cfgRes?.ok) {
+        const cfg = (await cfgRes.json()) as { model?: string; mcp?: Record<string, unknown> };
+        meta.model = cfg.model;
+        if (cfg.mcp) { meta.mcpServers = Object.keys(cfg.mcp); }
+      }
+      if (agentRes?.ok) {
+        const agents = (await agentRes.json()) as Array<{ name: string; description?: string; mode?: string; hidden?: boolean }>;
+        meta.agents = (agents || []).filter((a) => !a.hidden).map((a) => ({
+          name: a.name,
+          description: a.description,
+          mode: a.mode,
+        }));
+      }
+      if (skillRes?.ok) {
+        const skills = (await skillRes.json()) as Array<{ name?: string; id?: string }>;
+        meta.skills = (skills || []).map((s) => s.name || s.id || "").filter(Boolean);
+      }
+      if (llamaRes?.ok) {
+        const llama = (await llamaRes.json()) as { running?: boolean; model?: string };
+        meta.llamacppRunning = llama.running;
+        if (llama.model) { meta.model = meta.model || llama.model; }
+      }
+    } catch { /* ignore */ }
+    return meta;
+  }
+
+  async compactSession(): Promise<void> {
+    const sessionId = this._activeSessionId;
+    if (!sessionId) { throw new Error("No active session to compact"); }
+    const r = await this.apiFetch(`/api/session/${sessionId}/compact`, { method: "POST" });
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      throw new Error(body || `Compact failed (${r.status})`);
+    }
+  }
+
   async loadMessages(sessionId: string): Promise<ChatMessage[]> {
     this._activeSessionId = sessionId;
-    const r = await this.apiFetch(`/api/session/${sessionId}/message`);
+    const r = await this.apiFetch(`/session/${sessionId}/message?limit=50`);
     const d = (await r.json()) as any;
-    return (d.items || []).map((m: any) => this.mapMessage(m));
+    const items = Array.isArray(d) ? d : (d.items || []);
+    return items.map((m: any) => this.mapMessage(m));
   }
 
   getActiveSessionId(): string | null { return this._activeSessionId || null; }

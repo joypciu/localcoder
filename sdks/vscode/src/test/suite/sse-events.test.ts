@@ -1,6 +1,6 @@
 ﻿import * as assert from "assert";
 import * as path from "path";
-import { directoryMatches, parseGlobalEvent, parseSseBlocks } from "../../backends/sse-events";
+import { directoryMatches, parseGlobalEvent, parseGlobalPushEvent, parseSseBlocks } from "../../backends/sse-events";
 
 const WS = "C:\\workspace\\proj";
 const SID = "ses_test_001";
@@ -42,15 +42,45 @@ suite("SSE events parser", () => {
     if (actions[0].kind === "delta") { assert.strictEqual(actions[0].delta, "Hello"); }
   });
 
-  test("parseGlobalEvent ignores non-text delta fields", () => {
+  test("parseGlobalPushEvent emits todo updates for active session", () => {
+    const raw = JSON.stringify({
+      directory: WS,
+      payload: {
+        type: "todo.updated",
+        properties: {
+          sessionID: SID,
+          todos: [{ content: "Fix bug", status: "in_progress", priority: "high" }],
+        },
+      },
+    });
+    const actions = parseGlobalPushEvent(raw, WS, SID);
+    assert.strictEqual(actions.length, 1);
+    assert.strictEqual(actions[0].kind, "todos");
+  });
+
+  test("parseGlobalPushEvent ignores todos for other sessions", () => {
+    const raw = JSON.stringify({
+      directory: WS,
+      payload: {
+        type: "todo.updated",
+        properties: { sessionID: "ses_other", todos: [] },
+      },
+    });
+    assert.deepStrictEqual(parseGlobalPushEvent(raw, WS, SID), []);
+  });
+
+  test("parseGlobalEvent emits reasoning delta", () => {
     const raw = JSON.stringify({
       directory: WS,
       payload: {
         type: "message.part.delta",
-        properties: { sessionID: SID, delta: "x", field: "reasoning" },
+        properties: { sessionID: SID, delta: "hmm", field: "reasoning" },
       },
     });
-    assert.deepStrictEqual(parseGlobalEvent(raw, WS, SID), []);
+    const actions = parseGlobalEvent(raw, WS, SID);
+    assert.strictEqual(actions.length, 1);
+    assert.strictEqual(actions[0].kind, "reasoning_delta");
+    if (actions[0].kind === "reasoning_delta") { assert.strictEqual(actions[0].delta, "hmm"); }
   });
 
   test("parseGlobalEvent tool pending then completed", () => {

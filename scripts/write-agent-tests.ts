@@ -194,3 +194,4 @@ it.live("agent write creates runnable Python script", () =>
 await Bun.write(path.join(ROOT, "test/lib/session-prompt-stack.ts"), stack)
 await Bun.write(path.join(ROOT, "test/integration/agent-tools.test.ts"), agentTest)
 console.log("wrote agent tool tests")
+

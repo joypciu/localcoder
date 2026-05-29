@@ -16,6 +16,9 @@ import type { Provider } from "@/provider/provider"
 import type { Agent } from "@/agent/agent"
 import { Permission } from "@/permission"
 import { Skill } from "@/skill"
+import { Database } from "@/storage/db"
+import { SessionTable } from "./session.sql"
+import { and, count, eq, isNull } from "drizzle-orm"
 
 export function provider(model: Provider.Model) {
   if (model.api.id.includes("gpt-4") || model.api.id.includes("o1") || model.api.id.includes("o3"))
@@ -69,14 +72,43 @@ export const layer = Layer.effect(
         if (Permission.disabled(["skill"], agent.permission).has("skill")) return
 
         const list = yield* skill.available(agent)
+        const ctx = yield* InstanceState.context
 
-        return [
+        const parts: string[] = [
           "Skills provide specialized instructions and workflows for specific tasks.",
           "Use the skill tool to load a skill when a task matches its description.",
           // the agents seem to ingest the information about skills a bit better if we present a more verbose
           // version of them here and a less verbose version in tool description, rather than vice versa.
           Skill.fmt(list, { verbose: true }),
-        ].join("\n")
+        ]
+
+        // Hermes-style memory nudge: when no project skills exist but the directory
+        // has significant session history, remind the agent to suggest skill creation
+        // for recurring workflows.  Threshold: 5+ past sessions without skills.
+        if (list.length === 0) {
+          const row = Database.use((db) =>
+            db
+              .select({ n: count() })
+              .from(SessionTable)
+              .where(and(eq(SessionTable.directory, ctx.directory), isNull(SessionTable.time_archived)))
+              .get(),
+          )
+          const n = row?.n ?? 0
+          if (n >= 5) {
+            parts.push(
+              [
+                `<memory-nudge>`,
+                `This directory has ${n} past sessions but no skills defined yet.`,
+                `If the current task involves a workflow the user repeats often (testing, deployment,`,
+                `code review, data processing, etc.), proactively suggest creating a skill file at`,
+                `.localcoder/skills/<name>/SKILL.md so future sessions can load it automatically.`,
+                `</memory-nudge>`,
+              ].join("\n"),
+            )
+          }
+        }
+
+        return parts.join("\n")
       }),
     })
   }),

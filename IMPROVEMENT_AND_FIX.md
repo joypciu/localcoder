@@ -1,7 +1,7 @@
 ﻿# LocalCoder — Improvements, Fixes & Roadmap
 
-**Updated:** 2026-05-22 · **Release:** v1.14.44  
-**VS Code tests:** `cd sdks/vscode && bun run test:all`  
+**Updated:** 2026-05-29 · **Release:** v1.14.46  
+**VS Code tests:** `cd sdks/vscode && bun run test:unit` (fast) · `bun run test` (full)  
 **Windows E2E gate:** `bun run scripts/e2e-full-windows.ts`  
 **v2 migration backlog:** [specs/v2/todo.md](specs/v2/todo.md)
 
@@ -11,18 +11,159 @@
 
 | Area | Status | Notes |
 |------|--------|-------|
-| TUI + llama.cpp | **Mostly working** | Shared `packages/localcoder/src/llamacpp/`; CLI `llamacpp setup` |
-| Qwopus / Qwen3.5 agent | **Fixed** | 16k ctx, tool-loop exit, thinking toggle |
-| Desktop click-to-undo | **Fixed (v1.14.44)** | Backend restores files + syncs messages |
-| Desktop llama.cpp picker | **Fixed (v1.14.44)** | Models from config + `llamacpp.json` when server offline |
-| Portable Windows build | **Fast** | `build:win-standalone` ~2–4 min; fast pack ~1 min |
-| Global CLI (Windows) | **Fixed** | `bun run install:cli` from `dist/npm/localcoder` |
-| Internal architecture | **In migration** | Effect services + v1/v2 dual-write; Hono removal planned |
-| Multi-agent / subagents | **Functional, immature** | Task tool works; orchestration + desktop UX lag TUI |
-| Context / tokens | **Reactive** | Compaction + truncation; no proactive budget allocator |
-| Cross-platform CLI | **Partial** | Builds for win/mac/linux; docs and CI Windows-heavy |
-| Desktop (mac/linux) | **Secondary** | Electron builder targets exist; less tested than Windows |
-| VS Code extension | **llama.cpp wizard** | 84/84 unit tests; manual F5 for wizard UX |
+| **Zero-config providers** | **Done (2026-05-29)** | llama.cpp + OpenRouter + OpenCode Go wizards; `auth set-api` |
+| **CLI reliability** | **Fixed** | Invalid model fail-fast (~2s); stdout progress; skip bundled plugin npm 404 |
+| **TUI + llama.cpp** | **Working** | Interactive `llamacpp setup`; autostart; ctx + thinking in wizards |
+| **Qwopus / Qwen3.5 agent** | **Fixed** | 16k ctx, tool-loop exit, thinking toggle |
+| **Desktop click-to-undo** | **Fixed** | Backend restores files + syncs messages |
+| **VS Code extension** | **Strong** | 84+ tests; zero-config wizards; SecretStorage; inline actions |
+| **Portable Windows build** | **Fast** | `build:win-standalone` ~2–4 min; fast pack ~1 min |
+| **Global CLI (Windows)** | **Fixed** | `bun run install:cli` from `dist/npm/localcoder` |
+| **Multi-agent / subagents** | **Functional** | Parallel coordinator; desktop UX lagging TUI |
+| **Internal architecture** | **In migration** | Effect services + v1/v2 dual-write |
+
+---
+
+## Session 3 — Zero-config & CLI polish (2026-05-29)
+
+### User-facing: no manual config for providers
+
+| Surface | What changed |
+|---------|----------------|
+| **CLI** | `localcoder llamacpp setup` interactive wizard (folder, GGUF, ctx, thinking) |
+| **CLI** | `localcoder auth set-api -p openrouter\|opencode-go -k KEY` for IDE wizards |
+| **VS Code** | First-run: llama.cpp, OpenRouter, OpenCode Go; Settings ⚙ buttons |
+| **Desktop** | llama.cpp dialog: context size field added |
+| **All** | User picks any llama.cpp folder — no hardcoded paths; LocalCoder starts server |
+
+### CLI fixes (audit follow-up)
+
+| Fix | Detail |
+|-----|--------|
+| Invalid model fail-fast | `run -m bad/provider` errors in ~2s with suggestions (was 84s+ hang) |
+| Plugin npm 404 | Skip `@localcoder-ai/plugin` install when bundled (`pluginDependencyAvailable`) |
+| Log noise | Missing optional providers → debug, not error |
+| `run` progress | `… working` on busy; stderr/stdout flush for piped output |
+
+### E2E smoke (2026-05-29)
+
+| Test | Time | Result |
+|------|------|--------|
+| CLI smoke | ~10s | version, startup, invalid model, session search, serve health |
+| VS Code contract | ~5s | 48/48 manifest + SSE + chat HTML |
+| Windows artifacts | ~2s | CLI exe + portable + unpacked GUI |
+
+---
+
+## Session 2 fixes (v1.14.46 — 2026-05-29)
+
+### Root-cause bugs found and fixed
+
+| Bug | File | Fix |
+|-----|------|-----|
+| `disabled_providers: ["llamacpp"]` in global config silently blocked all llama usage | `~/.config/localcoder/localcoder.jsonc` | Removed from global config; `reasoning: false` → `true` |
+| `llamaDir` in saved config pointed to stale binary | `~/.localcoder/llamacpp.json` | Re-run `localcoder llamacpp setup` or use VS Code / desktop wizard |
+| All E2E scripts hardcoded old llama binary path | `scripts/*.ts`, `sdks/vscode/src/extension.ts` | Removed hardcoded paths; dynamic discovery + user wizard |
+| Serve API uses `/session/:id/message` not `/session/:id/prompt` | Server routes | Documented; the endpoint is synchronous — returns full response when done |
+| VS Code llama E2E test: AI not calling tools | `sdks/vscode/src/test/suite/llama-e2e.test.ts` | Root cause: prompt engineering + tool permission setup (WIP) |
+
+### Config state after fixes
+
+```json
+// ~/.config/localcoder/localcoder.jsonc
+{
+  "model": "llamacpp/<your-model>.gguf",
+  "provider": { "llamacpp": { "models": { "..": { "reasoning": true, "tool_call": true } } } }
+}
+
+// ~/.localcoder/llamacpp.json  (written by wizard)
+{ "llamaDir": "<path-to-llama.cpp-bin>", "thinking": true, "ctx": 16384 }
+```
+
+### What PASSED after fixes
+
+| Test | Result |
+|------|--------|
+| `bun run scripts/e2e-llamacpp.ts` | ✅ chat/completions OK (89 t/s, loads in 7s on RTX 5070 Ti) |
+| `AGENT_LIVE_E2E=1 AGENT_E2E_FAST=1 bun run scripts/agent-tool-e2e.ts` | ✅ bash tool called via real llama inference |
+| `cd sdks/vscode && bun run test:unit` | ✅ 48/48 contract tests (~5s) |
+| `cd sdks/vscode && bun run test` | ✅ 84+ full suite (incl. Electron) |
+| VS Code E2E test 1: create session | ✅ passing |
+| VS Code E2E test 4: session history | ✅ 15 messages in history |
+| `localcoder.exe llamacpp status` | ✅ running=true, thinking=true, correct paths |
+| `localcoder.exe run --dangerously-skip-permissions "Say hello"` | ✅ real llama response |
+
+### What is STILL FAILING / WIP
+
+| Issue | Details |
+|-------|---------|
+| VS Code E2E tests 2+3 (write/edit tools) | AI responds but doesn't call tools; `tools=[]` empty. Likely prompt engineering — Qwopus needs explicit tool call instructions, and the `dangerously-skip-permissions` flag may not be set for serve mode |
+| Binary serve mode tool calls | `POST /session/:id/message` with agent permissions works but the model needs to be prompted to use tools explicitly |
+
+### Key architecture note discovered
+
+The `localcoder serve` prompt API is:
+- **Endpoint**: `POST /session/:sessionID/message` (NOT `/prompt`)
+- **Behavior**: Synchronous — waits for full AI response before returning
+- **Format**: Returns `{ info: AssistantMessage, parts: Part[] }` where parts include tool results
+- **Tools**: Must set `permission: { write: "allow", edit: "allow" }` in localcoder.json
+
+---
+
+## VS Code extension — llama.cpp E2E
+
+**Status:** Implemented — `localcoder-llamacpp.test.ts`, `extension-llamacpp.test.ts`  
+**Enable:** `VSCODE_LLAMA_E2E=1` (llama-server on `:8080` + built CLI)
+
+**Remaining:** Tool-calling reliability with Qwopus — model sometimes responds without invoking tools; prompt/permission tuning in progress.
+
+### Required for live E2E
+
+- Built `localcoder.exe` at `packages/localcoder/dist/localcoder-windows-x64/bin/`
+- llama-server running or `LLAMACPP_SKIP_SERVER=1` with server already up
+- Workspace `localcoder.json` with `permission: { write: "allow", edit: "allow", bash: "allow" }`
+
+### Run
+
+```powershell
+& "<llama-dir>\llama-server.exe" -m "<model.gguf>" --host 127.0.0.1 --port 8080 -c 16384 --jinja
+
+$env:VSCODE_LLAMA_E2E = "1"
+$env:LLAMACPP_API_URL = "http://127.0.0.1:8080/v1"
+cd sdks/vscode && bun run test          # Electron host
+# Or: bun x mocha out/test/suite/localcoder-llamacpp.test.js --ui tdd --timeout 300000
+```
+
+**Prompt tip:** Qwopus/Qwen3 with thinking blocks may describe actions instead of calling tools — use explicit "Call the write tool now" instructions.
+
+---
+
+### Tool permission pre-filtering — denied tools no longer shown to LLM
+
+| Symptom | Fix |
+|---------|-----|
+| LLM saw tools it couldn't invoke (e.g. `question` for subagents, `todowrite` for explore) | `tools()` in `ToolRegistry` now checks `Permission.evaluate(tool.id, "*", agent.permission)` before including a tool in the model schema |
+
+**File:** `packages/localcoder/src/tool/registry.ts`
+
+**Effect:** The `explore` agent no longer receives `todowrite` in its schema; `compaction` / `title` / `summary` agents receive only the tools their permission ruleset explicitly allows.
+
+### Session search tool (`session_search`) — cross-session recall
+
+Implements the **Hermes Agent** pattern of FTS-backed cross-session memory. The agent can now search past sessions by title and message content, enabling it to recall prior work, past decisions, and previously discovered solutions without the user re-explaining context.
+
+- **Title search**: SQLite LIKE query on `session.title` (fast, instant)
+- **Content search**: `json_extract` over `part.data` text fields for user message body search
+- **Scope**: `"title"`, `"content"`, or `"all"` (default)
+- Automatically pre-filtered by the agent permission system (like every other tool)
+
+**Files:** `packages/localcoder/src/tool/session-search.ts`, `packages/localcoder/src/tool/session-search.txt`, `packages/localcoder/src/tool/registry.ts`
+
+### Skill-creation nudge in system prompt — Hermes-style memory persistence
+
+When no project skills exist but the working directory has **5 or more past sessions**, the system prompt includes a `<memory-nudge>` reminding the agent to suggest creating a `.localcoder/skills/<name>/SKILL.md` file for repeated workflows. This mirrors Hermes Agent's "periodic nudges for memory persistence" design.
+
+**File:** `packages/localcoder/src/session/system.ts`
 
 ---
 
@@ -134,7 +275,7 @@ LocalCoder is a Bun monorepo: **Effect-based services** in `packages/localcoder`
 
 | Item | Detail |
 |------|--------|
-| Tool schema ↔ permission alignment | Denied tools never appear in model schema |
+| ~~Tool schema ↔ permission alignment~~ | ✅ **Done (v1.14.45)** — denied tools pre-filtered in `resolveTools()` / `registry.tools()` |
 | Doom-loop guard tuning | Threshold 3 in processor — configurable; user-visible explanation |
 | Tool error taxonomy | Retriable vs fatal; auto-retry read/grep; never auto-retry write/shell |
 | MCP permission granularity | Per-server, per-tool rules instead of coarse keys |
@@ -214,7 +355,7 @@ LocalCoder is a Bun monorepo: **Effect-based services** in `packages/localcoder`
 | `localcoder run` polish | JSON/stream modes; exit codes; `--timeout`, `--max-steps` |
 | Headless agent mode | `localcoder agent run --agent build --model … --prompt-file` for CI |
 | Session management CLI | `session list`, `session show`, `session export`, `session fork` |
-| Config wizard | `localcoder onboard` — providers, llama.cpp, git snapshot, default agent |
+| Config wizard | ~~`localcoder onboard`~~ — **partial:** `llamacpp setup` + `auth set-api` + IDE wizards done; unified `onboard` TBD |
 | TUI performance | Virtualized message list in OpenTUI for long sessions |
 | Attach / multiplex | TUI + desktop + VS Code on same session with clear leader |
 
@@ -325,14 +466,16 @@ Output: `packages/desktop/dist/LocalCoder-<version>-portable.exe`
 
 ## llama.cpp quick reference
 
-- **Config:** `~/.localcoder/llamacpp.json`
+- **Config:** `~/.localcoder/llamacpp.json` (wizard writes this)
 - **API:** `GET/POST /global/llamacpp/{status,setup,start,stop,thinking}`
 - **CLI:** `localcoder llamacpp setup|status|stop`
 
 ```powershell
-& "P:\llama cpp\llama-b9284-bin-win-cuda-13.1-x64\llama-server.exe" `
-  -m "P:\gguf models\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf" `
-  --host 127.0.0.1 --port 8080 -c 16384 --jinja
+# Interactive (recommended)
+localcoder llamacpp setup
+
+# Manual server (only if not using autostart)
+& "<llama-dir>\llama-server.exe" -m "<model.gguf>" --host 127.0.0.1 --port 8080 -c 16384 --jinja
 ```
 
 ---
@@ -341,8 +484,9 @@ Output: `packages/desktop/dist/LocalCoder-<version>-portable.exe`
 
 | Priority | Theme | Top items |
 |----------|-------|-----------|
-| **P0** | Architecture | v2 events + agent loop; tool permission pre-filter; desktop E2E |
+| **P0** | Architecture | v2 events + agent loop; VS Code tool-calling E2E reliability |
 | **P0** | Shipping | Rebuild portable exe; macOS build on tag; CLI tri-platform CI |
+| **P0** | Zero-config | ✅ llama.cpp + cloud wizards (CLI, VS Code, desktop) |
 | **P1** | Agents | Parallel subagent coordinator; desktop subagent nav; ACP permissions |
 | **P1** | Context | Model-aware budgets; proactive compaction; token UI accuracy |
 | **P1** | CLI | `onboard`, headless `agent run`, session subcommands, completions |
@@ -376,7 +520,7 @@ Skip slow steps: `$env:E2E_SKIP_BUILD = "1"; $env:E2E_SKIP_LLAMA = "1"`
 |--------|----------------|
 | `agent-tool-e2e.ts` | Live Qwopus tool loop |
 | `e2e-full-windows.ts` | CLI, llama chat, VS Code suite, binary exists |
-| VS Code 84 tests | Desktop GUI, subagent nav, mac/linux |
+| VS Code 84+ tests | Desktop GUI, subagent nav, mac/linux, live llama tool calls |
 | Unit tests | Processor, permissions, revert/compaction |
 
 See: [sdks/vscode/FUTURE_IMPROVEMENTS.md](sdks/vscode/FUTURE_IMPROVEMENTS.md) · [specs/v2/todo.md](specs/v2/todo.md)

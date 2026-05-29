@@ -14,7 +14,7 @@ import { AppFileSystem } from "@localcoder-ai/core/filesystem"
 import { CurrentWorkingDirectory } from "./cwd"
 import { ConfigPlugin } from "@/config/plugin"
 import { ConfigKeybinds } from "@/config/keybinds"
-import { InstallationLocal, InstallationVersion } from "@localcoder-ai/core/installation/version"
+import { InstallationLocal, InstallationVersion, pluginDependencyAvailable } from "@localcoder-ai/core/installation/version"
 import { makeRuntime } from "@localcoder-ai/core/effect/runtime"
 import { Filesystem } from "@/util/filesystem"
 import * as Log from "@localcoder-ai/core/util/log"
@@ -198,23 +198,25 @@ export const layer = Layer.effect(
     const directory = yield* CurrentWorkingDirectory
     const npm = yield* Npm.Service
     const data = yield* loadState({ directory })
-    const deps = yield* Effect.forEach(
-      data.dirs,
-      (dir) =>
-        npm
-          .install(dir, {
-            add: [
-              {
-                name: "@localcoder-ai/plugin",
-                version: InstallationLocal ? undefined : InstallationVersion,
-              },
-            ],
-          })
-          .pipe(Effect.forkScoped),
-      {
-        concurrency: "unbounded",
-      },
-    )
+    const deps = pluginDependencyAvailable()
+      ? []
+      : yield* Effect.forEach(
+          data.dirs,
+          (dir) =>
+            npm
+              .install(dir, {
+                add: [
+                  {
+                    name: "@localcoder-ai/plugin",
+                    version: InstallationLocal ? undefined : InstallationVersion,
+                  },
+                ],
+              })
+              .pipe(Effect.forkScoped),
+          {
+            concurrency: "unbounded",
+          },
+        )
 
     const get = Effect.fn("TuiConfig.get")(() => Effect.succeed(data.config))
 

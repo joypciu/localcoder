@@ -237,7 +237,12 @@ export const ProvidersCommand = cmd({
   aliases: ["auth"],
   describe: "manage AI providers and credentials",
   builder: (yargs) =>
-    yargs.command(ProvidersListCommand).command(ProvidersLoginCommand).command(ProvidersLogoutCommand).demandCommand(),
+    yargs
+      .command(ProvidersListCommand)
+      .command(ProvidersLoginCommand)
+      .command(ProvidersSetApiCommand)
+      .command(ProvidersLogoutCommand)
+      .demandCommand(),
   async handler() {},
 })
 
@@ -479,6 +484,34 @@ export const ProvidersLoginCommand = effectCmd({
     yield* Effect.orDie(authSvc.set(provider, { type: "api", key: apiKey }))
 
     yield* Prompt.outro("Done")
+  }),
+})
+
+export const ProvidersSetApiCommand = effectCmd({
+  command: "set-api",
+  describe: "store an API key without interactive prompts (for IDE/setup wizards)",
+  instance: false,
+  builder: (yargs) =>
+    yargs
+      .option("provider", {
+        alias: ["p"],
+        type: "string",
+        demandOption: true,
+        describe: "provider id (e.g. openrouter, opencode-go, fireworks-ai)",
+      })
+      .option("key", {
+        alias: ["k"],
+        type: "string",
+        demandOption: true,
+        describe: "API key value",
+      }),
+  handler: Effect.fn("Cli.providers.setApi")(function* (args) {
+    const authSvc = yield* Auth.Service
+    const provider = String(args.provider).replace(/^@ai-sdk\//, "")
+    const key = String(args.key).trim()
+    if (!key) return yield* fail("API key cannot be empty")
+    yield* Effect.orDie(authSvc.set(provider, { type: "api", key }))
+    UI.println(UI.Style.TEXT_SUCCESS_BOLD + `Saved API key for ${provider}` + UI.Style.TEXT_NORMAL)
   }),
 })
 
