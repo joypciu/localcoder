@@ -102,6 +102,17 @@ Legacy wrappers: `scripts/e2e-full-windows.ts` (→ full), `scripts/readiness-wi
 | VS Code E2E tests 2+3 (write/edit tools) | ✅ Fixed — tool-call prompts + retry helper; live Qwopus write/edit pass (~31s) |
 | Binary serve mode tool calls | `POST /session/:id/message` with agent permissions works but the model needs to be prompted to use tools explicitly |
 
+### Fixed (2026-05-29 session 5)
+
+| Fix | Detail |
+|-----|--------|
+| HttpApi missing-session 404 | `withExistingSession` + `mapNotFound`; diff/fork OpenAPI error schemas |
+| v2 test belt | `session-message-updater`, `projectors-next`, processor dual-write |
+| VS Code header model picker | Cursor-style `#hdr-model-sel` wired to `switchModel` |
+| VS Code subagent bar | Parent/Prev/Next via `/session/:id` + `/children` (desktop parity) |
+| VS Code abort UX | `agentStatus`/`sessionStatus` idle → `setBusy(false)` |
+| Architecture log | [specs/architecture/ITERATIONS.md](specs/architecture/ITERATIONS.md) |
+
 ### Fixed (2026-05-29 session 4)
 
 | Fix | Detail |

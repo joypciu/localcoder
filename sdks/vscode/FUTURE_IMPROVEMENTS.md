@@ -35,8 +35,11 @@
 
 - [x] **Native diff apply/reject** — Accept/Reject in chat changes bar, diff editor title, CodeLens, Ctrl+Shift+Y/N
 - [x] **MCP panel** — MCP servers listed in Settings overlay (empty state when none configured)
-- [ ] **Model picker** — dropdown from connected provider model list
-- [ ] **Reliable stop-button sync** during abort
+- [x] **Header model picker** — Cursor-style dropdown in chat header (not only settings overlay)
+- [x] **Subagent navigation bar** — Parent/Prev/Next when session has `parentID` (desktop parity)
+- [x] **Stop button sync** — `agentStatus`/`sessionStatus` idle clears busy state
+- [ ] **Model picker** — persist last model per workspace folder
+- [ ] **Reliable stop-button sync** during slow abort on server
 
 ## Medium priority
 
