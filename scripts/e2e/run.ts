@@ -15,7 +15,10 @@
  *   E2E_SKIP_AGENT=1          skip agent tool E2E
  *   E2E_SKIP_STANDALONE=1     skip portable build (full tier)
  *   E2E_SKIP_VSCODE_ELECTRON=1  skip vscode-test Electron suite
- *   E2E_LLAMA_VSCODE=1        run live llama VS Code E2E (full tier, slow)
+ *   E2E_SKIP_LLAMA_VSCODE=1   skip live llama VS Code E2E (off by default on full tier)
+ *   E2E_SKIP_LLAMACPP_E2E=1   skip mocha localcoder-llamacpp.test.js (full tier)
+ *   E2E_LLAMA_VSCODE=1        force llama VS Code E2E on standard tier
+ *   E2E_SKIP_DESKTOP_LAUNCH=1 skip headed LocalCoder.exe launch (full tier)
  *   LLAMACPP_SKIP_SERVER=1    reuse running llama-server
  */
 import fs from "fs"
@@ -55,7 +58,7 @@ import {
   stepVscodeWizardContract,
   stepVscodeCompiledWizardCliBridge,
 } from "./steps/vscode"
-import { stepPlaywrightApp } from "./steps/playwright"
+import { stepDesktopExeLaunch, stepPlaywrightApp } from "./steps/playwright"
 
 async function runTier(tier: E2eTier) {
   if (process.platform !== "win32") {
@@ -139,7 +142,10 @@ async function runTier(tier: E2eTier) {
 
     if (tier === "full") {
       await run("build-standalone", "Windows: build portable (fast pack)", stepBuildStandalone)
-      await run("vscode-llama", "VS Code: live llama E2E (optional)", stepVscodeLlamaE2e)
+      await run("desktop-launch", "Windows: headed LocalCoder.exe launch", stepDesktopExeLaunch)
+      await run("vscode-llama", "VS Code: live llama E2E", () =>
+        stepVscodeLlamaE2e({ tier, hasLlama }),
+      )
     }
 
     printReport(tier, results)

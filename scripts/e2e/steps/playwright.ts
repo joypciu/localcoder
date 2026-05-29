@@ -3,6 +3,8 @@ import { runCmdInherit } from "../lib/runner"
 import fs from "fs"
 import path from "path"
 
+const DESKTOP_SMOKE = path.join(ROOT, "scripts", "e2e", "desktop-exe-smoke.ts")
+
 const BUN = resolveBun()
 
 export async function stepPlaywrightApp(): Promise<string> {
@@ -27,6 +29,8 @@ export async function stepDesktopExeLaunch(): Promise<string> {
   if (!fs.existsSync(DESKTOP_EXE)) {
     throw new Error(`missing ${DESKTOP_EXE}`)
   }
+  const code = await runCmdInherit(BUN, ["run", DESKTOP_SMOKE], { cwd: ROOT })
+  if (code !== 0) throw new Error(`desktop-exe-smoke exited ${code}`)
   const mb = (fs.statSync(DESKTOP_EXE).size / (1024 * 1024)).toFixed(1)
-  return `LocalCoder.exe present (${mb} MB) — GUI launch test requires headed runner`
+  return `LocalCoder.exe headed launch OK (${mb} MB)`
 }

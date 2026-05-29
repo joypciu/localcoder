@@ -51,7 +51,7 @@
 |---------|------|----------|
 | `bun run e2e:smoke` | ~15s | VS Code compile + 84 contract tests + CLI version/search/fail-fast |
 | `bun run e2e` | ~1–2 min | + llama setup/chat, agent bash, serve API, Electron tests, desktop artifacts |
-| `bun run e2e:full` | ~10–30 min | + `build:win`, portable build, live llama VS Code E2E (`E2E_LLAMA_VSCODE=1`) |
+| `bun run e2e:full` | ~10–30 min | + portable build, headed `LocalCoder.exe` launch, live llama VS Code E2E (skip with `E2E_SKIP_LLAMA_VSCODE=1`) |
 
 Legacy wrappers: `scripts/e2e-full-windows.ts` (→ full), `scripts/readiness-windows.ts` (→ standard, skip build).
 

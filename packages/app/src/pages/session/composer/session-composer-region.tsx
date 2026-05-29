@@ -3,6 +3,7 @@ import { createStore } from "solid-js/store"
 import { useNavigate } from "@solidjs/router"
 import { useSpring } from "@localcoder-ai/ui/motion-spring"
 import { PromptInput } from "@/components/prompt-input"
+import { SessionContextMeter } from "@/components/session-context-meter"
 import { useLanguage } from "@/context/language"
 import { usePrompt } from "@/context/prompt"
 import { useSync } from "@/context/sync"
@@ -252,6 +253,7 @@ export function SessionComposerRegion(props: {
                 when={child()}
                 fallback={
                   <Show when={!props.state.blocked()}>
+                    <SessionContextMeter />
                     <PromptInput
                       ref={props.inputRef}
                       newSessionWorktree={props.newSessionWorktree}

@@ -1,8 +1,9 @@
 import fs from "fs"
 import path from "path"
-import { envFlag } from "../lib/env"
+import { envFlag, llamaAvailable, resolveLlamaPaths } from "../lib/env"
 import { ROOT, VSCODE, resolveBun } from "../lib/paths"
-import { runCmd, runCmdInherit } from "../lib/runner"
+import { runCmdInherit } from "../lib/runner"
+import type { E2eTier } from "../lib/runner"
 
 const BUN = resolveBun()
 
@@ -65,16 +66,35 @@ export async function stepVscodeBackendLive(): Promise<string> {
   return "serve backend live test passed"
 }
 
-export async function stepVscodeLlamaE2e(): Promise<string> {
-  if (!envFlag("E2E_LLAMA_VSCODE") && !envFlag("VSCODE_LLAMA_E2E")) {
-    return "skipped (set E2E_LLAMA_VSCODE=1 for live llama VS Code tests)"
+export async function stepVscodeLlamaE2e(ctx?: { tier?: E2eTier; hasLlama?: boolean }): Promise<string> {
+  if (envFlag("E2E_SKIP_LLAMA_VSCODE")) {
+    return "skipped (E2E_SKIP_LLAMA_VSCODE=1)"
   }
+
+  const tier = ctx?.tier ?? "standard"
+  const hasLlama = ctx?.hasLlama ?? llamaAvailable(resolveLlamaPaths())
+  const force = envFlag("E2E_LLAMA_VSCODE") || envFlag("VSCODE_LLAMA_E2E")
+
+  if (tier !== "full" && !force) {
+    return "skipped (full tier only; set E2E_LLAMA_VSCODE=1 to force on other tiers)"
+  }
+  if (!hasLlama && !force) {
+    return "skipped (llama paths not found)"
+  }
+
   const code = await runCmdInherit(BUN, ["run", "test:llama-vscode"], {
     cwd: VSCODE,
     env: { VSCODE_LLAMA_E2E: "1" },
   })
   if (code !== 0) throw new Error(`test:llama-vscode exited ${code}`)
-  return "live llama write/edit E2E passed"
+
+  if (!envFlag("E2E_SKIP_LLAMACPP_E2E")) {
+    const mochaCode = await runCmdInherit(BUN, ["run", "test:llama-e2e"], { cwd: VSCODE })
+    if (mochaCode !== 0) throw new Error(`test:llama-e2e exited ${mochaCode}`)
+    return "live llama VS Code + llamacpp E2E passed"
+  }
+
+  return "live llama VS Code E2E passed"
 }
 
 export async function stepVscodeExtensionRunner(): Promise<string> {

@@ -20,7 +20,7 @@ See [IMPROVEMENT_AND_FIX.md](IMPROVEMENT_AND_FIX.md) · Install: [INSTALL.md](IN
 ```powershell
 bun run e2e:smoke      # ~15s — VS Code compile + unit tests + CLI smoke (no llama)
 bun run e2e            # ~1–2 min — standard: CLI + llama + agent + VS Code + desktop artifacts
-bun run e2e:full       # ~10–30 min — adds portable build + optional live llama VS Code E2E
+bun run e2e:full       # ~10–30 min — portable build, headed LocalCoder.exe launch, live llama VS Code E2E (when llama available)
 ```
 
 Set `LOCALCODER_LLAMACPP_DIR` / `LOCALCODER_LLAMACPP_MODEL` if llama paths differ, or run `localcoder llamacpp setup` once (paths saved to `~/.localcoder/llamacpp.json`). Use `E2E_SKIP_BUILD=1` when the CLI is already built.
