@@ -8,10 +8,12 @@ import fs from "fs"
 import path from "path"
 import os from "os"
 import { waitForProcess } from "./spawn-utils"
+import { resolveLlamaPaths, llamaAvailable } from "./e2e/lib/env"
 
 const ROOT = path.join(import.meta.dir, "..", "packages", "localcoder")
-const LLAMA_DIR = process.env.LOCALCODER_LLAMACPP_DIR ?? "P:\\llama cpp\\llama-b9354-bin-win-cuda-13.1-x64"
-const MODEL_PATH = process.env.LOCALCODER_LLAMACPP_MODEL ?? "P:\\gguf models\\Qwopus3.5-9B-Coder-MTP-Q6_K.gguf"
+const llama = resolveLlamaPaths()
+const LLAMA_DIR = llama.llamaDir
+const MODEL_PATH = llama.modelPath
 const SERVER_EXE = path.join(LLAMA_DIR, "llama-server.exe")
 const API_URL = process.env.LLAMACPP_API_URL ?? "http://127.0.0.1:8080/v1"
 const PORT = Number(new URL(API_URL).port || 8080)
@@ -130,6 +132,9 @@ async function runAgent(prompt: string, workdir: string, model: string, useExe =
 }
 
 async function main() {
+  if (!llamaAvailable(llama)) {
+    throw new Error(`llama not configured — run localcoder llamacpp setup or set LOCALCODER_LLAMACPP_DIR + LOCALCODER_LLAMACPP_MODEL`)
+  }
   if (!fs.existsSync(SERVER_EXE)) throw new Error(`missing ${SERVER_EXE}`)
   if (!fs.existsSync(MODEL_PATH)) throw new Error(`missing ${MODEL_PATH}`)
 

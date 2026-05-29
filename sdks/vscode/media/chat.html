@@ -431,7 +431,13 @@ html, body {
   border-bottom: 1px solid var(--bdr); background: var(--bg);
 }
 #usage-bar.show { display: flex }
-#usage-bar .usage-nums { font-family: var(--ffm) }
+#usage-bar .usage-nums { font-family: var(--ffm); flex: 1; min-width: 0 }
+#usage-ctx-bar {
+  flex: 0 0 72px; height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden;
+}
+#usage-ctx-fill { height: 100%; background: var(--acc); width: 0%; transition: width .2s }
+#usage-ctx-fill.warn { background: #e6a700 }
+#usage-ctx-fill.high { background: #f14c4c }
 #usage-bar button {
   background: transparent; border: 1px solid var(--bdr2); color: var(--fg2);
   border-radius: 4px; padding: 1px 8px; font-size: 10px; cursor: pointer; font-family: var(--ff);
@@ -540,6 +546,10 @@ button:focus:not(:focus-visible) { outline: none }
     </div>
     <div id="localcoder-fields">
       <p class="cfg-hint">LocalCoder backend supports llama.cpp, OpenRouter, OpenCode Go, and 50+ providers — no manual config.</p>
+      <div class="cfg-row">
+        <label>Model</label>
+        <select class="cfg-select" id="cfg-model"><option value="">Loading models…</option></select>
+      </div>
       <div class="cfg-actions">
         <button type="button" class="cfg-action-btn" id="cfg-llama">Set up llama.cpp…</button>
         <button type="button" class="cfg-action-btn" id="cfg-cloud">Connect cloud provider…</button>
@@ -594,6 +604,7 @@ button:focus:not(:focus-visible) { outline: none }
 
 <div id="usage-bar">
   <span class="usage-nums" id="usage-text"></span>
+  <div id="usage-ctx-bar" title="Context fill"><div id="usage-ctx-fill"></div></div>
   <button type="button" id="btn-compact2" title="Summarize and compact context">Compact</button>
 </div>
 
@@ -667,6 +678,15 @@ var $statusText = document.getElementById('status-text');
 var $sesSearch = document.getElementById('ses-search');
 var $usageBar = document.getElementById('usage-bar');
 var $usageText = document.getElementById('usage-text');
+var $usageCtxFill = document.getElementById('usage-ctx-fill');
+var $usageCtxBar = document.getElementById('usage-ctx-bar');
+
+function stripThinkingTags(text) {
+  if (!text) { return ''; }
+  return text
+    .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, '')
+    .replace(/<think>[\s\S]*?<\/redacted_thinking>/gi, '');
+}
 var $attachRow = document.getElementById('attach-row');
 var $todoPanel = document.getElementById('todo-panel');
 var $todoList = document.getElementById('todo-list');
@@ -721,14 +741,27 @@ function renderAttachRow() {
   });
 }
 
-function updateUsage(input, output, messages) {
+function updateUsage(input, output, messages, contextTokens, contextLimit, contextPercent) {
   if (!$usageBar || !$usageText) { return; }
-  if (!input && !output && !messages) { $usageBar.classList.remove('show'); return; }
+  if (!input && !output && !messages && !contextTokens) { $usageBar.classList.remove('show'); return; }
   $usageBar.classList.add('show');
   var parts = [];
   if (messages) { parts.push(messages + ' msg'); }
   if (input || output) { parts.push((input||0) + ' in · ' + (output||0) + ' out'); }
+  if (contextLimit && contextTokens) {
+    parts.push(contextTokens + '/' + contextLimit + ' ctx' + (contextPercent != null ? ' (' + contextPercent + '%)' : ''));
+  }
   $usageText.textContent = parts.join(' · ');
+  if ($usageCtxFill && $usageCtxBar) {
+    var pct = contextPercent != null ? contextPercent : (contextLimit && contextTokens ? Math.min(100, Math.round((contextTokens / contextLimit) * 100)) : 0);
+    if (pct > 0) {
+      $usageCtxBar.style.display = '';
+      $usageCtxFill.style.width = pct + '%';
+      $usageCtxFill.className = pct >= 90 ? 'high' : pct >= 75 ? 'warn' : '';
+    } else {
+      $usageCtxBar.style.display = 'none';
+    }
+  }
 }
 
 function beginTurn(text, agent) {
@@ -817,6 +850,19 @@ function applyWorkspaceMeta(meta) {
     } else {
       mcpInfo.style.display = 'none';
     }
+  }
+  var modelSel = document.getElementById('cfg-model');
+  if (modelSel && meta.models && meta.models.length) {
+    var active = meta.model || '';
+    modelSel.innerHTML = '';
+    meta.models.forEach(function(m) {
+      var o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = (m.name || m.id).split('/').pop() || m.id;
+      o.title = m.id;
+      if (m.id === active || active.endsWith('/' + m.id) || active.endsWith(m.id)) { o.selected = true; }
+      modelSel.appendChild(o);
+    });
   }
 }
 
@@ -1488,7 +1534,7 @@ window.addEventListener('message', function(e) {
       break;
 
     case 'usage':
-      updateUsage(m.input || 0, m.output || 0, m.messages || 0);
+      updateUsage(m.input || 0, m.output || 0, m.messages || 0, m.contextTokens, m.contextLimit, m.contextPercent);
       break;
 
     case 'compactDone':
@@ -1506,6 +1552,15 @@ window.addEventListener('message', function(e) {
     case 'sessionStatus':
       if (m.status === 'busy' || m.status === 'running') { setAgentStatus('Agent working…', true); }
       else if (m.status === 'idle') { setAgentStatus('', false); }
+      break;
+
+    case 'modelSwitched':
+      addSys('Model switched to ' + (m.model || ''));
+      applyWorkspaceMeta(Object.assign({}, S.workspaceMeta || {}, { model: m.model }));
+      break;
+
+    case 'modelsList':
+      applyWorkspaceMeta(Object.assign({}, S.workspaceMeta || {}, { models: m.models || [], model: (S.workspaceMeta && S.workspaceMeta.model) }));
       break;
 
     case 'configSaved': addSys('Settings saved'); closeOverlays(); break;
@@ -1541,7 +1596,7 @@ window.addEventListener('message', function(e) {
 
     case 'streamDelta': {
       if (!S.streamTurn) { break; }
-      S.streamAccum += (m.delta || '');
+      S.streamAccum += stripThinkingTags(m.delta || '');
       setAgentStatus('Generating response…', true);
       if (!S.streamTimer) {
         S.streamTimer = setTimeout(function() {
@@ -1753,6 +1808,9 @@ document.getElementById('btn-cfg').addEventListener('click', function(e) {
   e.stopPropagation();
   $sesO.classList.remove('open');
   $cfgO.classList.toggle('open');
+  if ($cfgO.classList.contains('open') && document.getElementById('besel').value === 'localcoder') {
+    post({ type: 'listModels' });
+  }
 });
 
 document.addEventListener('click', closeOverlays);
@@ -1777,11 +1835,22 @@ document.getElementById('cfg-cloud').addEventListener('click', function() {
 });
 
 document.getElementById('cfg-save').addEventListener('click', function() {
+  var backend = document.getElementById('besel').value;
+  if (backend === 'localcoder') {
+    var model = document.getElementById('cfg-model').value;
+    if (model) { post({ type: 'switchModel', model: model }); }
+    closeOverlays();
+    return;
+  }
   post({ type: 'setConfig', config: {
     openaiEndpoint: document.getElementById('cfg-ep').value,
     openaiModel:    document.getElementById('cfg-md').value,
     openaiKey:      document.getElementById('cfg-key').value,
   }});
+});
+
+document.getElementById('cfg-model').addEventListener('change', function() {
+  if (this.value) { post({ type: 'switchModel', model: this.value }); }
 });
 
 function wireSugs() {

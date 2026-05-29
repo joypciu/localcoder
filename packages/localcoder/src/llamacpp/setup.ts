@@ -13,7 +13,7 @@ export type LlamaCppUserConfig = {
 
 const CONFIG_PATH = path.join(os.homedir(), ".localcoder", "llamacpp.json")
 
-export const DEFAULT_WINDOWS_LLAMACPP_DIR = "P:\\llama cpp\\llama-b9354-bin-win-cuda-13.1-x64"
+export const DEFAULT_WINDOWS_LLAMACPP_DIR = ""
 
 export function loadUserLlamaConfig(): LlamaCppUserConfig {
   try {
@@ -45,9 +45,7 @@ function findVersionedLlamaDirs(): string[] {
   if (process.platform !== "win32") return []
   const serverName = "llama-server.exe"
   const roots = [
-    path.join("P:", "llama cpp"),
     path.join("C:", "llama cpp"),
-    path.join("P:", "llama.cpp"),
     path.join("C:", "llama.cpp"),
   ]
   const found: { dir: string; build: number }[] = []
@@ -75,13 +73,9 @@ export function resolveLlamaDir(): string {
   const candidates: string[] = []
   if (process.platform === "win32") {
     candidates.push(...findVersionedLlamaDirs())
-    if (existsFile(path.join(DEFAULT_WINDOWS_LLAMACPP_DIR, "llama-server.exe"))) {
-      candidates.push(DEFAULT_WINDOWS_LLAMACPP_DIR)
-    }
     candidates.push(
       path.join("C:", "llama.cpp"),
       path.join("C:", "llama cpp"),
-      path.join("P:", "llama.cpp"),
       path.join(os.homedir(), "llama.cpp"),
       path.join(os.homedir(), "AppData", "Local", "llama.cpp"),
     )
@@ -111,7 +105,6 @@ export function ggufSearchDirs(): string[] {
     path.join(os.homedir(), ".cache", "huggingface"),
     path.join(process.cwd(), "models"),
     path.join(process.cwd(), "gguf models"),
-    ...(process.platform === "win32" ? [path.join("P:", "gguf models"), path.join("P:", "models")] : []),
   ]) {
     dirs.add(d)
   }

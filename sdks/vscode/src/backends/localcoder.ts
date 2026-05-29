@@ -33,7 +33,17 @@ export type WorkspaceMeta = {
   mcpServers?: string[];
   skills?: string[];
   llamacppRunning?: boolean;
+  contextLimit?: number;
+  contextTokens?: number;
+  models?: Array<{ id: string; name: string }>;
 };
+
+function stripThinkingFromText(text: string): string {
+  return text
+    .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, "")
+    .replace(/<think>[\s\S]*?<\/redacted_thinking>/gi, "")
+    .trim();
+}
 
 export class LocalcoderBackend implements ChatBackend {
   readonly type = "localcoder";
@@ -443,7 +453,7 @@ export class LocalcoderBackend implements ChatBackend {
     return {
       role: "assistant",
       id: info.id,
-      content: textParts.join("\n\n") || info.text || "",
+      content: stripThinkingFromText(textParts.join("\n\n") || info.text || ""),
       agent: info.agent,
       model: info.model?.modelID ?? info.model?.id,
       tokens: info.tokens,
@@ -506,12 +516,41 @@ export class LocalcoderBackend implements ChatBackend {
         meta.skills = (skills || []).map((s) => s.name || s.id || "").filter(Boolean);
       }
       if (llamaRes?.ok) {
-        const llama = (await llamaRes.json()) as { running?: boolean; model?: string };
+        const llama = (await llamaRes.json()) as { running?: boolean; model?: string; modelId?: string; ctx?: number };
         meta.llamacppRunning = llama.running;
-        if (llama.model) { meta.model = meta.model || llama.model; }
+        if (llama.model || llama.modelId) { meta.model = meta.model || llama.model || llama.modelId; }
+        if (llama.ctx) { meta.contextLimit = llama.ctx; }
+      }
+      const provRes = await this.apiFetch("/config/providers").catch(() => undefined);
+      if (provRes?.ok) {
+        const prov = (await provRes.json()) as { providers?: Array<{ id: string; name?: string; models?: Array<{ id: string; name?: string }> }> };
+        const models: Array<{ id: string; name: string }> = [];
+        for (const p of prov.providers ?? []) {
+          for (const m of p.models ?? []) {
+            const id = m.id.includes("/") ? m.id : `${p.id}/${m.id}`;
+            models.push({ id, name: m.name || m.id });
+          }
+        }
+        if (models.length) { meta.models = models; }
       }
     } catch { /* ignore */ }
     return meta;
+  }
+
+  async listModels(): Promise<Array<{ id: string; name: string }>> {
+    const meta = await this.fetchWorkspaceMeta();
+    return meta.models ?? [];
+  }
+
+  async setActiveModel(model: string): Promise<void> {
+    const r = await this.apiFetch("/global/config", {
+      method: "PATCH",
+      body: JSON.stringify({ model }),
+    });
+    if (!r.ok) {
+      const body = await r.text().catch(() => "");
+      throw new Error(body || `Failed to set model (${r.status})`);
+    }
   }
 
   async compactSession(): Promise<void> {

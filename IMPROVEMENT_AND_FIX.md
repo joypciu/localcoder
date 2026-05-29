@@ -2,7 +2,7 @@
 
 **Updated:** 2026-05-29 · **Release:** v1.14.46  
 **VS Code tests:** `cd sdks/vscode && bun run test:unit` (fast) · `bun run test` (full)  
-**Windows E2E gate:** `bun run scripts/e2e-full-windows.ts`  
+**Windows E2E:** `bun run e2e:smoke` (~15s) · `bun run e2e` (~1–2 min) · `bun run e2e:full` (build + Playwright)  
 **v2 migration backlog:** [specs/v2/todo.md](specs/v2/todo.md)
 
 ---
@@ -47,11 +47,13 @@
 
 ### E2E smoke (2026-05-29)
 
-| Test | Time | Result |
-|------|------|--------|
-| CLI smoke | ~10s | version, startup, invalid model, session search, serve health |
-| VS Code contract | ~5s | 48/48 manifest + SSE + chat HTML |
-| Windows artifacts | ~2s | CLI exe + portable + unpacked GUI |
+| Command | Time | Coverage |
+|---------|------|----------|
+| `bun run e2e:smoke` | ~15s | VS Code compile + 84 contract tests + CLI version/search/fail-fast |
+| `bun run e2e` | ~1–2 min | + llama setup/chat, agent bash, serve API, Electron tests, desktop artifacts |
+| `bun run e2e:full` | ~10–30 min | + `build:win`, portable build, live llama VS Code E2E (`E2E_LLAMA_VSCODE=1`) |
+
+Legacy wrappers: `scripts/e2e-full-windows.ts` (→ full), `scripts/readiness-windows.ts` (→ standard, skip build).
 
 ---
 

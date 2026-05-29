@@ -3,7 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import type { ChatBackend } from "./backends/types";
 import type { BackendConfig } from "./backends/types";
-import { LocalcoderBackend } from "./backends/localcoder";
+import { LocalcoderBackend, type WorkspaceMeta } from "./backends/localcoder";
 import { OpenAIBackend } from "./backends/openai";
 
 const DEBUG_FILE = path.join(__dirname, "..", "debug.txt");
@@ -34,6 +34,7 @@ abstract class ChatProviderBase {
   private _turnSnapshots = new Map<string, Uint8Array | null>();
   private _runningTools = new Map<string, { name: string; input?: Record<string, unknown> }>();
   private _hasUndo = false;
+  protected _workspaceMeta?: WorkspaceMeta;
 
   constructor(protected readonly _context: vscode.ExtensionContext) {
     this._extensionPath = _context.extensionPath;
@@ -129,6 +130,7 @@ abstract class ChatProviderBase {
     if (!(backend instanceof LocalcoderBackend)) { return; }
     try {
       const meta = await backend.fetchWorkspaceMeta();
+      this._workspaceMeta = meta;
       this.postMessage({ type: "workspaceMeta", meta });
       const sid = backend.getActiveSessionId();
       if (sid) {
@@ -284,7 +286,12 @@ abstract class ChatProviderBase {
         output += m.tokens.output ?? 0;
       }
     }
-    return { input, output, messages: messages.length };
+    const contextTokens = input + output;
+    const contextLimit = this._workspaceMeta?.contextLimit;
+    const contextPercent = contextLimit && contextTokens > 0
+      ? Math.min(100, Math.round((contextTokens / contextLimit) * 100))
+      : undefined;
+    return { input, output, messages: messages.length, contextTokens, contextLimit, contextPercent };
   }
 
   private postUsage(messages?: import("./backends/types").ChatMessage[]) {
@@ -405,7 +412,25 @@ abstract class ChatProviderBase {
 
         case "setupLlamaCpp":
           await vscode.commands.executeCommand("localcoder.setupLlamaCpp");
+          if (this._backend instanceof LocalcoderBackend) {
+            await this.postWorkspaceMeta(this._backend);
+          }
           break;
+
+        case "switchModel": {
+          if (!(backend instanceof LocalcoderBackend) || !msg.model) { break; }
+          await backend.setActiveModel(String(msg.model));
+          await this.postWorkspaceMeta(backend);
+          this.postMessage({ type: "modelSwitched", model: msg.model });
+          break;
+        }
+
+        case "listModels": {
+          if (!(backend instanceof LocalcoderBackend)) { break; }
+          const models = await backend.listModels();
+          this.postMessage({ type: "modelsList", models });
+          break;
+        }
 
         case "setConfig":
           if (msg.config) {

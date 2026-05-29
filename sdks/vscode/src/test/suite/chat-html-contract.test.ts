@@ -12,7 +12,7 @@ suite("Chat webview contract", () => {
   });
 
   test("required DOM ids present", () => {
-    for (const id of ["hdr", "msgs", "inp", "snd", "conn-dot", "agent-sel", "mention-box", "cfg-overlay", "ses-overlay", "usage-bar", "status-bar", "attach-row", "todo-panel", "model-badge", "queue-badge"]) {
+    for (const id of ["hdr", "msgs", "inp", "snd", "conn-dot", "agent-sel", "mention-box", "cfg-overlay", "ses-overlay", "usage-bar", "usage-ctx-bar", "status-bar", "attach-row", "todo-panel", "model-badge", "queue-badge", "cfg-model"]) {
       assert.ok(html.includes(`id="${id}"`), `missing #${id}`);
     }
   });
@@ -56,5 +56,13 @@ suite("Chat webview contract", () => {
   test("sendMessage includes agent and files", () => {
     assert.ok(html.includes("agent: agent"));
     assert.ok(html.includes("files: files"));
+  });
+
+  test("zero-config wizard UI in settings overlay", () => {
+    for (const id of ["cfg-llama", "cfg-cloud"]) {
+      assert.ok(html.includes(`id="${id}"`), `missing #${id}`);
+    }
+    assert.ok(html.includes("setupLlamaCpp"));
+    assert.ok(html.includes("connectProvider"));
   });
 });

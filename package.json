@@ -16,6 +16,10 @@
                     "postinstall":  "bun run --cwd packages/localcoder fix-node-pty",
                     "prepare":  "husky",
                     "test":  "echo \u0027do not run tests from root\u0027 \u0026\u0026 exit 1",
+                    "e2e:smoke": "bun run scripts/e2e/run.ts --tier=smoke",
+                    "e2e": "bun run scripts/e2e/run.ts --tier=standard",
+                    "e2e:full": "bun run scripts/e2e/run.ts --tier=full",
+                    "e2e:windows": "bun run scripts/e2e/run.ts --tier=standard",
                     "build:win-gui": "bun run --cwd packages/localcoder build:win-standalone",
                     "build:win-standalone": "bun run --cwd packages/localcoder build:win-standalone",
                     "install:cli": "bun run --cwd packages/localcoder install:cli"

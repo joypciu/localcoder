@@ -115,7 +115,8 @@ export const LlamacppSetupCommand = effectCmd({
     yargs
       .option("dir", { type: "string", describe: "Folder containing llama-server (interactive if omitted)" })
       .option("model", { type: "string", describe: "Path to .gguf model file (interactive if omitted)" })
-      .option("no-start", { type: "boolean", default: false, describe: "Save config only" })
+      .option("save-only", { type: "boolean", default: false, describe: "Save config only (do not start server)" })
+      .option("no-start", { type: "boolean", default: false, describe: "Alias for --save-only" })
       .option("ctx", { type: "number", describe: "Context size" })
       .option("thinking", { type: "boolean", describe: "Enable thinking mode for Qwen/Qwopus models" }),
   handler: Effect.fn("Cli.llamacpp.setup")(function* (args) {
@@ -136,7 +137,7 @@ export const LlamacppSetupCommand = effectCmd({
       Bootstrap.configure({
         llamaDir,
         modelPath,
-        autoStart: !args["no-start"],
+        autoStart: !(args["save-only"] || args["no-start"]),
         ctx,
         thinking,
       }),
