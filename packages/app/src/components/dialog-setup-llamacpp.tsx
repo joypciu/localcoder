@@ -167,6 +167,7 @@ export function DialogSetupLlamacpp(props: Props) {
         autoStart: true,
         ctx: ctx(),
         thinking: thinkingSupported() ? thinking() : undefined,
+        forceRestart: isRunning(),
       })
     },
     onSuccess: async (result) => {
@@ -195,6 +196,7 @@ export function DialogSetupLlamacpp(props: Props) {
         autoStart: true,
         ctx: ctx(),
         thinking: thinkingSupported() ? thinking() : undefined,
+        forceRestart: isRunning(),
       })
     },
     onSuccess: async (result) => {
@@ -311,6 +313,17 @@ export function DialogSetupLlamacpp(props: Props) {
           }}
           placeholder="16384"
         />
+        <div class="flex flex-wrap gap-1.5 -mt-1">
+          {[4096, 8192, 16384, 32768, 65536].map((preset) => (
+            <Button
+              size="small"
+              variant={ctx() === preset ? "primary" : "secondary"}
+              onClick={() => setCtx(preset)}
+            >
+              {preset.toLocaleString()}
+            </Button>
+          ))}
+        </div>
         <p class="text-12-regular text-text-weak -mt-2">
           {language.t("dialog.llamacpp.field.ctx.description", {
             defaultValue: "4096–131072 typical. Lower if you run out of VRAM.",

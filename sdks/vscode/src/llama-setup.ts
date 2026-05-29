@@ -76,7 +76,7 @@ function spawnSetup(
   ));
 }
 
-async function pickContext(defaultCtx = 16384): Promise<number | undefined> {
+export async function pickContext(defaultCtx = 16384): Promise<number | undefined> {
   const items: vscode.QuickPickItem[] = CONTEXT_PRESETS.map((n) => ({
     label: String(n),
     description: n === defaultCtx ? "saved default" : undefined,
@@ -196,5 +196,43 @@ export async function runLlamaSetupWizard(): Promise<boolean> {
   void vscode.window.showInformationMessage(
     `LocalCoder: llama.cpp is ready (${path.basename(modelPath)}, ctx ${ctx}).`,
   );
+  return true;
+}
+
+/** Update saved llama.cpp context size without re-running full setup. */
+export async function setLlamaContextSize(): Promise<boolean> {
+  const exe = await resolveLocalcoderExe();
+  if (!exe) {
+    void vscode.window.showErrorMessage("LocalCoder CLI not found.");
+    return false;
+  }
+  const status = await readLlamaStatus(exe);
+  if (!status?.modelPath) {
+    void vscode.window.showWarningMessage("Run LocalCoder: Set up llama.cpp first.");
+    return false;
+  }
+  const ctx = await pickContext(status.ctx ?? 16384);
+  if (!ctx) { return false; }
+  const args = [
+    "llamacpp",
+    "setup",
+    "--dir",
+    status.llamaDir!,
+    "--model",
+    status.modelPath,
+    "--ctx",
+    String(ctx),
+    "--save-only",
+  ];
+  if (status.thinking !== undefined) {
+    args.push("--thinking", status.thinking ? "true" : "false");
+  }
+  try {
+    await spawnSetup(exe, args, "Updating llama.cpp context size…");
+  } catch (err) {
+    void vscode.window.showErrorMessage(`Failed to update context: ${err instanceof Error ? err.message : String(err)}`);
+    return false;
+  }
+  void vscode.window.showInformationMessage(`llama.cpp context set to ${ctx} tokens. Restart the server to apply.`);
   return true;
 }

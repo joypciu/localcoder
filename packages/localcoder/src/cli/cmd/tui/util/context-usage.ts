@@ -1,7 +1,7 @@
 import type { AssistantMessage } from "@localcoder-ai/sdk/v2"
 import type { Config } from "@/config/config"
 import type { Provider } from "@/provider/provider"
-import { usable } from "@/session/overflow"
+import { tokenCount, usable } from "@/session/overflow"
 import { Locale } from "@/util/locale"
 
 export type ContextLevel = "ok" | "warn" | "high" | "critical" | "overflow"
@@ -20,13 +20,7 @@ export type ContextUsage = {
 }
 
 export function tokensFromAssistant(msg: AssistantMessage) {
-  return (
-    msg.tokens.input +
-    msg.tokens.output +
-    msg.tokens.reasoning +
-    msg.tokens.cache.read +
-    msg.tokens.cache.write
-  )
+  return tokenCount(msg.tokens)
 }
 
 export function computeContextUsage(input: {
@@ -42,9 +36,10 @@ export function computeContextUsage(input: {
   const budget = usableLimit > 0 ? usableLimit : contextLimit
   const percent = Math.min(100, Math.round((input.tokens / budget) * 100))
   const remaining = Math.max(0, budget - input.tokens)
+  const overBudget = input.tokens > budget
 
   const level: ContextLevel =
-    input.tokens >= budget
+    overBudget || input.tokens >= budget
       ? "overflow"
       : percent >= 95
         ? "critical"
@@ -57,9 +52,11 @@ export function computeContextUsage(input: {
   const filled = Math.min(10, Math.max(0, Math.round(percent / 10)))
   const bar = `${"\u2588".repeat(filled)}${"\u2591".repeat(10 - filled)}`
 
-  const short = `${Locale.number(input.tokens)}/${Locale.number(budget)} (${percent}%)`
+  const short = overBudget
+    ? `${Locale.number(input.tokens)}/${Locale.number(budget)} (overflow)`
+    : `${Locale.number(input.tokens)}/${Locale.number(budget)} (${percent}%)`
   const detail = `ctx ${bar} ${short} \u00b7 ${Locale.number(remaining)} left`
-  const compactHint = percent >= 70
+  const compactHint = percent >= 70 || level === "overflow"
 
   return {
     tokens: input.tokens,

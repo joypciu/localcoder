@@ -13,6 +13,7 @@ import PROMPT_CODEX from "./prompt/codex.txt"
 import PROMPT_TRINITY from "./prompt/trinity.txt"
 import PROMPT_QWEN from "./prompt/qwen.txt"
 import type { Provider } from "@/provider/provider"
+import { isSmallLocalContext } from "@/session/overflow"
 import type { Agent } from "@/agent/agent"
 import { Permission } from "@/permission"
 import { Skill } from "@/skill"
@@ -40,7 +41,7 @@ export function provider(model: Provider.Model) {
 
 export interface Interface {
   readonly environment: (model: Provider.Model) => Effect.Effect<string[]>
-  readonly skills: (agent: Agent.Info) => Effect.Effect<string | undefined>
+  readonly skills: (agent: Agent.Info, model: Provider.Model) => Effect.Effect<string | undefined>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@localcoder/SystemPrompt") {}
@@ -68,24 +69,23 @@ export const layer = Layer.effect(
         ]
       }),
 
-      skills: Effect.fn("SystemPrompt.skills")(function* (agent: Agent.Info) {
+      skills: Effect.fn("SystemPrompt.skills")(function* (agent: Agent.Info, model: Provider.Model) {
         if (Permission.disabled(["skill"], agent.permission).has("skill")) return
 
         const list = yield* skill.available(agent)
         const ctx = yield* InstanceState.context
+        const compact = isSmallLocalContext(model)
 
         const parts: string[] = [
           "Skills provide specialized instructions and workflows for specific tasks.",
           "Use the skill tool to load a skill when a task matches its description.",
-          // the agents seem to ingest the information about skills a bit better if we present a more verbose
-          // version of them here and a less verbose version in tool description, rather than vice versa.
-          Skill.fmt(list, { verbose: true }),
+          Skill.fmt(list, { verbose: !compact }),
         ]
 
         // Hermes-style memory nudge: when no project skills exist but the directory
         // has significant session history, remind the agent to suggest skill creation
         // for recurring workflows.  Threshold: 5+ past sessions without skills.
-        if (list.length === 0) {
+        if (!compact && list.length === 0) {
           const row = Database.use((db) =>
             db
               .select({ n: count() })

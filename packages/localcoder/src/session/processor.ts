@@ -692,7 +692,8 @@ export const layer: Layer.Layer<
             Effect.onInterrupt(() =>
               Effect.gen(function* () {
                 aborted = true
-                if (!ctx.assistantMessage.error) {
+                // Stream is interrupted intentionally when finish-step detects overflow.
+                if (!ctx.assistantMessage.error && !ctx.needsCompaction) {
                   yield* halt(new DOMException("Aborted", "AbortError"))
                 }
               }),

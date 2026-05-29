@@ -39,6 +39,13 @@ packages/desktop/src-tauri/target/
 coverage/
 .nyc_output/
 .artifacts/
+scripts/visual-test/.artifacts/
+scripts/e2e/.artifacts/
+packages/app/e2e/playwright-report/
+packages/app/e2e/test-results/
+
+# Local session handoff (personal notes — do not commit)
+CONTINUATION.md
 
 # Temporary files
 *.tmp

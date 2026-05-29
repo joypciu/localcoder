@@ -11,6 +11,7 @@ const SetupBody = z.object({
   autoStart: z.boolean().optional(),
   ctx: z.number().int().positive().optional(),
   thinking: z.boolean().optional(),
+  forceRestart: z.boolean().optional(),
 })
 
 export const LlamaCppRoutes = lazy(() =>
@@ -67,7 +68,7 @@ export const LlamaCppRoutes = lazy(() =>
       }),
       async (c) => {
         try {
-          const started = await Server.start()
+          const started = await Server.start({ forceRestart: true })
           return c.json({
             modelId: started.modelId,
             alreadyRunning: started.alreadyRunning,

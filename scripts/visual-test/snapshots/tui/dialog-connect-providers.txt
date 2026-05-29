@@ -1,0 +1,21 @@
+
+
+
+
+
+
+
+
+
+                        Connect a provider                               esc
+
+                        Search
+
+                        Popular
+                        llama.cpp (local GGUF) Run models on your GPU — no A
+                        OpenAI (ChatGPT Plus/Pro or API key)
+                        Anthropic (API key)
+
+                        Other
+                        Llama Meta cloud API (LLAMA_API_KEY) — for local GGU
+                        Fireworks

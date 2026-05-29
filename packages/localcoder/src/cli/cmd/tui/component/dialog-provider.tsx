@@ -10,6 +10,7 @@ import { useTheme } from "../context/theme"
 import { TextAttributes } from "@opentui/core"
 import type { ProviderAuthAuthorization, ProviderAuthMethod } from "@localcoder-ai/sdk/v2"
 import { DialogModel } from "./dialog-model"
+import { DialogLlamaConnect } from "./dialog-llama-setup"
 import { useKeyboard } from "@opentui/solid"
 import * as Clipboard from "@tui/util/clipboard"
 import { useToast } from "../ui/toast"
@@ -25,6 +26,8 @@ const PROVIDER_PRIORITY: Record<string, number> = {
   google: 5,
 }
 
+const LLAMACPP_LOCAL_ID = "__llamacpp_local__"
+
 export function createDialogProviderOptions() {
   const sync = useSync()
   const dialog = useDialog()
@@ -33,7 +36,23 @@ export function createDialogProviderOptions() {
   const { theme } = useTheme()
   const onboarded = useConnected()
   const options = createMemo(() => {
-    return pipe(
+    const llamaLoaded = sync.data.provider.find((p) => p.id === "llamacpp")
+    const llamaConnected = Boolean(llamaLoaded && Object.keys(llamaLoaded.models).length > 0)
+
+    const localLlama = {
+      title: "llama.cpp (local GGUF)",
+      value: LLAMACPP_LOCAL_ID,
+      description: "Run models on your GPU — no API key",
+      category: "Popular" as const,
+      gutter: llamaConnected && onboarded() ? () => <text fg={theme.success}>✓</text> : undefined,
+      async onSelect() {
+        dialog.replace(() => <DialogLlamaConnect />)
+      },
+    }
+
+    return [
+      localLlama,
+      ...pipe(
       sync.data.provider_next.all,
       sortBy((x) => PROVIDER_PRIORITY[x.id] ?? 99),
       map((provider) => {
@@ -43,7 +62,10 @@ export function createDialogProviderOptions() {
         return {
           title: provider.name,
           value: provider.id,
-          description: {
+          description:
+            provider.id === "llama"
+              ? "Meta cloud API (LLAMA_API_KEY) — for local GGUF use llama.cpp above"
+              : {
             localcoder: "(Recommended)",
             anthropic: "(API key)",
             openai: "(ChatGPT Plus/Pro or API key)",
@@ -140,7 +162,8 @@ export function createDialogProviderOptions() {
           },
         }
       }),
-    )
+    ),
+    ]
   })
   return options
 }

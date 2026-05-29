@@ -72,9 +72,20 @@ localcoder llamacpp stop
 
 - **Config:** `~/.localcoder/llamacpp.json` (paths, ctx, MTP, thinking, autoStart)
 - **Autostart:** server starts automatically on `localcoder serve` / desktop / VS Code when configured
+- **Context restart:** changing ctx in wizard updates config + provider; use **Restart server** so `llama-server -c` matches (see `/llama` menu)
 - **Env overrides:** `LOCALCODER_LLAMACPP_DIR`, `LOCALCODER_LLAMACPP_MODEL`, `LLAMACPP_CTX`
 
-TUI: `/llama`, `/context`, `/compact`
+TUI: `/connect`, `/llama`, `/sessions`, `/context`, `/compact`
+
+### Visual regression (TUI dialogs)
+
+```powershell
+cd packages/localcoder
+bun test test/visual
+# Update baselines: $env:VISUAL_UPDATE=1; bun test test/visual
+```
+
+From repo root: `bun run visual-test`
 
 ## Session commands
 

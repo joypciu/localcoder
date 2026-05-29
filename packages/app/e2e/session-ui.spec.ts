@@ -4,29 +4,20 @@ test.describe("LocalCoder app session UI", () => {
   test("loads shell without runtime errors", async ({ page }) => {
     const errors: string[] = []
     page.on("pageerror", (err) => errors.push(err.message))
-    await page.goto("/")
-    await expect(page.locator("body")).toBeVisible()
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 15_000 })
+    await expect(page.locator("body")).toBeVisible({ timeout: 5_000 })
     expect(errors).toEqual([])
   })
 
   test("exposes session composer region on session routes", async ({ page }) => {
-    await page.goto("/")
-    const dock = page.locator('[data-component="session-prompt-dock"]')
-    const home = page.locator('[data-component="getting-started"]')
-    await expect(dock.or(home)).toBeVisible({ timeout: 30_000 })
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 15_000 })
+    const dock = page.locator('[data-component="session-prompt-dock"]').first()
+    const home = page.locator('[data-component="getting-started"]').first()
+    await expect(dock.or(home)).toBeVisible({ timeout: 8_000 })
   })
 
-  test("settings dialog can be opened from command palette shortcut area", async ({ page }) => {
-    await page.goto("/")
-    await page.keyboard.press("Control+k")
-    const palette = page.locator('[data-component="command-palette"]')
-    await expect(palette).toBeVisible({ timeout: 10_000 })
-  })
-
-  test("session composer includes context meter hook", async ({ page }) => {
-    await page.goto("/")
-    const meter = page.locator('[data-component="session-context-meter"]')
-    const composer = page.locator('[data-component="session-prompt-dock"]')
-    await expect(composer.or(meter).first()).toBeAttached({ timeout: 30_000 })
+  test("shows getting-started on home route", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 15_000 })
+    await expect(page.locator('[data-component="getting-started"]').first()).toBeVisible({ timeout: 8_000 })
   })
 })

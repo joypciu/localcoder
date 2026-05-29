@@ -1,0 +1,16 @@
+
+
+
+
+
+
+
+
+
+                        llama.cpp (local GGUF)                           esc
+
+                        Search
+
+                        Set up or change folder, model, context Pick llama.c
+                        Save current config (don't start server) Re-apply sa
+                        Start server with saved config

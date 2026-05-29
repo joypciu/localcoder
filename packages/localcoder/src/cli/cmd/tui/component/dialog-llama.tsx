@@ -9,6 +9,7 @@ import * as LlamaServer from "@tui/llama-server"
 import * as LlamaSetup from "@tui/llamacpp-setup"
 import * as Bootstrap from "@/llamacpp/bootstrap"
 import { DialogAlert } from "@tui/ui/dialog-alert"
+import { DialogLlamaConnect } from "./dialog-llama-setup"
 
 export function DialogLlama() {
   const toast = useToast()
@@ -64,6 +65,11 @@ export function DialogLlama() {
           disabled: loading() || !status()?.managed,
         },
         {
+          title: "Set up folder, model & context",
+          value: "wizard",
+          description: "Interactive wizard — llama.cpp path, GGUF, context size",
+        },
+        {
           title: "Setup guide",
           value: "setup",
           description: "Paths, env vars, and ~/.localcoder/llamacpp.json",
@@ -88,6 +94,10 @@ export function DialogLlama() {
       ]}
       onSelect={(option) => {
         void (async () => {
+          if (option.value === "wizard") {
+            dialog.replace(() => <DialogLlamaConnect />)
+            return
+          }
           if (option.value === "setup") {
             await DialogAlert.show(dialog, "llama.cpp setup", LlamaSetup.setupHint())
             return

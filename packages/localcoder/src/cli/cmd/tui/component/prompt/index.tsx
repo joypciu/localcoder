@@ -103,6 +103,11 @@ function hasEditorRangeSelection(selection: EditorSelection["ranges"][number]) {
   )
 }
 
+function isShiftKeyName(name?: string) {
+  const n = name?.toLowerCase()
+  return n === "shift" || n === "left shift" || n === "right shift"
+}
+
 function getEditorRangeLabel(selection: EditorSelection["ranges"][number]) {
   if (!hasEditorRangeSelection(selection)) return
   if (selection.selection.start.line === selection.selection.end.line) return `#${selection.selection.start.line}`
@@ -297,16 +302,25 @@ export function Prompt(props: PromptProps) {
 
   const textareaKeybindings = useTextareaKeybindings()
   let blockSubmitUntil = 0
+  let modifierShiftDown = false
 
   function isNewlineKey(e: { name?: string }) {
     const name = e.name?.toLowerCase()
     return name === "return" || name === "enter"
   }
 
-  function shouldInsertNewline(e: { name?: string; shift?: boolean }) {
-    return isNewlineKey(e) && (e.shift || keybind.match("input_newline", e as Parameters<typeof keybind.match>[1]))
+  function effectiveShift(e: { shift?: boolean }) {
+    return e.shift || modifierShiftDown
   }
 
+  function shouldInsertNewline(e: { name?: string; shift?: boolean }) {
+    return isNewlineKey(e) && (effectiveShift(e) || keybind.match("input_newline", e as Parameters<typeof keybind.match>[1]))
+  }
+
+  function insertNewline() {
+    blockSubmitUntil = Date.now() + 150
+    input.insertText("\n")
+  }
 
   const fileStyleId = syntax().getStyleId("extmark.file")!
   const agentStyleId = syntax().getStyleId("extmark.agent")!
@@ -1379,14 +1393,18 @@ export function Prompt(props: PromptProps) {
                   e.preventDefault()
                   return
                 }
-                if (shouldInsertNewline(e)) {
-                  blockSubmitUntil = Date.now() + 150
-                  e.preventDefault()
-                  input.insertText("\n")
+                if (isShiftKeyName(e.name)) {
+                  modifierShiftDown = true
                   return
                 }
-                if (keybind.match("input_submit", e) && !e.shift) {
+                if (shouldInsertNewline(e)) {
                   e.preventDefault()
+                  insertNewline()
+                  return
+                }
+                if (keybind.match("input_submit", e) && !effectiveShift(e)) {
+                  e.preventDefault()
+                  modifierShiftDown = false
                   setTimeout(() => setTimeout(() => submit(), 0), 0)
                   return
                 }
@@ -1588,10 +1606,17 @@ export function Prompt(props: PromptProps) {
                     input.cursorOffset = input.plainText.length
                 }
               }}
+              onKeyUp={(e) => {
+                if (isShiftKeyName(e.name)) modifierShiftDown = false
+              }}
               onSubmit={() => {
                 // IME: double-defer so the last composed character (e.g. Korean
                 // hangul) is flushed to plainText before we read it for submission.
                 if (Date.now() < blockSubmitUntil) return
+                if (modifierShiftDown) {
+                  insertNewline()
+                  return
+                }
                 setTimeout(() => setTimeout(() => submit(), 0), 0)
               }}
               onPaste={async (event: PasteEvent) => {
@@ -1929,19 +1954,19 @@ export function Prompt(props: PromptProps) {
                 <Match when={store.mode === "normal"}>
                   <Switch>
                     <Match when={usage()?.ctx}>
-                      {(item) => (
-                        <text fg={contextLevelColor(item().ctx!.level, theme)} wrapMode="none">
+                      {(ctx) => (
+                        <text fg={contextLevelColor(ctx().level, theme)} wrapMode="none">
                           {[
-                            item().compacting ? "compacting…" : item().ctx!.detail,
-                            item().ctx!.compactHint && !item().compacting ? "/compact" : undefined,
-                            item().cost,
+                            usage()?.compacting ? "compacting…" : ctx().detail,
+                            ctx().compactHint && !usage()?.compacting ? "/compact" : undefined,
+                            usage()?.cost,
                           ]
                             .filter(Boolean)
                             .join(" · ")}
                         </text>
                       )}
                     </Match>
-                    <Match when={usage() && !usage()?.ctx}>
+                    <Match when={usage() && !usage()?.ctx ? usage() : undefined}>
                       {(item) => (
                         <text fg={theme.textMuted} wrapMode="none">
                           {[item().context, item().cost].filter(Boolean).join(" · ")}

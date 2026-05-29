@@ -64,6 +64,8 @@ export class LocalcoderBackend implements ChatBackend {
   private _serverStderr = "";
   private _workspaceDirOverride?: string;
   private _pushListener?: (msg: Record<string, unknown>) => void;
+  private _abortWatchdog?: ReturnType<typeof setTimeout>;
+  private _abortPending = false;
 
   constructor(extensionPath: string, workspaceDirOverride?: string) {
     const cfg = vscode.workspace.getConfiguration("localcoder");
@@ -232,6 +234,10 @@ export class LocalcoderBackend implements ChatBackend {
       if (action.kind === "todos") {
         this._pushListener?.({ type: "todos", sessionId: action.sessionId, todos: action.todos });
       } else if (action.kind === "session_status") {
+        if (action.status === "idle" && this._abortPending) {
+          this.clearAbortWatchdog();
+          this._pushListener?.({ type: "aborted" });
+        }
         this._pushListener?.({ type: "sessionStatus", sessionId: action.sessionId, status: action.status });
       }
     }
@@ -315,6 +321,15 @@ export class LocalcoderBackend implements ChatBackend {
 
       const parts: Array<Record<string, unknown>> = [{ type: "text", text }];
       for (const f of files) {
+        if (f.uri.startsWith("dropped:") && f.inlineText) {
+          parts.push({
+            type: "file",
+            mime: f.mime || "text/plain",
+            filename: f.name || "attachment.txt",
+            source: { type: "text", text: f.inlineText },
+          });
+          continue;
+        }
         try {
           const uri = vscode.Uri.parse(f.uri);
           const raw = await vscode.workspace.fs.readFile(uri);
@@ -429,6 +444,17 @@ export class LocalcoderBackend implements ChatBackend {
       return { role: "user", id: info.id, content: text || info.text || "" };
     }
 
+    if (info.summary) {
+      return {
+        role: "assistant",
+        id: info.id,
+        content: "",
+        summary: true,
+        agent: info.agent,
+        model: info.model?.modelID ?? info.model?.id,
+      };
+    }
+
     let reasoning: string | undefined;
     const textParts: string[] = [];
     const toolParts: ToolCall[] = [];
@@ -465,6 +491,14 @@ export class LocalcoderBackend implements ChatBackend {
     };
   }
 
+  private clearAbortWatchdog(): void {
+    this._abortPending = false;
+    if (this._abortWatchdog) {
+      clearTimeout(this._abortWatchdog);
+      this._abortWatchdog = undefined;
+    }
+  }
+
   abort(): void {
     this._abortController?.abort();
     this._abortController = undefined;
@@ -472,7 +506,16 @@ export class LocalcoderBackend implements ChatBackend {
     if (this._activeSessionId) {
       this.apiFetch(`/session/${this._activeSessionId}/abort`, { method: "POST" }).catch(() => {});
     }
+    this._abortPending = true;
     this._pushListener?.({ type: "agentStatus", status: "idle" });
+    if (this._abortWatchdog) { clearTimeout(this._abortWatchdog); }
+    this._abortWatchdog = setTimeout(() => {
+      if (!this._abortPending) { return; }
+      this.clearAbortWatchdog();
+      this._pushListener?.({ type: "aborted" });
+      this._pushListener?.({ type: "sessionStatus", sessionId: this._activeSessionId, status: "idle" });
+      this._pushListener?.({ type: "agentStatus", status: "idle" });
+    }, 8000);
   }
 
   async fetchSessionNav(sessionId: string): Promise<SessionNav | undefined> {

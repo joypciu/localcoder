@@ -20,6 +20,7 @@
  *   E2E_LLAMA_VSCODE=1        force llama VS Code E2E on standard tier
  *   E2E_SKIP_SERVE_INVALID=1 skip serve invalid-model fail-fast (standard tier)
  *   E2E_SKIP_VSCODE_LIVE=1    skip vscode backend-live smoke (standard tier)
+ *   E2E_SKIP_VISUAL=1         skip visual regression suite
  *   LLAMACPP_SKIP_SERVER=1    reuse running llama-server
  */
 import fs from "fs"
@@ -61,6 +62,7 @@ import {
   stepVscodeCompiledWizardCliBridge,
 } from "./steps/vscode"
 import { stepDesktopExeLaunch, stepPlaywrightApp } from "./steps/playwright"
+import { stepVisualSmoke, stepVisualStandard } from "./steps/visual"
 
 async function runTier(tier: E2eTier) {
   process.env.LOCALCODER_EXPERIMENTAL_EVENT_SYSTEM ??= "1"
@@ -90,6 +92,7 @@ async function runTier(tier: E2eTier) {
     await run("vscode-wizard", "VS Code: zero-config wizard contract", stepVscodeWizardContract)
     await run("vscode-bridge", "VS Code: wizard CLI bridge in bundle", stepVscodeCompiledWizardCliBridge)
     await run("vscode-unit", "VS Code: contract unit tests", stepVscodeUnit)
+    await run("visual-smoke", "Visual: TUI + VS Code webview regression", stepVisualSmoke)
 
     if (tier === "smoke") {
       if (hasExe) {
@@ -146,6 +149,7 @@ async function runTier(tier: E2eTier) {
         skipStep("vscode-backend-live", "VS Code: backend-live smoke", "E2E_SKIP_VSCODE_LIVE=1", results)
       }
       await run("vscode-electron", "VS Code: Electron integration (test:all)", stepVscodeElectron)
+      await run("visual-standard", "Visual: TUI + webview + app regression", stepVisualStandard)
       await run("desktop", "Windows: desktop artifact check", stepDesktopArtifacts)
       if (!envFlag("E2E_SKIP_PLAYWRIGHT")) {
         await run("playwright", "Desktop UI: Playwright app smoke", stepPlaywrightApp)

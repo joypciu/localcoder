@@ -3,6 +3,7 @@ export * as ConfigKeybinds from "./keybinds"
 import { Effect, Schema } from "effect"
 import type z from "zod"
 import { zod } from "@/util/effect-zod"
+import { isLegacyWindowsConsole } from "@/util/windows-terminal"
 
 // Every keybind field has the same shape: an optional string with a default
 // binding and a human description.  `keybind()` keeps the declaration list
@@ -10,14 +11,18 @@ import { zod } from "@/util/effect-zod"
 const keybind = (value: string, description: string) =>
   Schema.String.pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed(value))).annotate({ description })
 
-// Windows prepends ctrl+z to the undo binding because `terminal_suspend`
-// cannot consume ctrl+z on native Windows terminals (no POSIX suspend).
-const inputSubmitDefault =
-  process.platform === "win32" ? "ctrl+return,ctrl+enter" : "return"
-const inputNewlineDefault =
-  process.platform === "win32"
-    ? "return,enter,shift+return,shift+enter,ctrl+j,alt+return"
-    : "shift+return,shift+enter,ctrl+return,ctrl+enter,alt+return,ctrl+j"
+function windowsLegacyInputKeybinds() {
+  if (process.platform !== "win32") return false
+  if (process.env.LOCALCODER_LEGACY_TERMINAL === "1") return true
+  return isLegacyWindowsConsole()
+}
+
+// Windows CMD/conhost: plain Enter is unreliable for submit; Ctrl+Enter sends.
+// Modern terminals (Windows Terminal, Cursor, VS Code, PowerShell in WT): match macOS/Linux.
+const inputSubmitDefault = windowsLegacyInputKeybinds() ? "ctrl+return,ctrl+enter" : "return"
+const inputNewlineDefault = windowsLegacyInputKeybinds()
+  ? "return,enter,shift+return,shift+enter,ctrl+j,alt+return"
+  : "shift+return,shift+enter,ctrl+return,ctrl+enter,alt+return,ctrl+j"
 const inputUndoDefault = process.platform === "win32" ? "ctrl+z,ctrl+-,super+z" : "ctrl+-,super+z"
 
 const KeybindsSchema = Schema.Struct({

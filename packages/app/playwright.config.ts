@@ -4,9 +4,9 @@ const port = Number(process.env.PLAYWRIGHT_PORT ?? 3000)
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`
 const serverHost = process.env.PLAYWRIGHT_SERVER_HOST ?? "127.0.0.1"
 const serverPort = process.env.PLAYWRIGHT_SERVER_PORT ?? "4096"
-const command = `bun run dev -- --host 0.0.0.0 --port ${port}`
-const reuse = !process.env.CI
-const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? (process.env.CI ? 5 : 0)) || undefined
+const live = process.env.PLAYWRIGHT_LIVE_SESSION === "1"
+const command = `bun run dev -- --host 127.0.0.1 --port ${port}`
+const workers = Number(process.env.PLAYWRIGHT_WORKERS ?? 1)
 const reporter = [["html", { outputFolder: "e2e/playwright-report", open: "never" }], ["line"]] as const
 
 if (process.env.PLAYWRIGHT_JUNIT_OUTPUT) {
@@ -14,27 +14,32 @@ if (process.env.PLAYWRIGHT_JUNIT_OUTPUT) {
 }
 
 export default defineConfig({
+  globalSetup: live ? "./e2e/global-setup.ts" : "./e2e/prep.ts",
+  globalTeardown: live ? "./e2e/global-teardown.ts" : undefined,
   testDir: "./e2e",
   outputDir: "./e2e/test-results",
-  timeout: 60_000,
+  timeout: 20_000,
   expect: {
-    timeout: 10_000,
+    timeout: 8_000,
   },
-  fullyParallel: process.env.PLAYWRIGHT_FULLY_PARALLEL === "1",
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   workers,
   reporter,
-  webServer: {
-    command,
-    url: baseURL,
-    reuseExistingServer: reuse,
-    timeout: 120_000,
-    env: {
-      VITE_LOCALCODER_SERVER_HOST: serverHost,
-      VITE_LOCALCODER_SERVER_PORT: serverPort,
-    },
-  },
+  // Live suite starts Vite in globalSetup to avoid webServer/globalSetup race hangs.
+  webServer: live
+    ? undefined
+    : {
+        command,
+        url: baseURL,
+        reuseExistingServer: !process.env.CI,
+        timeout: 45_000,
+        env: {
+          VITE_LOCALCODER_SERVER_HOST: serverHost,
+          VITE_LOCALCODER_SERVER_PORT: serverPort,
+        },
+      },
   use: {
     baseURL,
     trace: "on-first-retry",
@@ -45,6 +50,7 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      grepInvert: live ? undefined : /@live/,
     },
   ],
 })

@@ -7,13 +7,23 @@ import { Spinner } from "../component/spinner"
 
 export type DialogPromptProps = {
   title: string
-  description?: () => JSX.Element
+  /** Plain strings are wrapped in <text> automatically — required by OpenTUI. */
+  description?: string | (() => JSX.Element)
   placeholder?: string
   value?: string
   busy?: boolean
   busyText?: string
   onConfirm?: (value: string) => void
   onCancel?: () => void
+}
+
+function PromptDescription(props: { description: DialogPromptProps["description"] }) {
+  const { theme } = useTheme()
+  if (!props.description) return null
+  if (typeof props.description === "string") {
+    return <text fg={theme.textMuted}>{props.description}</text>
+  }
+  return props.description()
 }
 
 export function DialogPrompt(props: DialogPromptProps) {
@@ -72,7 +82,7 @@ export function DialogPrompt(props: DialogPromptProps) {
         </text>
       </box>
       <box gap={1}>
-        {props.description}
+        <PromptDescription description={props.description} />
         <textarea
           onSubmit={() => {
             if (props.busy) return

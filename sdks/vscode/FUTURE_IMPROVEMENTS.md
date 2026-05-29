@@ -1,7 +1,7 @@
 ﻿# LocalCoder VS Code Extension — Changelog & Roadmap
 
 **Last updated:** 2026-05-29  
-**Test status:** 84+ passing (`bun run test:unit` ~48 contract tests in ~5s; full `bun run test` includes Electron integration)
+**Test status:** 93+ unit contract tests (`bun run test:unit` ~5s); full `bun run test` includes Electron; webview visual tests in repo `packages/app/e2e/visual/`
 
 ---
 
@@ -38,6 +38,8 @@
 - [x] **Header model picker** — Cursor-style dropdown in chat header (not only settings overlay)
 - [x] **Subagent navigation bar** — Parent/Prev/Next when session has `parentID` (desktop parity)
 - [x] **Stop button sync** — `agentStatus`/`sessionStatus` idle clears busy state
+- [x] **Compaction summary UX** — webview shows "Context compacted." banner only (no template body in chat)
+- [x] **Visual webview regression** — Playwright specs under `packages/app/e2e/visual/`
 - [ ] **Model picker** — persist last model per workspace folder
 - [ ] **Reliable stop-button sync** during slow abort on server
 
@@ -46,7 +48,7 @@
 - [ ] OpenAI backend session persistence across reloads
 - [ ] Anthropic Messages API backend
 - [ ] Drag-and-drop file / image upload
-- [ ] Real llama.cpp VS Code E2E stable tool-calling (Qwopus prompt tuning)
+- [ ] Real llama.cpp VS Code E2E stable tool-calling (Qwopus prompt tuning — mostly working; keep monitoring)
 
 ## Low priority
 

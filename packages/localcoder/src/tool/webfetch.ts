@@ -6,8 +6,28 @@ import DESCRIPTION from "./webfetch.txt"
 import { isImageAttachment } from "@/util/media"
 
 const MAX_RESPONSE_SIZE = 5 * 1024 * 1024 // 5MB
+const MAX_CONTENT_CHARS = 12_000
 const DEFAULT_TIMEOUT = 30 * 1000 // 30 seconds
 const MAX_TIMEOUT = 120 * 1000 // 2 minutes
+
+function shrinkFetchOutput(output: string, url: string) {
+  if (output.length <= MAX_CONTENT_CHARS) return output
+  const trimmed = output.slice(0, MAX_CONTENT_CHARS)
+  return `${trimmed}\n\n[truncated ${output.length - MAX_CONTENT_CHARS} chars from ${url}]`
+}
+
+function blockedFetchPage(content: string, url: string) {
+  if (
+    /did not send any data|enable javascript|unusual traffic|cf-mitigated|cloudflare|consent\.google/i.test(content)
+  ) {
+    return [
+      `Automated fetch could not read useful content from ${url}.`,
+      "Search engines often block non-browser clients (JavaScript / anti-bot).",
+      "Try DuckDuckGo HTML, a direct API, or paste a specific URL instead of a search results page.",
+    ].join("\n")
+  }
+  return undefined
+}
 
 export const Parameters = Schema.Struct({
   url: Schema.String.annotate({ description: "The URL to fetch content from" }),
@@ -122,32 +142,36 @@ export const WebFetchTool = Tool.define(
           }
 
           const content = new TextDecoder().decode(arrayBuffer)
+          const blocked = blockedFetchPage(content, params.url)
+          if (blocked) {
+            return { output: blocked, title, metadata: { blocked: true } }
+          }
 
           // Handle content based on requested format and actual content type
           switch (params.format) {
             case "markdown":
               if (contentType.includes("text/html")) {
-                const markdown = convertHTMLToMarkdown(content)
+                const markdown = shrinkFetchOutput(convertHTMLToMarkdown(content), params.url)
                 return {
                   output: markdown,
                   title,
                   metadata: {},
                 }
               }
-              return { output: content, title, metadata: {} }
+              return { output: shrinkFetchOutput(content, params.url), title, metadata: {} }
 
             case "text":
               if (contentType.includes("text/html")) {
                 const text = yield* Effect.promise(() => extractTextFromHTML(content))
-                return { output: text, title, metadata: {} }
+                return { output: shrinkFetchOutput(text, params.url), title, metadata: {} }
               }
-              return { output: content, title, metadata: {} }
+              return { output: shrinkFetchOutput(content, params.url), title, metadata: {} }
 
             case "html":
-              return { output: content, title, metadata: {} }
+              return { output: shrinkFetchOutput(content, params.url), title, metadata: {} }
 
             default:
-              return { output: content, title, metadata: {} }
+              return { output: shrinkFetchOutput(content, params.url), title, metadata: {} }
           }
         }).pipe(Effect.orDie),
     }

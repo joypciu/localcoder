@@ -59,5 +59,8 @@ export function windowsInputHint(): string {
   if (process.platform !== "win32") {
     return "Shift+Enter newline · Enter send · drag select · RMB menu · Del deletes selection"
   }
-  return "Enter newline · Ctrl+Enter send · drag select · RMB menu · Del/Backspace delete · Ctrl+X cut"
+  if (process.env.LOCALCODER_LEGACY_TERMINAL === "1" || isLegacyWindowsConsole()) {
+    return "Enter newline · Ctrl+Enter send · drag select · RMB menu · Del/Backspace delete · Ctrl+X cut"
+  }
+  return "Shift+Enter newline · Enter send · drag select · RMB menu · Del/Backspace delete · Ctrl+X cut"
 }

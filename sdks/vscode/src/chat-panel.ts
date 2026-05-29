@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import type { ChatBackend } from "./backends/types";
+import type { ChatBackend, FileAttachment } from "./backends/types";
 import type { BackendConfig } from "./backends/types";
 import { LocalcoderBackend, type WorkspaceMeta } from "./backends/localcoder";
 import { OpenAIBackend } from "./backends/openai";
@@ -423,6 +423,26 @@ abstract class ChatProviderBase {
   /** Exposed for VS Code commands */
   async commandUndo() { await this.restoreSnapshots(); }
   async commandInsertText(text: string) { this.postMessage({ type: "insertText", text }); }
+  async commandNewSession() {
+    this._backend?.setActiveSessionId(null);
+    await this.persistChatSession(null);
+    this.postMessage({ type: "messages", messages: [], sessionId: null });
+    void this._backend?.listSessions().then((sessions) => this.postMessage({ type: "sessions", sessions }));
+  }
+  async commandCompactSession() {
+    await this.handleMessage({ type: "compactSession" });
+  }
+  async commandSwitchModel(model: string) {
+    await this.handleMessage({ type: "switchModel", model });
+  }
+  async commandOpenSettings() {
+    this.postMessage({ type: "openSettings" });
+  }
+  async commandAbort() {
+    this._backend?.abort();
+    this.postMessage({ type: "agentStatus", status: "idle" });
+    this.postMessage({ type: "streamDone", message: {}, canUndo: false });
+  }
   async commandSendText(text: string) {
     if (!this._inited) { await this.startBackend(); }
     const agent = vscode.workspace.getConfiguration("localcoder").get<string>("defaultAgent") || "build";
@@ -604,6 +624,19 @@ abstract class ChatProviderBase {
           await this.persistChatSession(null);
           break;
 
+        case "attachDroppedFile": {
+          const name = String(msg.name || "file.txt");
+          const key = `dropped:${name}:${Date.now()}`;
+          this.postMessage({
+            type: "fileAttached",
+            uri: key,
+            name,
+            mime: msg.mime || "text/plain",
+            content: String(msg.content || ""),
+          });
+          break;
+        }
+
         case "sendMessage": {
           if (this._config.type === "none") {
             this.postMessage({ type: "error", message: "Configure a provider in settings before sending messages." });
@@ -620,7 +653,13 @@ abstract class ChatProviderBase {
           backend.setActiveSessionId(sessionId);
 
           const agent = msg.agent || vscode.workspace.getConfiguration("localcoder").get<string>("defaultAgent") || "build";
-          await backend.sendMessage(msg.text, msg.history || [], msg.files || [], {
+          const files = (msg.files || []).map((f: FileAttachment & { content?: string }) => {
+            if (typeof f.uri === "string" && f.uri.startsWith("dropped:") && f.content) {
+              return { ...f, inlineText: f.content };
+            }
+            return f;
+          });
+          await backend.sendMessage(msg.text, msg.history || [], files, {
             onDelta: (delta) => this.postMessage({ type: "streamDelta", delta }),
             onReasoningDelta: (delta) => this.postMessage({ type: "streamReasoningDelta", delta }),
             onToolCall: async (tool) => {

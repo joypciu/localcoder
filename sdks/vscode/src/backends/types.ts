@@ -4,6 +4,7 @@ export interface ChatMessage {
   id?: string;
   agent?: string;
   model?: string;
+  summary?: boolean;
   tokens?: { input?: number; output?: number };
   cost?: number;
   error?: { message: string };
@@ -25,6 +26,8 @@ export interface FileAttachment {
   uri: string;
   mime: string;
   name?: string;
+  /** Inline text for webview drag-and-drop attachments (not a workspace path). */
+  inlineText?: string;
 }
 
 export interface SendMessageOptions {

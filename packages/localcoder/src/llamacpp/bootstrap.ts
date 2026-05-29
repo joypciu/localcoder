@@ -13,6 +13,7 @@ export type LlamaCppSetupInput = {
   autoStart?: boolean
   ctx?: number
   thinking?: boolean
+  forceRestart?: boolean
 }
 
 export type LlamaCppSetupResult = {
@@ -25,7 +26,7 @@ export type LlamaCppSetupResult = {
 }
 
 function providerPatch(modelId: string, modelPath: string, apiUrl: string, ctx: number): Partial<Info> {
-  const output = Number(process.env.LLAMACPP_MAX_OUTPUT ?? 4096)
+  const output = Setup.llamaOutputLimit(ctx)
   const thinking = Setup.resolveThinkingEnabled(modelPath)
   return {
     model: Server.modelRef(modelId),
@@ -123,6 +124,7 @@ export async function configure(input: LlamaCppSetupInput): Promise<LlamaCppSetu
   })
 
   process.env.LLAMACPP_API_URL = cfg.apiUrl
+  process.env.LLAMACPP_CTX = String(ctx)
 
   const modelId = await applyProvider(input.modelPath, cfg.apiUrl, ctx)
 
@@ -132,6 +134,7 @@ export async function configure(input: LlamaCppSetupInput): Promise<LlamaCppSetu
 
   const started = await Server.start({
     config: { llamaDir: input.llamaDir, modelPath: input.modelPath, ctx },
+    forceRestart: input.forceRestart ?? false,
   })
 
   if (started.modelId !== modelId) {

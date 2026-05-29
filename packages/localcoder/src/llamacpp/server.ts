@@ -26,6 +26,36 @@ export type LlamaServerStatus = {
 
 let managed: ChildProcess | undefined
 let logPath: string | undefined
+let managedCtx: number | undefined
+
+async function stopOnPort(port: number): Promise<boolean> {
+  try {
+    if (process.platform === "win32") {
+      const { stdout } = await execFileAsync("netstat", ["-ano"], { encoding: "utf8", windowsHide: true })
+      const pids = new Set<number>()
+      for (const line of stdout.split(/\r?\n/)) {
+        if (!line.includes(`:${port}`) || !line.includes("LISTENING")) continue
+        const parts = line.trim().split(/\s+/)
+        const pid = Number(parts.at(-1))
+        if (pid > 0) pids.add(pid)
+      }
+      for (const pid of pids) {
+        await execFileAsync("taskkill", ["/PID", String(pid), "/F", "/T"], { windowsHide: true }).catch(() => {})
+      }
+      return pids.size > 0
+    }
+    await execFileAsync("fuser", ["-k", `${port}/tcp`]).catch(() => {})
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function stopListeningServer(port: number) {
+  await stopIfManaged()
+  await stopOnPort(port)
+  await Bun.sleep(750)
+}
 
 
 /** Matches LLAMACPP_CTX / provider discoverModels for overflow UI. */
@@ -104,9 +134,38 @@ export function getLogPath() {
 
 export async function start(input?: {
   config?: Partial<LlamaServerConfig>
+  forceRestart?: boolean
   onLine?: (line: string) => void
-}): Promise<{ modelId: string; alreadyRunning: boolean }> {
+}): Promise<{ modelId: string; alreadyRunning: boolean; restarted?: boolean }> {
   const cfg = { ...getConfig(), ...input?.config }
+  const desiredCtx = cfg.ctx
+
+  if (input?.forceRestart) {
+    await stopListeningServer(cfg.port)
+  }
+
+  const existing = await probe(cfg.apiUrl)
+  if (existing.ok && existing.modelId) {
+    if (managed && managedCtx !== undefined && managedCtx !== desiredCtx) {
+      await stopListeningServer(cfg.port)
+    } else if (!input?.forceRestart && managedCtx === desiredCtx) {
+      return { modelId: existing.modelId, alreadyRunning: true }
+    } else if (!input?.forceRestart && !managed) {
+      const savedCtx = LlamaSetup.loadUserLlamaConfig().ctx
+      if (savedCtx === desiredCtx) {
+        return { modelId: existing.modelId, alreadyRunning: true }
+      }
+      await stopListeningServer(cfg.port)
+    } else if (!input?.forceRestart) {
+      return { modelId: existing.modelId, alreadyRunning: true }
+    }
+  }
+
+  const afterStop = await probe(cfg.apiUrl)
+  if (afterStop.ok && afterStop.modelId && !input?.forceRestart && managedCtx === desiredCtx) {
+    return { modelId: afterStop.modelId, alreadyRunning: true }
+  }
+
   if (!fs.existsSync(cfg.serverExe)) {
     throw new Error(`llama-server not found: ${cfg.serverExe}`)
   }
@@ -116,11 +175,6 @@ export async function start(input?: {
         ? `GGUF model not found: ${cfg.modelPath}`
         : `No GGUF model configured. Set LOCALCODER_LLAMACPP_MODEL or save a path in ${LlamaSetup.configPath()}`,
     )
-  }
-
-  const existing = await probe(cfg.apiUrl)
-  if (existing.ok && existing.modelId) {
-    return { modelId: existing.modelId, alreadyRunning: true }
   }
 
   if (managed) {
@@ -157,13 +211,15 @@ export async function start(input?: {
   })
 
   const modelId = await waitReady({ apiUrl: cfg.apiUrl })
-  return { modelId, alreadyRunning: false }
+  managedCtx = desiredCtx
+  return { modelId, alreadyRunning: false, restarted: input?.forceRestart === true }
 }
 
 export async function stopIfManaged() {
   if (!managed) return false
   const proc = managed
   managed = undefined
+  managedCtx = undefined
   try {
     if (process.platform === "win32") {
       await execFileAsync("taskkill", ["/pid", String(proc.pid), "/f", "/t"])

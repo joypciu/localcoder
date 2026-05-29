@@ -2,7 +2,7 @@
 
 AI coding agent in VS Code — sidebar chat, live tool streaming, file edits with undo, zero-config providers.
 
-**Tests:** 84+ passing (`bun run test:unit` for fast contract suite; `bun run test` for full Electron integration)
+**Tests:** 93+ unit contract tests (`bun run test:unit` ~5s); full `bun run test` includes Electron; visual webview tests in `packages/app/e2e/visual/`
 
 ## Features
 
@@ -91,8 +91,21 @@ bun run scripts/vscode-extension-e2e.ts
 Requires llama-server on `:8080` and built CLI:
 
 ```bash
-VSCODE_LLAMA_E2E=1 bun run test:llama-e2e
+VSCODE_LLAMA_E2E=1 LLAMACPP_API_URL=http://127.0.0.1:8080/v1 bun run test:llama-e2e
 ```
+
+Compaction messages with `summary: true` render as **"Context compacted."** only — the anchored summary body is not shown in the webview.
+
+## Visual regression (webview)
+
+From repo root:
+
+```powershell
+bun run visual-test --suite=vscode
+# or: cd packages/app && bunx playwright test --config e2e/visual/playwright.vscode.config.ts
+```
+
+Mocks `acquireVsCodeApi`, drives `chat.html` via postMessage, compares PNG baselines.
 
 ## Publishing
 

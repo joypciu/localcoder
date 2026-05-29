@@ -18,7 +18,7 @@ suite("Chat webview contract", () => {
   });
 
   test("message types handled in webview", () => {
-    for (const t of ["streamDelta", "streamReasoningDelta", "streamStart", "toolCall", "toolResult", "streamDone", "undone", "fileSuggestions", "insertText", "fileUndone", "usage", "agentStatus", "compactDone", "workspaceMeta", "todos", "sessionStatus", "sessionNav"]) {
+    for (const t of ["streamDelta", "streamReasoningDelta", "streamStart", "toolCall", "toolResult", "streamDone", "undone", "fileSuggestions", "insertText", "fileUndone", "usage", "agentStatus", "compactDone", "workspaceMeta", "todos", "sessionStatus", "sessionNav", "aborted", "openSettings", "fileAttached"]) {
       assert.ok(html.includes(`'${t}'`) || html.includes(`"${t}"`), `missing handler ${t}`);
     }
   });
@@ -51,6 +51,13 @@ suite("Chat webview contract", () => {
   test("abort clears busy state on idle agentStatus", () => {
     assert.ok(html.includes("m.status === 'idle'"));
     assert.ok(html.includes("setBusy(false)"));
+  });
+
+  test("drag-and-drop and command palette hooks", () => {
+    assert.ok(html.includes("wireDragDrop"));
+    assert.ok(html.includes("drag-over"));
+    assert.ok(html.includes("attachDroppedFile"));
+    assert.ok(html.includes("text/uri-list"));
   });
 
   test("@ mention triggers listFiles", () => {

@@ -480,6 +480,7 @@ html, body {
   border-radius: 8px 8px 0 0; margin: 0 8px 8px; border: 1px solid var(--bdr2);
   box-shadow: 0 -2px 12px rgba(0,0,0,.15);
 }
+#inp-wrap.drag-over { border-color: var(--acc); box-shadow: 0 0 0 1px var(--acc); background: var(--bg2); }
 #inp-toolbar {
   display: flex; align-items: center; gap: 6px; padding: 6px 8px 0; font-size: 10px; color: var(--fg3);
 }
@@ -1623,6 +1624,27 @@ window.addEventListener('message', function(e) {
       }
       break;
 
+    case 'aborted':
+      if (S.streamTimer) { clearTimeout(S.streamTimer); S.streamTimer = null; }
+      flushStreamReasoning();
+      flushStreamBody();
+      setBusy(false);
+      setAgentStatus('', false);
+      if (S.streamTurn) { addSys('Generation stopped'); S.streamTurn = null; }
+      toolStore = {};
+      break;
+
+    case 'openSettings':
+      if ($cfgO) { $cfgO.classList.add('open'); }
+      break;
+
+    case 'fileAttached':
+      if (m.uri && !attachedFiles.some(function(f){ return f.uri === m.uri; })) {
+        attachedFiles.push({ uri: m.uri, mime: m.mime || 'text/plain', name: m.name || 'file', content: m.content || '' });
+        renderAttachRow();
+      }
+      break;
+
     case 'sessionNav':
       if (!m.sessionId || !S.session || m.sessionId === S.session) { renderSessionNav(m.nav); }
       break;
@@ -1656,6 +1678,10 @@ window.addEventListener('message', function(e) {
       $msgs.innerHTML = ''; S.messages = []; $empty = null;
       (m.messages || []).forEach(function(msg) {
         if (msg.role === 'user') { addUser(msg.content); S.messages.push(msg); }
+        else if (msg.summary) {
+          addSys('Context compacted');
+          S.messages.push(msg);
+        }
         else {
           var mid = msg.id || uid();
           addAsst(mid, msg.agent, msg.model);
@@ -1738,14 +1764,18 @@ window.addEventListener('message', function(e) {
       flushStreamReasoning();
       flushStreamBody();
       setBusy(false);
+      var msg2 = m.message || {};
       if (S.streamTurn) {
         var sid2 = S.streamTurn;
-        var msg2 = m.message || {};
-        var allT = Object.values(toolStore);
-        renderAsst(sid2, msg2.content || S.streamAccum, msg2.agent, msg2.model, msg2.tokens, msg2.error, allT.length ? allT : msg2.toolCalls, msg2.reasoning || S.streamReasoningAccum || undefined);
-        if (m.canUndo && turnFiles.length > 0) { showChangesBar(sid2, turnFiles.slice()); }
+        if (msg2.summary) {
+          addSys('Context compacted');
+        } else {
+          var allT = Object.values(toolStore);
+          renderAsst(sid2, msg2.content || S.streamAccum, msg2.agent, msg2.model, msg2.tokens, msg2.error, allT.length ? allT : msg2.toolCalls, msg2.reasoning || S.streamReasoningAccum || undefined);
+          if (m.canUndo && turnFiles.length > 0) { showChangesBar(sid2, turnFiles.slice()); }
+        }
       }
-      S.messages.push({ role: 'assistant', content: msg2.content || S.streamAccum || '' });
+      S.messages.push({ role: 'assistant', content: msg2.content || S.streamAccum || '', summary: msg2.summary || false });
       toolStore = {};
       flushQueue();
       break;
@@ -2024,6 +2054,43 @@ $inp.addEventListener('input', function() {
   }
   post({ type: 'listFiles', query: v.slice(at + 1) });
 });
+function wireDragDrop() {
+  var wrap = document.getElementById('inp-wrap');
+  if (!wrap) { return; }
+  wrap.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    wrap.classList.add('drag-over');
+  });
+  wrap.addEventListener('dragleave', function() {
+    wrap.classList.remove('drag-over');
+  });
+  wrap.addEventListener('drop', function(e) {
+    e.preventDefault();
+    wrap.classList.remove('drag-over');
+    var uriList = (e.dataTransfer && (e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('application/vnd.code.uri-list'))) || '';
+    if (uriList.trim()) {
+      uriList.split('\n').filter(Boolean).forEach(function(u) {
+        var name = u.split('/').pop() || u;
+        try { name = decodeURIComponent(name); } catch (_) {}
+        if (!attachedFiles.some(function(f){ return f.uri === u; })) {
+          attachedFiles.push({ uri: u, mime: 'text/plain', name: name });
+          renderAttachRow();
+        }
+      });
+      return;
+    }
+    var files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+    files.forEach(function(file) {
+      var reader = new FileReader();
+      reader.onload = function() {
+        post({ type: 'attachDroppedFile', name: file.name, mime: file.type || 'text/plain', content: String(reader.result || '') });
+      };
+      reader.readAsText(file);
+    });
+  });
+}
+wireDragDrop();
+
 /* ── Boot ── */
 post({ type: 'ready' });
 }());

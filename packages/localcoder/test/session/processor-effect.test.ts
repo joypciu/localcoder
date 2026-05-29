@@ -361,6 +361,7 @@ it.live("session.processor effect tests stop after token overflow requests compa
         const parts = MessageV2.parts(msg.id)
 
         expect(value).toBe("compact")
+        expect(handle.message.error).toBeUndefined()
         expect(parts.some((part) => part.type === "text" && part.text === "after")).toBe(true)
         expect(parts.some((part) => part.type === "step-finish")).toBe(true)
       }),

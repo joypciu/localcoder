@@ -15,15 +15,17 @@ Runs in your terminal, edits your code, uses your tools — with an optional des
 
 See [IMPROVEMENT_AND_FIX.md](IMPROVEMENT_AND_FIX.md) · Install: [INSTALL.md](INSTALL.md)
 
-### E2E tests (Windows)
+### E2E & visual tests (Windows)
 
 ```powershell
-bun run e2e:smoke      # ~15s — VS Code compile + unit tests + CLI smoke (no llama)
-bun run e2e            # ~1–2 min — standard: CLI + llama + agent + VS Code + desktop artifacts
-bun run e2e:full       # ~10–30 min — portable build, headed LocalCoder.exe launch, live llama VS Code E2E (when llama available)
+bun run visual-test      # TUI snapshots + VS Code webview + app UI screenshots
+bun run visual-test:update   # refresh baselines after intentional UI changes
+bun run e2e:smoke        # ~30–60s — compile + unit + visual-smoke + CLI smoke (no llama)
+bun run e2e              # ~2–4 min — standard: CLI + llama + agent + VS Code + visual-standard
+bun run e2e:full         # ~10–30 min — portable build, headed exe, live llama VS Code E2E
 ```
 
-Set `LOCALCODER_LLAMACPP_DIR` / `LOCALCODER_LLAMACPP_MODEL` if llama paths differ, or run `localcoder llamacpp setup` once (paths saved to `~/.localcoder/llamacpp.json`). Use `E2E_SKIP_BUILD=1` when the CLI is already built.
+Set `LOCALCODER_LLAMACPP_DIR` / `LOCALCODER_LLAMACPP_MODEL` if paths differ, or run `localcoder llamacpp setup` once. Use `E2E_SKIP_BUILD=1`, `E2E_SKIP_VISUAL=1`, `E2E_SKIP_LLAMA=1` to skip steps.
 
 ---
 
@@ -97,6 +99,8 @@ localcoder llamacpp setup --dir "C:\path\to\llama.cpp\bin" --model "D:\models\mo
 ```
 
 Config is saved to `~/.localcoder/llamacpp.json`. The server auto-starts on next launch.
+
+**After changing context size**, restart the server so `-c` takes effect: TUI `/llama` → **Restart server with saved config**, or `localcoder llamacpp setup` again. Context presets: 4096–131072.
 
 ### Cloud API keys
 
@@ -186,9 +190,12 @@ No git required — uses LocalCoder's snapshot system.
 localcoder/
 ├── packages/
 │   ├── localcoder/   CLI, HTTP server, agent loop, llama.cpp module
-│   ├── app/          Web / desktop UI (SolidJS)
+│   ├── app/          Web / desktop UI (SolidJS) + Playwright visual tests
 │   ├── desktop/      Electron shell + portable build
 │   └── ui/           Shared components and themes
+├── scripts/
+│   ├── e2e/          Unified E2E runner (smoke / standard / full)
+│   └── visual-test/  Visual regression (TUI + webview + app)
 └── sdks/
     └── vscode/       VS Code extension
 ```

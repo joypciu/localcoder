@@ -3,8 +3,9 @@ import * as path from "path";
 import { ChatPanelProvider, ChatSidebarProvider, chatProviderRef } from "./chat-panel";
 import { registerInlineActions } from "./inline-actions";
 import { registerDiffReview } from "./diff-review";
-import { runLlamaSetupWizard } from "./llama-setup";
+import { runLlamaSetupWizard, setLlamaContextSize } from "./llama-setup";
 import { configureCloudProvider, pickAndConfigureCloudProvider, CLOUD_PROVIDER_PRESETS } from "./provider-setup";
+import { showLocalcoderCommandPalette } from "./command-palette";
 
 async function configureLlamaCpp(ctx: vscode.ExtensionContext): Promise<boolean> {
   const ok = await runLlamaSetupWizard();
@@ -66,6 +67,10 @@ export async function activate(context: vscode.ExtensionContext) {
       await configureLlamaCpp(context);
       await chatProviderRef?.restartBackend();
     }),
+    vscode.commands.registerCommand("localcoder.setLlamaContext", async () => {
+      const ok = await setLlamaContextSize();
+      if (ok) { await chatProviderRef?.restartBackend(); }
+    }),
     vscode.commands.registerCommand("localcoder.connectProvider", async () => {
       const ok = await pickAndConfigureCloudProvider();
       if (ok) {
@@ -73,6 +78,9 @@ export async function activate(context: vscode.ExtensionContext) {
         await context.globalState.update("localcoder.hasSetup", true);
         await chatProviderRef?.restartBackend();
       }
+    }),
+    vscode.commands.registerCommand("localcoder.commandPalette", async () => {
+      await showLocalcoderCommandPalette();
     }),
     vscode.commands.registerCommand("localcoder.addFilepathToTerminal", async () => {
       const fileRef = getActiveFile();

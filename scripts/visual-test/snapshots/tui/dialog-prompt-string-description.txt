@@ -1,0 +1,18 @@
+
+
+
+
+
+
+
+
+
+                      llama.cpp folder                                     esc
+
+                      Folder containing llama-server (not the GGUF file)
+
+                      C:\\llama
+
+
+
+                      enter submit

@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as cp from "child_process";
-import { resolveLocalcoderExe } from "./llama-setup";
+import { resolveLocalcoderExe, runLlamaSetupWizard } from "./llama-setup";
 
 export type CloudProviderPreset = {
   id: string;
@@ -93,16 +93,27 @@ export async function configureCloudProvider(preset: CloudProviderPreset): Promi
 
 export async function pickAndConfigureCloudProvider(): Promise<boolean> {
   const pick = await vscode.window.showQuickPick(
-    CLOUD_PROVIDER_PRESETS.map((p) => ({
-      label: p.label,
-      description: p.description,
-      preset: p,
-    })),
+    [
+      {
+        label: "$(server) llama.cpp (local GGUF)",
+        description: "Pick llama.cpp folder + model + context — no API key",
+        action: "llama" as const,
+      },
+      ...CLOUD_PROVIDER_PRESETS.map((p) => ({
+        label: p.label,
+        description: p.description,
+        action: "cloud" as const,
+        preset: p,
+      })),
+    ],
     {
-      title: "Connect a cloud provider",
-      placeHolder: "OpenRouter, OpenCode Go, Fireworks, Groq…",
+      title: "Connect a provider",
+      placeHolder: "Local llama.cpp or cloud API (OpenRouter, Groq…)",
     },
   );
   if (!pick) { return false; }
-  return configureCloudProvider(pick.preset);
+  if (pick.action === "llama") {
+    return runLlamaSetupWizard();
+  }
+  return configureCloudProvider(pick.preset!);
 }

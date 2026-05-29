@@ -72,6 +72,10 @@
         "title": "LocalCoder: Set up llama.cpp (GGUF)"
       },
       {
+        "command": "localcoder.setLlamaContext",
+        "title": "LocalCoder: Set llama.cpp context size"
+      },
+      {
         "command": "localcoder.connectProvider",
         "title": "LocalCoder: Connect cloud provider (OpenRouter, OpenCode Go…)"
       },
@@ -114,6 +118,10 @@
       {
         "command": "localcoder.editSelection",
         "title": "LocalCoder: Edit Selection"
+      },
+      {
+        "command": "localcoder.commandPalette",
+        "title": "LocalCoder: Command Palette"
       },
       {
         "command": "localcoder.acceptDiff",
@@ -205,6 +213,11 @@
         "command": "localcoder.addSelectionToChat",
         "key": "ctrl+shift+a",
         "mac": "cmd+shift+a"
+      },
+      {
+        "command": "localcoder.commandPalette",
+        "key": "ctrl+alt+shift+l",
+        "mac": "cmd+alt+shift+l"
       },
       {
         "command": "localcoder.acceptDiff",

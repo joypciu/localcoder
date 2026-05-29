@@ -20,6 +20,8 @@
                     "e2e": "bun run scripts/e2e/run.ts --tier=standard",
                     "e2e:full": "bun run scripts/e2e/run.ts --tier=full",
                     "e2e:windows": "bun run scripts/e2e/run.ts --tier=standard",
+                    "visual-test": "bun run scripts/visual-test/run.ts",
+                    "visual-test:update": "bun run scripts/visual-test/run.ts --update",
                     "build:win-gui": "bun run --cwd packages/localcoder build:win-standalone",
                     "build:win-standalone": "bun run --cwd packages/localcoder build:win-standalone",
                     "install:cli": "bun run --cwd packages/localcoder install:cli"

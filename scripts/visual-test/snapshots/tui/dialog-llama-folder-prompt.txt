@@ -1,0 +1,18 @@
+
+
+
+
+
+
+
+
+
+                      llama.cpp folder                                     esc
+
+                      Folder containing llama-server (not the GGUF file)
+
+                      P:\llama cpp\llama-b9354-bin-win-cuda-13.1-x64
+
+
+
+                      enter submit

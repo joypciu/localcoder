@@ -137,6 +137,49 @@ suite("SSE events parser", () => {
     }
   });
 
+  test("parseGlobalPushEvent emits session status for active session", () => {
+    const raw = JSON.stringify({
+      directory: WS,
+      payload: {
+        type: "session.status",
+        properties: { sessionID: SID, status: "idle" },
+      },
+    });
+    const actions = parseGlobalPushEvent(raw, WS, SID);
+    assert.strictEqual(actions.length, 1);
+    assert.strictEqual(actions[0].kind, "session_status");
+    if (actions[0].kind === "session_status") {
+      assert.strictEqual(actions[0].status, "idle");
+      assert.strictEqual(actions[0].sessionId, SID);
+    }
+  });
+
+  test("parseGlobalPushEvent ignores session status for other sessions", () => {
+    const raw = JSON.stringify({
+      directory: WS,
+      payload: {
+        type: "session.status",
+        properties: { sessionID: "ses_other", status: "busy" },
+      },
+    });
+    assert.deepStrictEqual(parseGlobalPushEvent(raw, WS, SID), []);
+  });
+
+  test("parseGlobalPushEvent emits busy session status", () => {
+    const raw = JSON.stringify({
+      directory: WS,
+      payload: {
+        type: "session.status",
+        properties: { sessionID: SID, status: "running" },
+      },
+    });
+    const actions = parseGlobalPushEvent(raw, WS, SID);
+    assert.strictEqual(actions[0].kind, "session_status");
+    if (actions[0].kind === "session_status") {
+      assert.strictEqual(actions[0].status, "running");
+    }
+  });
+
   test("parseSseBlocks splits multiple SSE data lines", () => {
     const chunk = "data: {\"a\":1}\n\ndata: {\"b\":2}\n\npartial";
     const { events, remainder } = parseSseBlocks(chunk);

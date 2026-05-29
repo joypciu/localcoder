@@ -192,7 +192,6 @@ export function DialogSessionList() {
           onTrigger: async (option) => {
             if (toDelete() === option.value) {
               const session = sessions().find((item) => item.id === option.value)
-              const status = session?.workspaceID ? project.workspace.status(session.workspaceID) : undefined
 
               try {
                 const result = await sdk.client.session.delete({
@@ -224,10 +223,12 @@ export function DialogSessionList() {
                 setToDelete(undefined)
                 return
               }
-              if (status && status !== "connected") {
-                await sync.session.refresh()
-              }
+              await sync.session.refresh()
               if (search()) await refetch()
+              if (currentSessionID() === option.value) {
+                route.navigate({ type: "home" })
+              }
+              toast.show({ variant: "info", message: "Session deleted" })
               setToDelete(undefined)
               return
             }

@@ -1473,21 +1473,37 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
 
   return (
     <>
-      <For each={props.parts}>
-        {(part, index) => {
-          const component = createMemo(() => PART_MAPPING[part.type as keyof typeof PART_MAPPING])
-          return (
-            <Show when={component()}>
-              <Dynamic
-                last={index() === props.parts.length - 1}
-                component={component()}
-                part={part as any}
-                message={props.message}
-              />
-            </Show>
-          )
-        }}
-      </For>
+      <Show when={props.message.summary}>
+        <box
+          marginTop={1}
+          border={["top"]}
+          title=" Compaction "
+          titleAlignment="center"
+          borderColor={theme.borderActive}
+          flexShrink={0}
+        >
+          <box paddingLeft={3} paddingTop={1}>
+            <text fg={theme.textMuted}>Context compacted.</text>
+          </box>
+        </box>
+      </Show>
+      <Show when={!props.message.summary}>
+        <For each={props.parts}>
+          {(part, index) => {
+            const component = createMemo(() => PART_MAPPING[part.type as keyof typeof PART_MAPPING])
+            return (
+              <Show when={component()}>
+                <Dynamic
+                  last={index() === props.parts.length - 1}
+                  component={component()}
+                  part={part as any}
+                  message={props.message}
+                />
+              </Show>
+            )
+          }}
+        </For>
+      </Show>
       <Show when={props.parts.some((x) => x.type === "tool" && x.tool === "task")}>
         <box paddingTop={1} paddingLeft={3}>
           <text fg={theme.text}>
@@ -1526,7 +1542,15 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
               >
                 ▣{" "}
               </span>{" "}
-              <span style={{ fg: theme.text }}>{props.message.agent === "plan" ? "Plan" : props.message.agent === "build" ? "Build" : Locale.titlecase(props.message.mode)}</span>
+              <span style={{ fg: theme.text }}>
+                {props.message.summary
+                  ? "Compaction"
+                  : props.message.agent === "plan"
+                    ? "Plan"
+                    : props.message.agent === "build"
+                      ? "Build"
+                      : Locale.titlecase(props.message.mode)}
+              </span>
               <span style={{ fg: theme.textMuted }}> · {model()}</span>
               <Show when={duration()}>
                 <span style={{ fg: theme.textMuted }}> · {Locale.duration(duration())}</span>

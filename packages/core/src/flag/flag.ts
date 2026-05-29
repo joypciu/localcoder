@@ -99,6 +99,8 @@ export const Flag = {
     LOCALCODER_EXPERIMENTAL ||
     truthy("LOCALCODER_EXPERIMENTAL_EVENT_SYSTEM") ||
     (!falsy("LOCALCODER_EXPERIMENTAL_EVENT_SYSTEM") && HTTPAPI_DEFAULT_ON_CHANNELS.has(InstallationChannel)),
+  LOCALCODER_EXPERIMENTAL_V2_MESSAGE_READS:
+    LOCALCODER_EXPERIMENTAL || truthy("LOCALCODER_EXPERIMENTAL_V2_MESSAGE_READS"),
 
   // Evaluated at access time (not module load) because tests, the CLI, and
   // external tooling set these env vars at runtime.

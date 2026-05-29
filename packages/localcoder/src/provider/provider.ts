@@ -240,7 +240,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
                 api: { npm: "@ai-sdk/openai-compatible", id: m.id, url: apiUrl },
                 limit: {
                   context: Number(process.env.LLAMACPP_CTX ?? 16384),
-                  output: Number(process.env.LLAMACPP_MAX_OUTPUT ?? 4096),
+                  output: LlamaSetup.llamaOutputLimit(Number(process.env.LLAMACPP_CTX ?? 16384)),
                 },
                 capabilities: {
                   reasoning: thinking,
@@ -1140,7 +1140,7 @@ function llamaCppConfiguredModel(input: {
   ctx: number
 }): Model {
   const thinking = LlamaSetup.resolveThinkingEnabled(input.modelPath)
-  const output = Number(process.env.LLAMACPP_MAX_OUTPUT ?? 4096)
+  const output = LlamaSetup.llamaOutputLimit(input.ctx)
   const idLower = input.modelId.toLowerCase()
   return {
     id: ModelID.make(input.modelId),
@@ -1437,11 +1437,16 @@ const layer: Layer.Layer<
           mergeProvider(providerID, { source: "config" })
         }
 
-        // load env
+        // load apikeys (before env so we can require explicit connect for some providers)
+        const auths = yield* auth.all().pipe(Effect.orDie)
+
+        // load env — skip providers that need explicit /connect (avoids surprise autoload from system env)
+        const ENV_REQUIRE_EXPLICIT_AUTH = new Set(["fireworks-ai"])
         const envs = yield* env.all()
         for (const [id, provider] of Object.entries(database)) {
           const providerID = ProviderID.make(id)
           if (disabled.has(providerID)) continue
+          if (ENV_REQUIRE_EXPLICIT_AUTH.has(providerID) && !auths[id]) continue
           const apiKey = provider.env.map((item) => envs[item]).find(Boolean)
           if (!apiKey) continue
           mergeProvider(providerID, {
@@ -1450,8 +1455,6 @@ const layer: Layer.Layer<
           })
         }
 
-        // load apikeys
-        const auths = yield* auth.all().pipe(Effect.orDie)
         for (const [id, provider] of Object.entries(auths)) {
           const providerID = ProviderID.make(id)
           if (disabled.has(providerID)) continue

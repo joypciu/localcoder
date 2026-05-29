@@ -13,14 +13,72 @@
 |------|--------|-------|
 | **Zero-config providers** | **Done (2026-05-29)** | llama.cpp + OpenRouter + OpenCode Go wizards; `auth set-api` |
 | **CLI reliability** | **Fixed** | Invalid model fail-fast (~2s); stdout progress; skip bundled plugin npm 404 |
-| **TUI + llama.cpp** | **Working** | Interactive `llamacpp setup`; autostart; ctx + thinking in wizards |
-| **Qwopus / Qwen3.5 agent** | **Fixed** | 16k ctx, tool-loop exit, thinking toggle |
+| **Visual regression** | **Done (2026-05-29)** | `scripts/visual-test/` — TUI + VS Code webview + app; wired into e2e:smoke |
+| **TUI llama/connect UX** | **Fixed** | `/connect` local-first; llama wizard; orphan-text crash; session delete refresh |
+| **Context / compaction** | **Fixed** | 128K ctx server restart; overflow budget; summary hidden (TUI + VS Code) |
+| **Webfetch bloat** | **Fixed** | Blocked-page detection; 12K char cap — reduces premature compaction |
 | **Desktop click-to-undo** | **Fixed** | Backend restores files + syncs messages |
 | **VS Code extension** | **Strong** | 84+ tests; zero-config wizards; SecretStorage; inline actions |
 | **Portable Windows build** | **Fast** | `build:win-standalone` ~2–4 min; fast pack ~1 min |
 | **Global CLI (Windows)** | **Fixed** | `bun run install:cli` from `dist/npm/localcoder` |
 | **Multi-agent / subagents** | **Functional** | Parallel coordinator; desktop UX lagging TUI |
 | **Internal architecture** | **In migration** | Effect services + v1/v2 dual-write |
+
+---
+
+## Session 6 — Visual testing, ctx restart, compaction UX (2026-05-29)
+
+### Visual regression tool (new)
+
+Automates UI testing that unit tests cannot cover:
+
+| Suite | Location | Engine |
+|-------|----------|--------|
+| CLI TUI | `packages/localcoder/test/visual/` | OpenTUI `testRender` + char-frame snapshots + mock keyboard |
+| VS Code chat | `packages/app/e2e/visual/vscode-chat.visual.spec.ts` | Playwright + mock `acquireVsCodeApi` |
+| Windows web UI | `packages/app/e2e/visual/app-shell.visual.spec.ts` | Playwright + Vite |
+| Desktop (optional) | `scripts/visual-test/suites/desktop/` | Electron CDP screenshot |
+
+```powershell
+bun run visual-test              # all suites
+bun run visual-test:update       # refresh baselines
+bun run e2e:smoke                # includes visual-smoke (tui + vscode)
+```
+
+Report: `scripts/visual-test/.artifacts/report.html`
+
+### TUI fixes (manual testing → automated)
+
+| Bug | Fix |
+|-----|-----|
+| OpenTUI orphan-text crash on string `description=` | `dialog-prompt.tsx` auto-wraps strings in `<text>` |
+| `/connect` cloud vs local llama confusion | Local `llama.cpp (local GGUF)` first; Meta cloud labeled separately |
+| Fireworks in `/models` without connect | `provider.ts` requires explicit auth |
+| Session delete didn't refresh list | `dialog-session-list.tsx` always refreshes + navigate home if current deleted |
+| False `· interrupted` on compaction stop | `processor.ts` — no abort error when compaction stops stream intentionally |
+| Compaction summary template visible in chat | `session/index.tsx` — summary messages show banner only |
+| Context meter 100% after 1–2 messages | `overflow.ts` softer llamacpp ≤32K budget; `prompt.ts` compact scheduling order |
+
+### 128K context not applying (root cause + fix)
+
+**Cause:** `llama-server` already running at old `-c` (e.g. 16384) was reused; config/provider updated but server was not restarted.
+
+**Fix:** `server.ts` — `forceRestart`, `stopOnPort`, ctx mismatch detection; wizard and "Restart server" pass `forceRestart: true`; `LLAMACPP_CTX` env set on save.
+
+**User action:** After changing ctx → `/llama` → **Restart server with saved config** (or re-run setup). Verify status shows `ctx 131072`. 128K on 9B Q6_K needs ample VRAM — use 32768/65536 if OOM.
+
+### VS Code + webfetch
+
+| Fix | File |
+|-----|------|
+| Compaction summary body hidden in webview | `chat.html` + `localcoder.ts` mapMessage `summary: true` |
+| Webfetch Google/Bing bloat → double compaction | `webfetch.ts` blocked-page message + 12K truncate |
+
+### Tests added
+
+- `packages/localcoder/test/visual/tui-dialogs.visual.test.tsx` (8 cases)
+- `packages/localcoder/test/session/overflow.test.ts`
+- `packages/app/e2e/visual/*.visual.spec.ts`
 
 ---
 
@@ -45,15 +103,18 @@
 | Log noise | Missing optional providers → debug, not error |
 | `run` progress | `… working` on busy; stderr/stdout flush for piped output |
 
-### E2E smoke (2026-05-29)
+### E2E & visual regression (2026-05-29)
 
 | Command | Time | Coverage |
 |---------|------|----------|
-| `bun run e2e:smoke` | ~15s | VS Code compile + 84 contract tests + CLI version/search/fail-fast |
-| `bun run e2e` | ~1–2 min | + llama setup/chat, agent bash, serve API + invalid-model gate, backend-live, Electron tests, desktop artifacts, Playwright UI |
-| `bun run e2e:full` | ~10–30 min | + portable build, headed `LocalCoder.exe` launch, live llama VS Code E2E (skip with `E2E_SKIP_LLAMA_VSCODE=1`) |
+| `bun run visual-test` | ~1 min | TUI char-frame snapshots + VS Code webview + app UI screenshots (+ optional desktop CDP) |
+| `bun run e2e:smoke` | ~30–60s | VS Code compile + unit + **visual-smoke** + CLI version/search/fail-fast |
+| `bun run e2e` | ~2–4 min | + llama, agent, serve, Electron, desktop artifacts, **visual-standard** (app UI) |
+| `bun run e2e:full` | ~10–30 min | + portable build, headed LocalCoder.exe, live llama VS Code E2E |
 
-Legacy wrappers: `scripts/e2e-full-windows.ts` (→ full), `scripts/readiness-windows.ts` (→ standard, skip build).
+Skip visual: `E2E_SKIP_VISUAL=1`. Update baselines: `bun run visual-test:update`.
+
+Legacy wrappers: `scripts/e2e-full-windows.ts` (→ full), `scripts/readiness-windows.ts` (→ standard).
 
 ---
 

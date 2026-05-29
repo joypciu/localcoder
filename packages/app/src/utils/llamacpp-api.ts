@@ -55,7 +55,14 @@ export async function getLlamaCppStatus(server: ServerConnection.HttpBase) {
 
 export async function setupLlamaCpp(
   server: ServerConnection.HttpBase,
-  body: { llamaDir: string; modelPath: string; autoStart?: boolean; ctx?: number; thinking?: boolean },
+  body: {
+    llamaDir: string
+    modelPath: string
+    autoStart?: boolean
+    ctx?: number
+    thinking?: boolean
+    forceRestart?: boolean
+  },
 ) {
   const res = await fetch(`${server.url}/global/llamacpp/setup`, {
     method: "POST",

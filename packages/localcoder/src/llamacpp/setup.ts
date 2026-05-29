@@ -173,6 +173,14 @@ export function defaultContextSize(modelPath?: string) {
   return 16384
 }
 
+export function llamaOutputLimit(ctx: number) {
+  const env = Number(process.env.LLAMACPP_MAX_OUTPUT ?? 4096)
+  if (ctx <= 32_768) {
+    return Math.min(env, Math.max(1536, Math.floor(ctx * 0.15)))
+  }
+  return env
+}
+
 export function setupHint(): string {
   return [
     "Local llama.cpp setup:",
