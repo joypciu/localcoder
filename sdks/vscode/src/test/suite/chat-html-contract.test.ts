@@ -26,8 +26,11 @@ suite("Chat webview contract", () => {
   test("undo UI: revert all and per-file", () => {
     assert.ok(html.includes("doRevert"));
     assert.ok(html.includes("doRevertFile"));
+    assert.ok(html.includes("doAcceptFile"));
     assert.ok(html.includes("undoLastTurn"));
     assert.ok(html.includes("undoFile"));
+    assert.ok(html.includes("acceptChanges"));
+    assert.ok(html.includes("acceptFile"));
   });
 
   test("agent mode selector", () => {

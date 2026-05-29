@@ -29,6 +29,32 @@ abstract class ChatProviderBase {
   private _runningTools = new Map<string, { name: string; input?: Record<string, unknown> }>();
   private _hasUndo = false;
   protected _workspaceMeta?: WorkspaceMeta;
+  private _reviewRefresh?: vscode.EventEmitter<void>;
+
+  setReviewRefresh(refresh: vscode.EventEmitter<void>) {
+    this._reviewRefresh = refresh;
+  }
+
+  private updateReviewContext() {
+    void vscode.commands.executeCommand("setContext", "localcoder.hasPendingDiff", this._turnSnapshots.size > 0);
+    this._reviewRefresh?.fire();
+  }
+
+  getPendingReviewPaths(): string[] {
+    return [...this._turnSnapshots.keys()];
+  }
+
+  async commandAcceptChanges(paths?: string[]) {
+    await this.acceptChanges(paths);
+  }
+
+  async commandAcceptFile(filePath: string) {
+    await this.acceptChanges([filePath]);
+  }
+
+  async commandRejectFile(filePath: string) {
+    await this.restoreOneFile(filePath);
+  }
 
   constructor(protected readonly _context: vscode.ExtensionContext) {
     this._extensionPath = _context.extensionPath;
@@ -198,10 +224,12 @@ abstract class ChatProviderBase {
       const content = await vscode.workspace.fs.readFile(uri);
       this._turnSnapshots.set(abs, content);
       log(`SNAP ${filePath}`);
+      this.updateReviewContext();
     } catch {
       // File doesn't exist yet (new file being created) — snapshot null so we
       // know to delete it on undo.
       this._turnSnapshots.set(abs, null);
+      this.updateReviewContext();
     }
   }
 
@@ -257,6 +285,7 @@ abstract class ChatProviderBase {
     this._turnSnapshots.clear();
     this._hasUndo = false;
     this.postMessage({ type: "undone", count });
+    this.updateReviewContext();
     log(`UNDO restored ${count} file(s)`);
   }
 
@@ -321,7 +350,30 @@ abstract class ChatProviderBase {
     this._turnSnapshots.delete(abs);
     if (this._turnSnapshots.size === 0) { this._hasUndo = false; }
     this.postMessage({ type: "fileUndone", path: abs });
+    this.updateReviewContext();
     log(`UNDO one file ${abs}`);
+  }
+
+  private async acceptChanges(paths?: string[]) {
+    if (this._turnSnapshots.size === 0) {
+      this.postMessage({ type: "error", message: "No pending changes to accept." });
+      return;
+    }
+
+    const targets =
+      paths?.map((p) => this.resolveFilePath(p)) ?? [...this._turnSnapshots.keys()];
+    let count = 0;
+    for (const abs of targets) {
+      if (this._turnSnapshots.delete(abs)) {
+        count++;
+      }
+    }
+    if (this._turnSnapshots.size === 0) {
+      this._hasUndo = false;
+    }
+    this.postMessage({ type: "changesAccepted", count, paths: targets });
+    this.updateReviewContext();
+    log(`ACCEPT ${count} file(s)`);
   }
 
   private async maybeOpenDiff(tool: { name: string; input?: Record<string, unknown> }) {
@@ -553,6 +605,7 @@ abstract class ChatProviderBase {
           this._turnSnapshots.clear();
           this._runningTools.clear();
           this._hasUndo = false;
+          this.updateReviewContext();
 
           const sessionId = backend.getActiveSessionId() || msg.sessionId;
           backend.setActiveSessionId(sessionId);
@@ -621,6 +674,14 @@ abstract class ChatProviderBase {
 
         case "undoFile":
           if (msg.path) { await this.restoreOneFile(msg.path); }
+          break;
+
+        case "acceptChanges":
+          await this.acceptChanges(msg.paths);
+          break;
+
+        case "acceptFile":
+          if (msg.path) { await this.acceptChanges([msg.path]); }
           break;
 
         case "listFiles": {

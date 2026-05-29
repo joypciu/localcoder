@@ -63,6 +63,8 @@ import {
 import { stepDesktopExeLaunch, stepPlaywrightApp } from "./steps/playwright"
 
 async function runTier(tier: E2eTier) {
+  process.env.LOCALCODER_EXPERIMENTAL_EVENT_SYSTEM ??= "1"
+
   if (process.platform !== "win32") {
     fail("preflight", "E2E tiers are designed for Windows (CLI binary + desktop artifacts)")
   }

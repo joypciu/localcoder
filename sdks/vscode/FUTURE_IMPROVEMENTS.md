@@ -33,7 +33,7 @@
 
 ## High priority (next)
 
-- [ ] **Native diff apply/reject** — inline accept/reject in editor (beyond snapshot undo)
+- [x] **Native diff apply/reject** — Accept/Reject in chat changes bar, diff editor title, CodeLens, Ctrl+Shift+Y/N
 - [x] **MCP panel** — MCP servers listed in Settings overlay (empty state when none configured)
 - [ ] **Model picker** — dropdown from connected provider model list
 - [ ] **Reliable stop-button sync** during abort

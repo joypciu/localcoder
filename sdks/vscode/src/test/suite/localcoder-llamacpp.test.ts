@@ -62,6 +62,9 @@ function writeProjectConfig(workDir: string, modelId: string): void {
         },
         permission: {
           "*": "allow",
+          write: "allow",
+          edit: "allow",
+          bash: "allow",
           session_search: "deny",
           list: "deny",
           grep: "deny",
@@ -122,6 +125,29 @@ async function sendAndCollect(
 
 function hasCompletedTool(calls: ToolCall[], name: string): boolean {
   return calls.some((t) => t.name === name && t.status === "completed");
+}
+
+async function sendWithToolRetry(
+  backend: LocalcoderBackend,
+  prompt: string,
+  toolNames: string[],
+  retryPrompt: string,
+  agent = "build",
+): Promise<{ content: string; toolCalls: ToolCall[]; error?: string }> {
+  let result = await sendAndCollect(backend, prompt, agent);
+  if (result.error) {
+    return result;
+  }
+  let tools = await pollCompletedTools(backend, toolNames, 45_000);
+  if (toolNames.every((n) => hasCompletedTool(tools, n))) {
+    return { ...result, toolCalls: tools };
+  }
+  console.log(
+    `[llamacpp-e2e] retry ${toolNames.join("+")} — first: ${tools.map((t) => `${t.name}:${t.status}`).join(",") || "none"}`,
+  );
+  result = await sendAndCollect(backend, retryPrompt, agent);
+  tools = await pollCompletedTools(backend, toolNames, 60_000);
+  return { ...result, toolCalls: tools };
 }
 
 async function pollCompletedTools(
@@ -217,20 +243,27 @@ suite("LocalCoder VS Code extension — real llama.cpp E2E", function () {
     }
 
     pyFile = path.join(workDir, "hello.py");
-    const prompt =
-      `IMPORTANT: You MUST call a tool. Do not describe what you will do — call the write tool immediately with these exact inputs:\n` +
-      `filePath="${pyFile}"\n` +
-      `content=\n` +
+    const pyContent =
       `def greet(name: str) -> str:\n` +
-      `    return f"Hello, {name}!"\n\n` +
-      `Call the write tool RIGHT NOW. No explanation needed.`;
+      `    return f"Hello, {name}!"\n`;
+    const prompt =
+      `You are in tool-call mode. Output ONLY a write tool call — no prose, no markdown, no thinking tags.\n` +
+      `write tool inputs:\n` +
+      `- filePath: "${pyFile}"\n` +
+      `- content: ${JSON.stringify(pyContent)}\n` +
+      `Invoke write now.`;
 
-    const result = await sendAndCollect(backend, prompt);
+    const result = await sendWithToolRetry(
+      backend,
+      prompt,
+      ["write"],
+      `TOOL CALL REQUIRED: write filePath="${pyFile}" content=${JSON.stringify(pyContent)}`,
+    );
     if (result.error) {
       assert.fail(`sendMessage failed: ${result.error}`);
     }
 
-    const tools = await pollCompletedTools(backend, ["write"]);
+    const tools = result.toolCalls;
     console.log(
       `[llamacpp-e2e] write tools: ${tools.map((t) => `${t.name}:${t.status}`).join(",") || "(none)"}`,
     );
@@ -307,25 +340,19 @@ suite("LocalCoder VS Code extension — real llama.cpp E2E", function () {
     await backend.start();
 
     const editPrompt =
-      `IMPORTANT: You MUST call tools. Do not describe what you will do.\n` +
-      `The file "${pyFile}" contains:\n\n${before}\n\n` +
-      `1. Call read on filePath="${pyFile}"\n` +
-      `2. Call edit with filePath="${pyFile}", oldString=${JSON.stringify(oldString)}, newString=${JSON.stringify(newString)}\n` +
-      `Call edit RIGHT NOW after read. No explanation.`;
+      `Tool-call mode only. Steps:\n` +
+      `1. read filePath="${pyFile}"\n` +
+      `2. edit filePath="${pyFile}" oldString=${JSON.stringify(oldString)} newString=${JSON.stringify(newString)}\n` +
+      `No explanation — call read then edit.`;
 
-    await sendAndCollect(backend, editPrompt);
+    await sendWithToolRetry(
+      backend,
+      editPrompt,
+      ["edit"],
+      `edit ONLY: filePath="${pyFile}" oldString=${JSON.stringify(oldString)} newString=${JSON.stringify(newString)}`,
+    );
 
-    let tools = await pollCompletedTools(backend, ["edit"], 60_000);
-    if (!hasCompletedTool(tools, "edit")) {
-      console.log(
-        `[llamacpp-e2e] edit retry — first attempt tools: ${tools.map((t) => `${t.name}:${t.status}`).join(",") || "none"}`,
-      );
-      await sendAndCollect(
-        backend,
-        `Call edit NOW: filePath="${pyFile}", oldString=${JSON.stringify(oldString)}, newString=${JSON.stringify(newString)}. ONLY edit.`,
-      );
-      tools = await pollCompletedTools(backend, ["edit"], 60_000);
-    }
+    let tools = await pollCompletedTools(backend, ["edit"], 30_000);
 
     console.log(
       `[llamacpp-e2e] edit tools: ${tools.map((t) => `${t.name}:${t.status}`).join(",") || "(none)"}`,

@@ -114,9 +114,35 @@
       {
         "command": "localcoder.editSelection",
         "title": "LocalCoder: Edit Selection"
+      },
+      {
+        "command": "localcoder.acceptDiff",
+        "title": "LocalCoder: Accept Change",
+        "icon": "$(check)"
+      },
+      {
+        "command": "localcoder.rejectDiff",
+        "title": "LocalCoder: Reject Change",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "localcoder.acceptAllChanges",
+        "title": "LocalCoder: Accept All Pending Changes"
       }
     ],
     "menus": {
+      "diffEditor/title": [
+        {
+          "command": "localcoder.acceptDiff",
+          "when": "localcoder.hasPendingDiff",
+          "group": "navigation@1"
+        },
+        {
+          "command": "localcoder.rejectDiff",
+          "when": "localcoder.hasPendingDiff",
+          "group": "navigation@2"
+        }
+      ],
       "editor/title": [
         {
           "command": "localcoder.openChat",
@@ -179,6 +205,18 @@
         "command": "localcoder.addSelectionToChat",
         "key": "ctrl+shift+a",
         "mac": "cmd+shift+a"
+      },
+      {
+        "command": "localcoder.acceptDiff",
+        "key": "ctrl+shift+y",
+        "mac": "cmd+shift+y",
+        "when": "localcoder.hasPendingDiff"
+      },
+      {
+        "command": "localcoder.rejectDiff",
+        "key": "ctrl+shift+n",
+        "mac": "cmd+shift+n",
+        "when": "localcoder.hasPendingDiff"
       }
     ],
     "configuration": {

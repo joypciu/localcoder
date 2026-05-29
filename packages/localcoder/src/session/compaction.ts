@@ -19,7 +19,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { isOverflow as overflow, usable } from "./overflow"
 import { makeRuntime } from "@/effect/run-service"
 import { fn } from "@/util/fn"
-import { EventV2 } from "@/v2/event"
+import { SessionEventEmit } from "@/v2/session-event-emit"
 import { SessionEvent } from "@/v2/session-event"
 
 const log = Log.create({ service: "session.compaction" })
@@ -571,9 +571,9 @@ export const layer: Layer.Layer<
             parts: [],
           },
         )
-        EventV2.run(SessionEvent.Compaction.Ended.Sync, {
+        SessionEventEmit.emit(SessionEvent.Compaction.Ended.Sync, {
           sessionID: input.sessionID,
-          timestamp: DateTime.makeUnsafe(Date.now()),
+          timestamp: SessionEventEmit.now(),
           text: summary ?? "",
           include: selected.tail_start_id,
         })
@@ -605,9 +605,9 @@ export const layer: Layer.Layer<
         auto: input.auto,
         overflow: input.overflow,
       })
-      EventV2.run(SessionEvent.Compaction.Started.Sync, {
+      SessionEventEmit.emit(SessionEvent.Compaction.Started.Sync, {
         sessionID: input.sessionID,
-        timestamp: DateTime.makeUnsafe(Date.now()),
+        timestamp: SessionEventEmit.now(),
         reason: input.auto ? "auto" : "manual",
       })
     })

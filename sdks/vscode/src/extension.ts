@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { ChatPanelProvider, ChatSidebarProvider, chatProviderRef } from "./chat-panel";
 import { registerInlineActions } from "./inline-actions";
+import { registerDiffReview } from "./diff-review";
 import { runLlamaSetupWizard } from "./llama-setup";
 import { configureCloudProvider, pickAndConfigureCloudProvider, CLOUD_PROVIDER_PRESETS } from "./provider-setup";
 
@@ -21,7 +22,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // Sidebar chat (Activity Bar icon) — primary entry point
   registerInlineActions(context);
+  const reviewRefresh = registerDiffReview(context);
   const sidebarProvider = new ChatSidebarProvider(context);
+  sidebarProvider.setReviewRefresh(reviewRefresh);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       ChatSidebarProvider.viewType,

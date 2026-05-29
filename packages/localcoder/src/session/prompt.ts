@@ -54,7 +54,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { TaskTool, type TaskPromptOps } from "@/tool/task"
 import { SessionRunState } from "./run-state"
 import { EffectBridge } from "@/effect/bridge"
-import { EventV2 } from "@/v2/event"
+import { SessionEventEmit } from "@/v2/session-event-emit"
 import { SessionEvent } from "@/v2/session-event"
 import { Modelv2 } from "@/v2/model"
 import { AgentAttachment, FileAttachment, Source } from "@/v2/session-prompt"
@@ -808,7 +808,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
               },
             }
             yield* sessions.updatePart(part)
-            EventV2.run(SessionEvent.Shell.Started.Sync, {
+            SessionEventEmit.emit(SessionEvent.Shell.Started.Sync, {
               sessionID: input.sessionID,
               timestamp: DateTime.makeUnsafe(started),
               callID,
@@ -829,7 +829,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
                 output += "\n\n" + ["<metadata>", "User aborted the command", "</metadata>"].join("\n")
               }
               const completed = Date.now()
-              EventV2.run(SessionEvent.Shell.Ended.Sync, {
+              SessionEventEmit.emit(SessionEvent.Shell.Ended.Sync, {
                 sessionID: input.sessionID,
                 timestamp: DateTime.makeUnsafe(completed),
                 callID: part.callID,
@@ -965,7 +965,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
           .get(),
       )
       if (current?.agent !== info.agent) {
-        EventV2.run(SessionEvent.AgentSwitched.Sync, {
+        SessionEventEmit.emit(SessionEvent.AgentSwitched.Sync, {
           sessionID: input.sessionID,
           timestamp: DateTime.makeUnsafe(info.time.created),
           agent: info.agent,
@@ -976,7 +976,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         current.model.id !== info.model.modelID ||
         current.model.variant !== info.model.variant
       ) {
-        EventV2.run(SessionEvent.ModelSwitched.Sync, {
+        SessionEventEmit.emit(SessionEvent.ModelSwitched.Sync, {
           sessionID: input.sessionID,
           timestamp: DateTime.makeUnsafe(info.time.created),
           model: {
@@ -1349,7 +1349,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
         },
       )
       // TODO(v2): Temporary dual-write while migrating session messages to v2 events.
-      EventV2.run(SessionEvent.Prompted.Sync, {
+      SessionEventEmit.emit(SessionEvent.Prompted.Sync, {
         sessionID: input.sessionID,
         timestamp: DateTime.makeUnsafe(info.time.created),
         prompt: {
@@ -1360,7 +1360,7 @@ NOTE: At any point in time through this workflow you should feel free to ask the
       })
       for (const text of nextPrompt.synthetic) {
         // TODO(v2): Temporary dual-write while migrating session messages to v2 events.
-        EventV2.run(SessionEvent.Synthetic.Sync, {
+        SessionEventEmit.emit(SessionEvent.Synthetic.Sync, {
           sessionID: input.sessionID,
           timestamp: DateTime.makeUnsafe(info.time.created),
           text,
