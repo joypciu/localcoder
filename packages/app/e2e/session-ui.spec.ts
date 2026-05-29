@@ -22,4 +22,11 @@ test.describe("LocalCoder app session UI", () => {
     const palette = page.locator('[data-component="command-palette"]')
     await expect(palette).toBeVisible({ timeout: 10_000 })
   })
+
+  test("session composer includes context meter hook", async ({ page }) => {
+    await page.goto("/")
+    const meter = page.locator('[data-component="session-context-meter"]')
+    const composer = page.locator('[data-component="session-prompt-dock"]')
+    await expect(composer.or(meter).first()).toBeAttached({ timeout: 30_000 })
+  })
 })

@@ -156,7 +156,15 @@ abstract class ChatProviderBase {
       if (sid) {
         const todos = await backend.getTodos(sid);
         this.postMessage({ type: "todos", sessionId: sid, todos });
+        await this.postSessionNav(backend, sid);
       }
+    } catch { /* ignore */ }
+  }
+
+  protected async postSessionNav(backend: LocalcoderBackend, sessionId: string) {
+    try {
+      const nav = await backend.fetchSessionNav(sessionId);
+      this.postMessage({ type: "sessionNav", sessionId, nav: nav ?? null });
     } catch { /* ignore */ }
   }
 
@@ -554,6 +562,7 @@ abstract class ChatProviderBase {
           if (backend instanceof LocalcoderBackend) {
             const todos = await backend.getTodos(msg.sessionId);
             this.postMessage({ type: "todos", sessionId: msg.sessionId, todos });
+            await this.postSessionNav(backend, msg.sessionId);
           }
           break;
         }

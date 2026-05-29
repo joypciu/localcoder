@@ -12,13 +12,13 @@ suite("Chat webview contract", () => {
   });
 
   test("required DOM ids present", () => {
-    for (const id of ["hdr", "msgs", "inp", "snd", "conn-dot", "agent-sel", "mention-box", "cfg-overlay", "ses-overlay", "usage-bar", "usage-ctx-bar", "status-bar", "attach-row", "todo-panel", "model-badge", "queue-badge", "cfg-model", "mcp-info", "mcp-list"]) {
+    for (const id of ["hdr", "msgs", "inp", "snd", "conn-dot", "agent-sel", "hdr-model-sel", "subagent-bar", "mention-box", "cfg-overlay", "ses-overlay", "usage-bar", "usage-ctx-bar", "status-bar", "attach-row", "todo-panel", "model-badge", "queue-badge", "cfg-model", "mcp-info", "mcp-list"]) {
       assert.ok(html.includes(`id="${id}"`), `missing #${id}`);
     }
   });
 
   test("message types handled in webview", () => {
-    for (const t of ["streamDelta", "streamReasoningDelta", "streamStart", "toolCall", "toolResult", "streamDone", "undone", "fileSuggestions", "insertText", "fileUndone", "usage", "agentStatus", "compactDone", "workspaceMeta", "todos", "sessionStatus"]) {
+    for (const t of ["streamDelta", "streamReasoningDelta", "streamStart", "toolCall", "toolResult", "streamDone", "undone", "fileSuggestions", "insertText", "fileUndone", "usage", "agentStatus", "compactDone", "workspaceMeta", "todos", "sessionStatus", "sessionNav"]) {
       assert.ok(html.includes(`'${t}'`) || html.includes(`"${t}"`), `missing handler ${t}`);
     }
   });
@@ -37,6 +37,20 @@ suite("Chat webview contract", () => {
     assert.ok(html.includes('id="agent-sel"'));
     assert.ok(html.includes('value="build"'));
     assert.ok(html.includes('value="plan"'));
+  });
+
+  test("header model picker and subagent navigation", () => {
+    assert.ok(html.includes('id="hdr-model-sel"'));
+    assert.ok(html.includes("populateModelSelects"));
+    assert.ok(html.includes("switchModel"));
+    assert.ok(html.includes("renderSessionNav"));
+    assert.ok(html.includes('id="subagent-parent"'));
+    assert.ok(html.includes("loadSubagentSession"));
+  });
+
+  test("abort clears busy state on idle agentStatus", () => {
+    assert.ok(html.includes("m.status === 'idle'"));
+    assert.ok(html.includes("setBusy(false)"));
   });
 
   test("@ mention triggers listFiles", () => {

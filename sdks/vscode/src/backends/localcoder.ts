@@ -32,6 +32,13 @@ export type WorkspaceMeta = {
   models?: Array<{ id: string; name: string }>;
 };
 
+export type SessionNav = {
+  parentID: string;
+  title?: string;
+  siblings: Array<{ id: string; title: string }>;
+  index: number;
+};
+
 function stripThinkingFromText(text: string): string {
   return text
     .replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, "")
@@ -460,9 +467,30 @@ export class LocalcoderBackend implements ChatBackend {
 
   abort(): void {
     this._abortController?.abort();
+    this._abortController = undefined;
+    this._streamCallbacks = undefined;
     if (this._activeSessionId) {
       this.apiFetch(`/session/${this._activeSessionId}/abort`, { method: "POST" }).catch(() => {});
     }
+    this._pushListener?.({ type: "agentStatus", status: "idle" });
+  }
+
+  async fetchSessionNav(sessionId: string): Promise<SessionNav | undefined> {
+    const sessionRes = await this.apiFetch(`/session/${sessionId}`);
+    if (!sessionRes.ok) { return undefined; }
+    const info = (await sessionRes.json()) as { parentID?: string; title?: string };
+    if (!info.parentID) { return undefined; }
+    const childrenRes = await this.apiFetch(`/session/${info.parentID}/children`);
+    if (!childrenRes.ok) { return undefined; }
+    const siblings = (await childrenRes.json()) as Array<{ id: string; title?: string }>;
+    const index = siblings.findIndex((s) => s.id === sessionId) + 1;
+    const titleMatch = info.title?.match(/@(\w+) subagent/i);
+    return {
+      parentID: info.parentID,
+      title: titleMatch ? titleMatch[1].charAt(0).toUpperCase() + titleMatch[1].slice(1) : info.title,
+      siblings: siblings.map((s) => ({ id: s.id, title: s.title || s.id })),
+      index: index > 0 ? index : 1,
+    };
   }
 
   async listSessions(query?: string): Promise<{ id: string; title: string }[]> {

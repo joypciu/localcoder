@@ -179,10 +179,28 @@ html, body {
 #queue-badge.show { display: block }
 
 #model-badge {
-  font-size: 10px; color: var(--fg3); background: var(--bg3); border: 1px solid var(--bdr2);
-  padding: 1px 6px; border-radius: 8px; max-width: 140px; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
+  display: none;
 }
+#hdr-model-sel, #agent-sel {
+  background: var(--bg3); color: var(--fg); border: 1px solid var(--bdr2); border-radius: 4px;
+  font-size: 11px; padding: 2px 6px; cursor: pointer;
+}
+#hdr-model-sel { max-width: 120px; }
+#agent-sel { max-width: 72px; }
+
+#subagent-bar {
+  display: none; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 6px 12px; font-size: 11px; color: var(--fg2);
+  border-bottom: 1px solid var(--bdr); background: var(--bg2);
+}
+#subagent-bar.show { display: flex; }
+#subagent-bar .subagent-actions { display: flex; gap: 4px; }
+#subagent-bar button {
+  background: var(--bg3); border: 1px solid var(--bdr2); color: var(--fg2);
+  border-radius: 4px; font-size: 10px; padding: 2px 8px; cursor: pointer;
+}
+#subagent-bar button:hover:not(:disabled) { color: var(--fg); border-color: var(--acc); }
+#subagent-bar button:disabled { opacity: .4; cursor: default; }
 
 /* ── MESSAGES ── */
 #msgs {
@@ -494,10 +512,6 @@ kbd { background: var(--bg3); border: 1px solid var(--bdr2); border-radius: 3px;
 /* accessibility */
 :focus-visible { outline: 1px solid var(--foc); outline-offset: -1px }
 button:focus:not(:focus-visible) { outline: none }
-#agent-sel {
-  background: var(--bg3); color: var(--fg); border: 1px solid var(--bdr2); border-radius: 4px;
-  font-size: 11px; padding: 2px 6px; cursor: pointer; max-width: 72px;
-}
 #mention-box {
   display: none; position: absolute; bottom: 100%; left: 0; right: 0; max-height: 160px;
   overflow-y: auto; background: var(--bg2); border: 1px solid var(--bdr); border-radius: 6px;
@@ -517,6 +531,7 @@ button:focus:not(:focus-visible) { outline: none }
   <div id="conn-dot" class="wait"></div>
   <div id="hdr-title">LocalCoder</div>
   <span id="model-badge" title="Active model"></span>
+  <select id="hdr-model-sel" title="Model" style="display:none"><option value="">Model…</option></select>
   <button class="hdr-btn" id="btn-ses" title="Session history">🕐</button>
   <select id="agent-sel" title="Agent mode"><option value="build">Build</option><option value="plan">Plan</option></select>
   <button class="hdr-btn" id="btn-compact" title="Compact session context">⊟</button>
@@ -575,6 +590,15 @@ button:focus:not(:focus-visible) { outline: none }
       <input id="ses-search" type="search" placeholder="Search sessions…" autocomplete="off">
     </div>
     <div id="ses-list"></div>
+  </div>
+</div>
+
+<div id="subagent-bar">
+  <span id="subagent-label">Subagent</span>
+  <div class="subagent-actions">
+    <button type="button" id="subagent-parent">Parent</button>
+    <button type="button" id="subagent-prev">Prev</button>
+    <button type="button" id="subagent-next">Next</button>
   </div>
 </div>
 
@@ -694,6 +718,8 @@ var $todoPanel = document.getElementById('todo-panel');
 var $todoList = document.getElementById('todo-list');
 var $todoCount = document.getElementById('todo-count');
 var $modelBadge = document.getElementById('model-badge');
+var $hdrModelSel = document.getElementById('hdr-model-sel');
+var $subagentBar = document.getElementById('subagent-bar');
 var $queueBadge = document.getElementById('queue-badge');
 var sesSearchTimer = null;
 
@@ -820,14 +846,55 @@ function renderTodos(todos) {
   });
 }
 
+function populateModelSelects(meta) {
+  var selects = [document.getElementById('cfg-model'), $hdrModelSel].filter(Boolean);
+  if (!meta || !meta.models || !meta.models.length) {
+    selects.forEach(function(sel) { if (sel === $hdrModelSel) { sel.style.display = 'none'; } });
+    return;
+  }
+  var active = meta.model || '';
+  selects.forEach(function(sel) {
+    sel.innerHTML = '';
+    meta.models.forEach(function(m) {
+      var o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = (m.name || m.id).split('/').pop() || m.id;
+      o.title = m.id;
+      if (m.id === active || active.endsWith('/' + m.id) || active.endsWith(m.id)) { o.selected = true; }
+      sel.appendChild(o);
+    });
+    if (sel === $hdrModelSel) { sel.style.display = ''; }
+  });
+}
+
+function renderSessionNav(nav) {
+  if (!$subagentBar) { return; }
+  S.sessionNav = nav || null;
+  if (!nav || !nav.parentID) {
+    $subagentBar.classList.remove('show');
+    return;
+  }
+  $subagentBar.classList.add('show');
+  var label = document.getElementById('subagent-label');
+  if (label) {
+    var title = nav.title || 'Subagent';
+    var count = nav.siblings && nav.siblings.length > 1 ? ' (' + nav.index + '/' + nav.siblings.length + ')' : '';
+    label.textContent = title + count;
+  }
+  var prev = document.getElementById('subagent-prev');
+  var next = document.getElementById('subagent-next');
+  if (prev) { prev.disabled = !nav.siblings || nav.index <= 1; }
+  if (next) { next.disabled = !nav.siblings || nav.index >= nav.siblings.length; }
+}
+
 function applyWorkspaceMeta(meta) {
   if (!meta) { return; }
   S.workspaceMeta = meta;
+  populateModelSelects(meta);
   if ($modelBadge && meta.model) {
     var short = String(meta.model).split('/').pop() || meta.model;
     $modelBadge.textContent = short;
     $modelBadge.title = meta.model;
-    $modelBadge.style.display = '';
   }
   var ag = document.getElementById('agent-sel');
   if (ag && meta.agents && meta.agents.length) {
@@ -854,19 +921,6 @@ function applyWorkspaceMeta(meta) {
       mcpList.textContent = 'None configured — add MCP servers in localcoder.json';
       mcpList.style.color = 'var(--fg3)';
     }
-  }
-  var modelSel = document.getElementById('cfg-model');
-  if (modelSel && meta.models && meta.models.length) {
-    var active = meta.model || '';
-    modelSel.innerHTML = '';
-    meta.models.forEach(function(m) {
-      var o = document.createElement('option');
-      o.value = m.id;
-      o.textContent = (m.name || m.id).split('/').pop() || m.id;
-      o.title = m.id;
-      if (m.id === active || active.endsWith('/' + m.id) || active.endsWith(m.id)) { o.selected = true; }
-      modelSel.appendChild(o);
-    });
   }
 }
 
@@ -1466,6 +1520,7 @@ function doSend() {
 function newSession() {
   closeOverlays();
   S.session = null; S.messages = []; persistUiState();
+  renderSessionNav(null);
   post({ type: 'newSession' });
   $msgs.innerHTML = '';
   var e = document.createElement('div');
@@ -1533,6 +1588,7 @@ window.addEventListener('message', function(e) {
         document.getElementById('cfg-key').value = m.config.openaiKey || '';
       }
       if (m.defaultAgent) { S.defaultAgent = m.defaultAgent; var ag = document.getElementById('agent-sel'); if (ag) ag.value = m.defaultAgent; }
+      if (m.backend !== 'openai') { post({ type: 'listModels' }); }
       post({ type: 'listSessions' }); break;
 
     case 'streamStart':
@@ -1558,8 +1614,17 @@ window.addEventListener('message', function(e) {
       break;
 
     case 'sessionStatus':
-      if (m.status === 'busy' || m.status === 'running') { setAgentStatus('Agent working…', true); }
-      else if (m.status === 'idle') { setAgentStatus('', false); }
+      if (m.status === 'busy' || m.status === 'running') {
+        if (!S.busy) { setBusy(true); }
+        setAgentStatus('Agent working…', true);
+      } else if (m.status === 'idle') {
+        setBusy(false);
+        setAgentStatus('', false);
+      }
+      break;
+
+    case 'sessionNav':
+      if (!m.sessionId || !S.session || m.sessionId === S.session) { renderSessionNav(m.nav); }
       break;
 
     case 'modelSwitched':
@@ -1630,10 +1695,13 @@ window.addEventListener('message', function(e) {
     }
 
     case 'agentStatus': {
-      if (!S.busy) { break; }
-      if (m.status === 'idle') { setAgentStatus('', false); }
-      else if (m.status === 'tool' && m.tool) { setAgentStatus('Running ' + m.tool + '…', true); }
-      else if (m.status === 'thinking') { setAgentStatus('Agent working…', true); }
+      if (m.status === 'idle') {
+        setBusy(false);
+        setAgentStatus('', false);
+      } else if (S.busy) {
+        if (m.status === 'tool' && m.tool) { setAgentStatus('Running ' + m.tool + '…', true); }
+        else if (m.status === 'thinking') { setAgentStatus('Agent working…', true); }
+      }
       break;
     }
 
@@ -1881,6 +1949,43 @@ document.getElementById('cfg-save').addEventListener('click', function() {
 document.getElementById('cfg-model').addEventListener('change', function() {
   if (this.value) { post({ type: 'switchModel', model: this.value }); }
 });
+
+function loadSubagentSession(id) {
+  closeOverlays();
+  S.session = id; S.messages = []; persistUiState();
+  $msgs.innerHTML = ''; $empty = null;
+  post({ type: 'loadMessages', sessionId: id });
+}
+
+if ($hdrModelSel) {
+  $hdrModelSel.addEventListener('change', function() {
+    if (this.value) { post({ type: 'switchModel', model: this.value }); }
+  });
+  $hdrModelSel.addEventListener('focus', function() { post({ type: 'listModels' }); });
+}
+
+var $subagentParent = document.getElementById('subagent-parent');
+var $subagentPrev = document.getElementById('subagent-prev');
+var $subagentNext = document.getElementById('subagent-next');
+if ($subagentParent) {
+  $subagentParent.addEventListener('click', function() {
+    if (S.sessionNav && S.sessionNav.parentID) { loadSubagentSession(S.sessionNav.parentID); }
+  });
+}
+if ($subagentPrev) {
+  $subagentPrev.addEventListener('click', function() {
+    var nav = S.sessionNav;
+    if (!nav || !nav.siblings || nav.index <= 1) { return; }
+    loadSubagentSession(nav.siblings[nav.index - 2].id);
+  });
+}
+if ($subagentNext) {
+  $subagentNext.addEventListener('click', function() {
+    var nav = S.sessionNav;
+    if (!nav || !nav.siblings || nav.index >= nav.siblings.length) { return; }
+    loadSubagentSession(nav.siblings[nav.index].id);
+  });
+}
 
 function wireSugs() {
   document.querySelectorAll('.sug').forEach(function(btn) {
