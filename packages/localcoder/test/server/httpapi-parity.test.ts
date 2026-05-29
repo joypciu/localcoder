@@ -82,22 +82,41 @@ describe("Link header host", () => {
 })
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Reproducer 2: GET /session/{missing-id}/todo should return 404, not 500.
-// The session.todo handler in HttpApi doesn't wrap with `mapNotFound`, so a
-// `NotFoundError` from the service surfaces as a defect → 500. Hono's
-// equivalent maps to 404 via `errors.notFound`.
+// Reproducer 2: GET /session/{missing-id}/todo should return 404, not 200 [].
+// Todo.get does not validate session existence; HttpApi must gate on session.get.
 //
-// Affected endpoints (handlers without mapNotFound): todo, diff, summarize,
-// fork, abort, init, deleteMessage, command, shell, revert, unrevert.
-//
-// FIXME: unskip when mapNotFound coverage is added (next PR).
+// Affected endpoints now wrapped with withExistingSession / mapNotFound:
+// todo, diff, summarize, fork, abort, init, deleteMessage, command, shell,
+// revert, unrevert, remove, update, share, unshare, deletePart, updatePart.
 // ──────────────────────────────────────────────────────────────────────────────
 describe("404 mapping for missing session", () => {
-  test.todo("HttpApi /session/{missing}/todo returns 404 not 500", async () => {
+  test("HttpApi /session/{missing}/todo returns 404", async () => {
     await using tmp = await tmpdir({ config: { formatter: false, lsp: false } })
 
     const response = await app(true).request("/session/ses_does_not_exist/todo", {
       headers: { "x-localcoder-directory": tmp.path },
+    })
+
+    expect(response.status).toBe(404)
+  })
+
+  test("HttpApi /session/{missing}/diff returns 404", async () => {
+    await using tmp = await tmpdir({ config: { formatter: false, lsp: false } })
+
+    const response = await app(true).request("/session/ses_does_not_exist/diff", {
+      headers: { "x-localcoder-directory": tmp.path },
+    })
+
+    expect(response.status).toBe(404)
+  })
+
+  test("HttpApi /session/{missing} fork returns 404", async () => {
+    await using tmp = await tmpdir({ config: { formatter: false, lsp: false } })
+
+    const response = await app(true).request("/session/ses_does_not_exist/fork", {
+      method: "POST",
+      headers: { "x-localcoder-directory": tmp.path, "content-type": "application/json" },
+      body: JSON.stringify({}),
     })
 
     expect(response.status).toBe(404)

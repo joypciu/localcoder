@@ -2,6 +2,7 @@ import { NodeFileSystem } from "@effect/platform-node"
 import { expect } from "bun:test"
 import { Cause, Effect, Exit, Fiber, Layer } from "effect"
 import path from "path"
+import { eq } from "drizzle-orm"
 import type { Agent } from "../../src/agent/agent"
 import { Agent as AgentSvc } from "../../src/agent/agent"
 import { Bus } from "../../src/bus"
@@ -15,9 +16,12 @@ import { LLM } from "../../src/session/llm"
 import { MessageV2 } from "../../src/session/message-v2"
 import { SessionProcessor } from "../../src/session/processor"
 import { MessageID, PartID, SessionID } from "../../src/session/schema"
+import { SessionMessageTable } from "../../src/session/session.sql"
 import { SessionStatus } from "../../src/session/status"
 import { SessionSummary } from "../../src/session/summary"
 import { Snapshot } from "../../src/snapshot"
+import { Database } from "@/storage/db"
+import { Flag } from "@localcoder-ai/core/flag/flag"
 import * as Log from "@localcoder-ai/core/util/log"
 import { CrossSpawnSpawner } from "@localcoder-ai/core/cross-spawn-spawner"
 import { provideTmpdirServer } from "../fixture/fixture"
@@ -836,6 +840,153 @@ it.live("session.processor effect tests mark interruptions aborted without manua
           expect(stored.info.error?.name).toBe("MessageAbortedError")
         }
         expect(state).toMatchObject({ type: "idle" })
+      }),
+    { git: true, config: (url) => providerCfg(url) },
+  ),
+)
+
+it.live("session.processor dual-writes v2 assistant rows", () =>
+  provideTmpdirServer(
+    ({ dir, llm }) =>
+      Effect.gen(function* () {
+        Flag.LOCALCODER_EXPERIMENTAL_EVENT_SYSTEM = true
+        const { processors, session, provider } = yield* boot()
+
+        yield* llm.text("v2 dual-write")
+
+        const chat = yield* session.create({})
+        const parent = yield* user(chat.id, "hi")
+        const msg = yield* assistant(chat.id, parent.id, path.resolve(dir))
+        const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
+        const handle = yield* processors.create({
+          assistantMessage: msg,
+          sessionID: chat.id,
+          model: mdl,
+        })
+
+        yield* handle.process({
+          user: {
+            id: parent.id,
+            sessionID: chat.id,
+            role: "user",
+            time: parent.time,
+            agent: parent.agent,
+            model: { providerID: ref.providerID, modelID: ref.modelID },
+          } satisfies MessageV2.User,
+          sessionID: chat.id,
+          model: mdl,
+          agent: agent(),
+          system: [],
+          messages: [{ role: "user", content: "hi" }],
+          tools: {},
+        })
+
+        const rows = Database.use((db) =>
+          db.select().from(SessionMessageTable).where(eq(SessionMessageTable.session_id, chat.id)).all(),
+        )
+        const assistantRow = rows.find((row) => row.type === "assistant")
+        expect(assistantRow).toBeDefined()
+        expect(assistantRow?.data).toMatchObject({
+          content: [expect.objectContaining({ type: "text", text: "v2 dual-write" })],
+        })
+      }),
+    { git: true, config: (url) => providerCfg(url) },
+  ),
+)
+
+it.live("session.processor dual-writes v2 assistant rows", () =>
+  provideTmpdirServer(
+    ({ dir, llm }) =>
+      Effect.gen(function* () {
+        Flag.LOCALCODER_EXPERIMENTAL_EVENT_SYSTEM = true
+        const { processors, session, provider } = yield* boot()
+
+        yield* llm.text("v2 dual-write")
+
+        const chat = yield* session.create({})
+        const parent = yield* user(chat.id, "hi")
+        const msg = yield* assistant(chat.id, parent.id, path.resolve(dir))
+        const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
+        const handle = yield* processors.create({
+          assistantMessage: msg,
+          sessionID: chat.id,
+          model: mdl,
+        })
+
+        yield* handle.process({
+          user: {
+            id: parent.id,
+            sessionID: chat.id,
+            role: "user",
+            time: parent.time,
+            agent: parent.agent,
+            model: { providerID: ref.providerID, modelID: ref.modelID },
+          } satisfies MessageV2.User,
+          sessionID: chat.id,
+          model: mdl,
+          agent: agent(),
+          system: [],
+          messages: [{ role: "user", content: "hi" }],
+          tools: {},
+        })
+
+        const rows = Database.use((db) =>
+          db.select().from(SessionMessageTable).where(eq(SessionMessageTable.session_id, chat.id)).all(),
+        )
+        const assistantRow = rows.find((row) => row.type === "assistant")
+        expect(assistantRow).toBeDefined()
+        expect(assistantRow?.data).toMatchObject({
+          content: [expect.objectContaining({ type: "text", text: "v2 dual-write" })],
+        })
+      }),
+    { git: true, config: (url) => providerCfg(url) },
+  ),
+)
+
+it.live("session.processor dual-writes v2 assistant rows", () =>
+  provideTmpdirServer(
+    ({ dir, llm }) =>
+      Effect.gen(function* () {
+        Flag.LOCALCODER_EXPERIMENTAL_EVENT_SYSTEM = true
+        const { processors, session, provider } = yield* boot()
+
+        yield* llm.text("v2 dual-write")
+
+        const chat = yield* session.create({})
+        const parent = yield* user(chat.id, "hi")
+        const msg = yield* assistant(chat.id, parent.id, path.resolve(dir))
+        const mdl = yield* provider.getModel(ref.providerID, ref.modelID)
+        const handle = yield* processors.create({
+          assistantMessage: msg,
+          sessionID: chat.id,
+          model: mdl,
+        })
+
+        yield* handle.process({
+          user: {
+            id: parent.id,
+            sessionID: chat.id,
+            role: "user",
+            time: parent.time,
+            agent: parent.agent,
+            model: { providerID: ref.providerID, modelID: ref.modelID },
+          } satisfies MessageV2.User,
+          sessionID: chat.id,
+          model: mdl,
+          agent: agent(),
+          system: [],
+          messages: [{ role: "user", content: "hi" }],
+          tools: {},
+        })
+
+        const rows = Database.use((db) =>
+          db.select().from(SessionMessageTable).where(eq(SessionMessageTable.session_id, chat.id)).all(),
+        )
+        const assistantRow = rows.find((row) => row.type === "assistant")
+        expect(assistantRow).toBeDefined()
+        expect(assistantRow?.data).toMatchObject({
+          content: [expect.objectContaining({ type: "text", text: "v2 dual-write" })],
+        })
       }),
     { git: true, config: (url) => providerCfg(url) },
   ),

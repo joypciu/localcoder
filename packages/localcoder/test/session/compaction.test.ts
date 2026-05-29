@@ -473,7 +473,7 @@ describe("session.compaction.isOverflow", () => {
   // Open PRs: #6875, #12924
 
   it.live(
-    "BUG: no headroom when limit.input is set — compaction should trigger near boundary but does not",
+    "regression: limit.input reserves output headroom for compaction",
     provideTmpdirInstance(() =>
       Effect.gen(function* () {
         const compact = yield* SessionCompaction.Service
@@ -499,7 +499,7 @@ describe("session.compaction.isOverflow", () => {
   )
 
   it.live(
-    "BUG: without limit.input, same token count correctly triggers compaction",
+    "regression: without limit.input, same token count triggers compaction",
     provideTmpdirInstance(() =>
       Effect.gen(function* () {
         const compact = yield* SessionCompaction.Service
@@ -519,7 +519,7 @@ describe("session.compaction.isOverflow", () => {
   )
 
   it.live(
-    "BUG: asymmetry — limit.input model allows 30K more usage before compaction than equivalent model without it",
+    "regression: limit.input and context-only models agree on compaction threshold",
     provideTmpdirInstance(() =>
       Effect.gen(function* () {
         const compact = yield* SessionCompaction.Service

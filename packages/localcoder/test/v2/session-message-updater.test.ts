@@ -214,3 +214,165 @@ test("compaction events reduce to compaction message", () => {
     time: { created: DateTime.makeUnsafe(1) },
   })
 })
+
+const modelRef = {
+  id: Modelv2.ID.make("model"),
+  providerID: Modelv2.ProviderID.make("provider"),
+  variant: Modelv2.VariantID.make("default"),
+}
+
+function startStep(state: SessionMessageUpdater.MemoryState, sessionID: SessionID) {
+  SessionMessageUpdater.update(SessionMessageUpdater.memory(state), {
+    id: EventV2.ID.create(),
+    type: "session.next.step.started",
+    data: {
+      sessionID,
+      timestamp: DateTime.makeUnsafe(1),
+      agent: "build",
+      model: modelRef,
+    },
+  } satisfies SessionEvent.Event)
+}
+
+test("prompted creates user message", () => {
+  const state: SessionMessageUpdater.MemoryState = { messages: [] }
+  const sessionID = SessionID.make("session")
+
+  SessionMessageUpdater.update(SessionMessageUpdater.memory(state), {
+    id: EventV2.ID.create(),
+    type: "session.next.prompted",
+    data: {
+      sessionID,
+      timestamp: DateTime.makeUnsafe(1),
+      prompt: {
+        text: "fix the bug",
+        files: [],
+        agents: [],
+      },
+    },
+  } satisfies SessionEvent.Event)
+
+  expect(state.messages).toHaveLength(1)
+  expect(state.messages[0]).toMatchObject({ type: "user", text: "fix the bug" })
+})
+
+test("synthetic creates synthetic message", () => {
+  const state: SessionMessageUpdater.MemoryState = { messages: [] }
+  const sessionID = SessionID.make("session")
+
+  SessionMessageUpdater.update(SessionMessageUpdater.memory(state), {
+    id: EventV2.ID.create(),
+    type: "session.next.synthetic",
+    data: {
+      sessionID,
+      timestamp: DateTime.makeUnsafe(1),
+      text: "system note",
+    },
+  } satisfies SessionEvent.Event)
+
+  expect(state.messages[0]).toMatchObject({ type: "synthetic", text: "system note" })
+})
+
+test("reasoning ended populates assistant reasoning content", () => {
+  const state: SessionMessageUpdater.MemoryState = { messages: [] }
+  const sessionID = SessionID.make("session")
+  const reasoningID = "reason-1"
+
+  startStep(state, sessionID)
+
+  SessionMessageUpdater.update(SessionMessageUpdater.memory(state), {
+    id: EventV2.ID.create(),
+    type: "session.next.reasoning.started",
+    data: { sessionID, timestamp: DateTime.makeUnsafe(2), reasoningID },
+  } satisfies SessionEvent.Event)
+
+  SessionMessageUpdater.update(SessionMessageUpdater.memory(state), {
+    id: EventV2.ID.create(),
+    type: "session.next.reasoning.ended",
+    data: {
+      sessionID,
+      timestamp: DateTime.makeUnsafe(3),
+      reasoningID,
+      text: "think step by step",
+    },
+  } satisfies SessionEvent.Event)
+
+  expect(state.messages[0]?.type).toBe("assistant")
+  if (state.messages[0]?.type !== "assistant") return
+  expect(state.messages[0].content).toEqual([{ type: "reasoning", id: reasoningID, text: "think step by step" }])
+})
+
+test("tool failed stores error state", () => {
+  const state: SessionMessageUpdater.MemoryState = { messages: [] }
+  const sessionID = SessionID.make("session")
+  const callID = "call-fail"
+
+  startStep(state, sessionID)
+
+  for (const event of [
+    {
+      id: EventV2.ID.create(),
+      type: "session.next.tool.input.started" as const,
+      data: { sessionID, timestamp: DateTime.makeUnsafe(2), callID, name: "bash" },
+    },
+    {
+      id: EventV2.ID.create(),
+      type: "session.next.tool.called" as const,
+      data: {
+        sessionID,
+        timestamp: DateTime.makeUnsafe(3),
+        callID,
+        tool: "bash",
+        input: { command: "false" },
+        provider: { executed: true, metadata: {} },
+      },
+    },
+    {
+      id: EventV2.ID.create(),
+      type: "session.next.tool.failed" as const,
+      data: {
+        sessionID,
+        timestamp: DateTime.makeUnsafe(4),
+        callID,
+        error: { type: "unknown" as const, message: "exit 1" },
+        provider: { executed: true, metadata: { status: "error" } },
+      },
+    },
+  ] satisfies SessionEvent.Event[]) {
+    SessionMessageUpdater.update(SessionMessageUpdater.memory(state), event)
+  }
+
+  expect(state.messages[0]?.type).toBe("assistant")
+  if (state.messages[0]?.type !== "assistant") return
+  const tool = state.messages[0].content[0]
+  expect(tool?.type).toBe("tool")
+  if (tool?.type !== "tool") return
+  expect(tool.state.status).toBe("error")
+  if (tool.state.status === "error") {
+    expect(tool.state.error).toEqual({ type: "unknown", message: "exit 1" })
+  }
+  expect(tool.time.completed).toEqual(DateTime.makeUnsafe(4))
+})
+
+test("step failed marks assistant finish error", () => {
+  const state: SessionMessageUpdater.MemoryState = { messages: [] }
+  const sessionID = SessionID.make("session")
+
+  startStep(state, sessionID)
+
+  SessionMessageUpdater.update(SessionMessageUpdater.memory(state), {
+    id: EventV2.ID.create(),
+    type: "session.next.step.failed",
+    data: {
+      sessionID,
+      timestamp: DateTime.makeUnsafe(2),
+      error: { type: "unknown", message: "provider down" },
+    },
+  } satisfies SessionEvent.Event)
+
+  expect(state.messages[0]?.type).toBe("assistant")
+  if (state.messages[0]?.type !== "assistant") return
+  expect(state.messages[0].finish).toBe("error")
+  expect(state.messages[0].error).toEqual({ type: "unknown", message: "provider down" })
+  expect(state.messages[0].time.completed).toEqual(DateTime.makeUnsafe(2))
+})

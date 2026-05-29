@@ -49,13 +49,22 @@ export async function stepServeHealth(): Promise<string> {
       body: JSON.stringify({ title: "e2e-smoke" }),
     })
     if (!sessionRes.ok) throw new Error(`POST /session ${sessionRes.status}`)
+    const session = (await sessionRes.json()) as { id?: string }
+    if (!session.id) throw new Error("no session id")
+
+    const msgRes = await fetch(`http://127.0.0.1:${port}/session/${session.id}/message`, {
+      headers: { Authorization: `Basic ${auth}` },
+    })
+    if (!msgRes.ok) throw new Error(`GET /session/${session.id}/message ${msgRes.status}`)
+    const messages = (await msgRes.json()) as unknown[]
+    if (!Array.isArray(messages)) throw new Error("messages response is not an array")
 
     const statusRes = await fetch(`http://127.0.0.1:${port}/global/llamacpp/status`, {
       headers: { Authorization: `Basic ${auth}` },
     })
     if (!statusRes.ok) throw new Error(`/global/llamacpp/status ${statusRes.status}`)
     const status = (await statusRes.json()) as { running?: boolean }
-    return `health OK, session created, llamacpp running=${String(status.running)}`
+    return `health OK, session created (${messages.length} messages), llamacpp running=${String(status.running)}`
   } finally {
     serveProc?.kill()
   }

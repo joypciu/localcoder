@@ -20,4 +20,11 @@ describe("integration/llamacpp-api", () => {
     const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
     expect(json.choices?.[0]?.message?.content?.length).toBeGreaterThan(0)
   })
+
+  test.skipIf(!modelId)("models endpoint lists configured model", async () => {
+    const res = await fetch(`${apiUrl}/models`, { signal: AbortSignal.timeout(10_000) })
+    expect(res.ok).toBe(true)
+    const json = (await res.json()) as { data?: Array<{ id?: string }> }
+    expect(json.data?.some((item) => item.id === modelId)).toBe(true)
+  })
 })

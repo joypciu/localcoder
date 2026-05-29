@@ -49,6 +49,14 @@ const mapNotFound = <A, E, R>(self: Effect.Effect<A, E, R>) =>
 export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", (handlers) =>
   Effect.gen(function* () {
     const session = yield* Session.Service
+
+    const withExistingSession = <A, E, R>(sessionID: SessionID, body: Effect.Effect<A, E, R>) =>
+      mapNotFound(
+        Effect.gen(function* () {
+          yield* session.get(sessionID)
+          return yield* body
+        }),
+      )
     const shareSvc = yield* SessionShare.Service
     const promptSvc = yield* SessionPrompt.Service
     const revertSvc = yield* SessionRevert.Service
@@ -87,14 +95,17 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
     })
 
     const todo = Effect.fn("SessionHttpApi.todo")(function* (ctx: { params: { sessionID: SessionID } }) {
-      return yield* todoSvc.get(ctx.params.sessionID)
+      return yield* withExistingSession(ctx.params.sessionID, todoSvc.get(ctx.params.sessionID))
     })
 
     const diff = Effect.fn("SessionHttpApi.diff")(function* (ctx: {
       params: { sessionID: SessionID }
       query: typeof DiffQuery.Type
     }) {
-      return yield* summary.diff({ sessionID: ctx.params.sessionID, messageID: ctx.query.messageID })
+      return yield* withExistingSession(
+        ctx.params.sessionID,
+        summary.diff({ sessionID: ctx.params.sessionID, messageID: ctx.query.messageID }),
+      )
     })
 
     const messages = Effect.fn("SessionHttpApi.messages")(function* (ctx: {
@@ -170,7 +181,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
     })
 
     const remove = Effect.fn("SessionHttpApi.remove")(function* (ctx: { params: { sessionID: SessionID } }) {
-      yield* session.remove(ctx.params.sessionID)
+      yield* mapNotFound(session.remove(ctx.params.sessionID))
       return true
     })
 
@@ -178,31 +189,37 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       params: { sessionID: SessionID }
       payload: typeof UpdatePayload.Type
     }) {
-      const current = yield* session.get(ctx.params.sessionID)
-      if (ctx.payload.title !== undefined) {
-        yield* session.setTitle({ sessionID: ctx.params.sessionID, title: ctx.payload.title })
-      }
-      if (ctx.payload.permission !== undefined) {
-        yield* session.setPermission({
-          sessionID: ctx.params.sessionID,
-          permission: Permission.merge(current.permission ?? [], ctx.payload.permission),
-        })
-      }
-      if (ctx.payload.time?.archived !== undefined) {
-        yield* session.setArchived({ sessionID: ctx.params.sessionID, time: ctx.payload.time.archived })
-      }
-      return yield* session.get(ctx.params.sessionID)
+      return yield* mapNotFound(
+        Effect.gen(function* () {
+          const current = yield* session.get(ctx.params.sessionID)
+          if (ctx.payload.title !== undefined) {
+            yield* session.setTitle({ sessionID: ctx.params.sessionID, title: ctx.payload.title })
+          }
+          if (ctx.payload.permission !== undefined) {
+            yield* session.setPermission({
+              sessionID: ctx.params.sessionID,
+              permission: Permission.merge(current.permission ?? [], ctx.payload.permission),
+            })
+          }
+          if (ctx.payload.time?.archived !== undefined) {
+            yield* session.setArchived({ sessionID: ctx.params.sessionID, time: ctx.payload.time.archived })
+          }
+          return yield* session.get(ctx.params.sessionID)
+        }),
+      )
     })
 
     const fork = Effect.fn("SessionHttpApi.fork")(function* (ctx: {
       params: { sessionID: SessionID }
       payload: typeof ForkPayload.Type
     }) {
-      return yield* session.fork({ sessionID: ctx.params.sessionID, messageID: ctx.payload.messageID })
+      return yield* mapNotFound(
+        session.fork({ sessionID: ctx.params.sessionID, messageID: ctx.payload.messageID }),
+      )
     })
 
     const abort = Effect.fn("SessionHttpApi.abort")(function* (ctx: { params: { sessionID: SessionID } }) {
-      yield* promptSvc.cancel(ctx.params.sessionID)
+      yield* withExistingSession(ctx.params.sessionID, promptSvc.cancel(ctx.params.sessionID))
       return true
     })
 
@@ -210,45 +227,60 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       params: { sessionID: SessionID }
       payload: typeof InitPayload.Type
     }) {
-      yield* promptSvc.command({
-        sessionID: ctx.params.sessionID,
-        messageID: ctx.payload.messageID,
-        model: `${ctx.payload.providerID}/${ctx.payload.modelID}`,
-        command: Command.Default.INIT,
-        arguments: "",
-      })
+      yield* withExistingSession(
+        ctx.params.sessionID,
+        promptSvc.command({
+          sessionID: ctx.params.sessionID,
+          messageID: ctx.payload.messageID,
+          model: `${ctx.payload.providerID}/${ctx.payload.modelID}`,
+          command: Command.Default.INIT,
+          arguments: "",
+        }),
+      )
       return true
     })
 
     const share = Effect.fn("SessionHttpApi.share")(function* (ctx: { params: { sessionID: SessionID } }) {
-      yield* shareSvc.share(ctx.params.sessionID).pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
-      return yield* session.get(ctx.params.sessionID)
+      return yield* mapNotFound(
+        shareSvc.share(ctx.params.sessionID).pipe(
+          Effect.mapError(() => new HttpApiError.BadRequest({})),
+          Effect.flatMap(() => session.get(ctx.params.sessionID)),
+        ),
+      )
     })
 
     const unshare = Effect.fn("SessionHttpApi.unshare")(function* (ctx: { params: { sessionID: SessionID } }) {
-      yield* shareSvc.unshare(ctx.params.sessionID).pipe(Effect.mapError(() => new HttpApiError.BadRequest({})))
-      return yield* session.get(ctx.params.sessionID)
+      return yield* mapNotFound(
+        shareSvc.unshare(ctx.params.sessionID).pipe(
+          Effect.mapError(() => new HttpApiError.BadRequest({})),
+          Effect.flatMap(() => session.get(ctx.params.sessionID)),
+        ),
+      )
     })
 
     const summarize = Effect.fn("SessionHttpApi.summarize")(function* (ctx: {
       params: { sessionID: SessionID }
       payload: typeof SummarizePayload.Type
     }) {
-      yield* revertSvc.cleanup(yield* session.get(ctx.params.sessionID))
-      const messages = yield* session.messages({ sessionID: ctx.params.sessionID })
-      const defaultAgent = yield* agentSvc.defaultAgent()
-      const currentAgent = messages.findLast((message) => message.info.role === "user")?.info.agent ?? defaultAgent
+      yield* mapNotFound(
+        Effect.gen(function* () {
+          yield* revertSvc.cleanup(yield* session.get(ctx.params.sessionID))
+          const messages = yield* session.messages({ sessionID: ctx.params.sessionID })
+          const defaultAgent = yield* agentSvc.defaultAgent()
+          const currentAgent = messages.findLast((message) => message.info.role === "user")?.info.agent ?? defaultAgent
 
-      yield* compactSvc.create({
-        sessionID: ctx.params.sessionID,
-        agent: currentAgent,
-        model: {
-          providerID: ctx.payload.providerID,
-          modelID: ctx.payload.modelID,
-        },
-        auto: ctx.payload.auto ?? false,
-      })
-      yield* promptSvc.loop({ sessionID: ctx.params.sessionID })
+          yield* compactSvc.create({
+            sessionID: ctx.params.sessionID,
+            agent: currentAgent,
+            model: {
+              providerID: ctx.payload.providerID,
+              modelID: ctx.payload.modelID,
+            },
+            auto: ctx.payload.auto ?? false,
+          })
+          yield* promptSvc.loop({ sessionID: ctx.params.sessionID })
+        }),
+      )
       return true
     })
 
@@ -297,25 +329,31 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       params: { sessionID: SessionID }
       payload: typeof CommandPayload.Type
     }) {
-      return yield* promptSvc.command({ ...ctx.payload, sessionID: ctx.params.sessionID })
+      return yield* withExistingSession(
+        ctx.params.sessionID,
+        promptSvc.command({ ...ctx.payload, sessionID: ctx.params.sessionID }),
+      )
     })
 
     const shell = Effect.fn("SessionHttpApi.shell")(function* (ctx: {
       params: { sessionID: SessionID }
       payload: typeof ShellPayload.Type
     }) {
-      return yield* promptSvc.shell({ ...ctx.payload, sessionID: ctx.params.sessionID })
+      return yield* withExistingSession(
+        ctx.params.sessionID,
+        promptSvc.shell({ ...ctx.payload, sessionID: ctx.params.sessionID }),
+      )
     })
 
     const revert = Effect.fn("SessionHttpApi.revert")(function* (ctx: {
       params: { sessionID: SessionID }
       payload: typeof RevertPayload.Type
     }) {
-      return yield* revertSvc.revert({ sessionID: ctx.params.sessionID, ...ctx.payload })
+      return yield* mapNotFound(revertSvc.revert({ sessionID: ctx.params.sessionID, ...ctx.payload }))
     })
 
     const unrevert = Effect.fn("SessionHttpApi.unrevert")(function* (ctx: { params: { sessionID: SessionID } }) {
-      return yield* revertSvc.unrevert({ sessionID: ctx.params.sessionID })
+      return yield* mapNotFound(revertSvc.unrevert({ sessionID: ctx.params.sessionID }))
     })
 
     const permissionRespond = Effect.fn("SessionHttpApi.permissionRespond")(function* (ctx: {
@@ -329,15 +367,20 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
     const deleteMessage = Effect.fn("SessionHttpApi.deleteMessage")(function* (ctx: {
       params: { sessionID: SessionID; messageID: MessageID }
     }) {
-      yield* runState.assertNotBusy(ctx.params.sessionID)
-      yield* session.removeMessage(ctx.params)
+      yield* withExistingSession(
+        ctx.params.sessionID,
+        Effect.gen(function* () {
+          yield* runState.assertNotBusy(ctx.params.sessionID)
+          yield* session.removeMessage(ctx.params)
+        }),
+      )
       return true
     })
 
     const deletePart = Effect.fn("SessionHttpApi.deletePart")(function* (ctx: {
       params: { sessionID: SessionID; messageID: MessageID; partID: PartID }
     }) {
-      yield* session.removePart(ctx.params)
+      yield* withExistingSession(ctx.params.sessionID, session.removePart(ctx.params))
       return true
     })
 
@@ -355,7 +398,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
           `Part mismatch: body.id='${payload.id}' vs partID='${ctx.params.partID}', body.messageID='${payload.messageID}' vs messageID='${ctx.params.messageID}', body.sessionID='${payload.sessionID}' vs sessionID='${ctx.params.sessionID}'`,
         )
       }
-      return yield* session.updatePart(payload)
+      return yield* withExistingSession(ctx.params.sessionID, session.updatePart(payload))
     })
 
     return handlers

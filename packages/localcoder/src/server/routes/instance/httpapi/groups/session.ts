@@ -157,6 +157,7 @@ export const SessionApi = HttpApi.make("session")
           params: { sessionID: SessionID },
           query: DiffQuery,
           success: described(Schema.Array(Snapshot.FileDiff), "Successfully retrieved diff"),
+          error: [HttpApiError.BadRequest, HttpApiError.NotFound],
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "session.diff",
@@ -225,6 +226,7 @@ export const SessionApi = HttpApi.make("session")
           params: { sessionID: SessionID },
           payload: ForkPayload,
           success: described(Session.Info, "200"),
+          error: [HttpApiError.BadRequest, HttpApiError.NotFound],
         }).annotateMerge(
           OpenApi.annotations({
             identifier: "session.fork",
