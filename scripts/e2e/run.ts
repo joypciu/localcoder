@@ -18,7 +18,8 @@
  *   E2E_SKIP_LLAMA_VSCODE=1   skip live llama VS Code E2E (off by default on full tier)
  *   E2E_SKIP_LLAMACPP_E2E=1   skip mocha localcoder-llamacpp.test.js (full tier)
  *   E2E_LLAMA_VSCODE=1        force llama VS Code E2E on standard tier
- *   E2E_SKIP_DESKTOP_LAUNCH=1 skip headed LocalCoder.exe launch (full tier)
+ *   E2E_SKIP_SERVE_INVALID=1 skip serve invalid-model fail-fast (standard tier)
+ *   E2E_SKIP_VSCODE_LIVE=1    skip vscode backend-live smoke (standard tier)
  *   LLAMACPP_SKIP_SERVER=1    reuse running llama-server
  */
 import fs from "fs"
@@ -49,10 +50,11 @@ import {
   stepCliBinarySize,
   stepDesktopArtifacts,
 } from "./steps/build"
-import { stepServeHealth } from "./steps/serve"
+import { stepServeHealth, stepServeInvalidModel } from "./steps/serve"
 import {
   stepVscodeCompile,
   stepVscodeElectron,
+  stepVscodeBackendLive,
   stepVscodeLlamaE2e,
   stepVscodeUnit,
   stepVscodeWizardContract,
@@ -131,6 +133,16 @@ async function runTier(tier: E2eTier) {
       }
 
       await run("serve", "CLI: serve health + session + llamacpp status", stepServeHealth)
+      if (!envFlag("E2E_SKIP_SERVE_INVALID")) {
+        await run("serve-invalid", "CLI: serve invalid model fail-fast", stepServeInvalidModel)
+      } else {
+        skipStep("serve-invalid", "CLI: serve invalid model fail-fast", "E2E_SKIP_SERVE_INVALID=1", results)
+      }
+      if (!envFlag("E2E_SKIP_VSCODE_LIVE")) {
+        await run("vscode-backend-live", "VS Code: backend-live smoke", stepVscodeBackendLive)
+      } else {
+        skipStep("vscode-backend-live", "VS Code: backend-live smoke", "E2E_SKIP_VSCODE_LIVE=1", results)
+      }
       await run("vscode-electron", "VS Code: Electron integration (test:all)", stepVscodeElectron)
       await run("desktop", "Windows: desktop artifact check", stepDesktopArtifacts)
       if (!envFlag("E2E_SKIP_PLAYWRIGHT")) {

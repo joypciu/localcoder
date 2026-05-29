@@ -17,7 +17,9 @@ export function usable(input: { cfg: Config.Info; model: Provider.Model }) {
   const reserved = input.cfg.compaction?.reserved ?? defaultReserved
 
   if (input.model.limit.input) {
-    return Math.max(0, input.model.limit.input - reserved)
+    // Reserve output headroom the same way as context-only models — otherwise compaction
+    // triggers too late and the next turn has no room for the model response (#10634).
+    return Math.max(0, input.model.limit.input - maxOut - reserved)
   }
   return Math.max(0, context - maxOut - reserved)
 }

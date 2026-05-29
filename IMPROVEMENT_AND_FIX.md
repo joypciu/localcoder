@@ -50,7 +50,7 @@
 | Command | Time | Coverage |
 |---------|------|----------|
 | `bun run e2e:smoke` | ~15s | VS Code compile + 84 contract tests + CLI version/search/fail-fast |
-| `bun run e2e` | ~1–2 min | + llama setup/chat, agent bash, serve API, Electron tests, desktop artifacts |
+| `bun run e2e` | ~1–2 min | + llama setup/chat, agent bash, serve API + invalid-model gate, backend-live, Electron tests, desktop artifacts, Playwright UI |
 | `bun run e2e:full` | ~10–30 min | + portable build, headed `LocalCoder.exe` launch, live llama VS Code E2E (skip with `E2E_SKIP_LLAMA_VSCODE=1`) |
 
 Legacy wrappers: `scripts/e2e-full-windows.ts` (→ full), `scripts/readiness-windows.ts` (→ standard, skip build).
@@ -99,8 +99,19 @@ Legacy wrappers: `scripts/e2e-full-windows.ts` (→ full), `scripts/readiness-wi
 
 | Issue | Details |
 |-------|---------|
-| VS Code E2E tests 2+3 (write/edit tools) | AI responds but doesn't call tools; `tools=[]` empty. Likely prompt engineering — Qwopus needs explicit tool call instructions, and the `dangerously-skip-permissions` flag may not be set for serve mode |
+| VS Code E2E tests 2+3 (write/edit tools) | AI responds but may not call tools; Qwopus prompt tuning improved in `prompt/qwen.txt` — retest with `bun run e2e:full` |
 | Binary serve mode tool calls | `POST /session/:id/message` with agent permissions works but the model needs to be prompted to use tools explicitly |
+
+### Fixed (2026-05-29 session 4)
+
+| Fix | Detail |
+|-----|--------|
+| Compaction headroom with `limit.input` | `overflow.ts` now subtracts output headroom for input-limited models (#10634) |
+| Desktop subagent nav | `SessionSubagentBar` — Parent/Prev/Next + context indicator (TUI parity) |
+| E2E serve invalid-model | Wired `stepServeInvalidModel` into standard tier |
+| E2E backend-live | Wired `stepVscodeBackendLive` into standard tier |
+| VS Code MCP panel | Always visible in Settings; lists servers or "None configured" |
+| VS Code debug noise | File logging gated behind `LOCALCODER_VSCODE_DEBUG=1` |
 
 ### Key architecture note discovered
 

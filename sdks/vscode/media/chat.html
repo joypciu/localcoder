@@ -558,9 +558,9 @@ button:focus:not(:focus-visible) { outline: none }
     <div class="cfg-footer">
       <button class="cfg-save-btn" id="cfg-save">Save</button>
     </div>
-    <div id="mcp-info" class="cfg-row" style="margin-top:8px;display:none">
+    <div id="mcp-info" class="cfg-row" style="margin-top:8px">
       <label>MCP servers</label>
-      <div id="mcp-list" style="font-size:11px;color:var(--fg2);font-family:var(--ffm)"></div>
+      <div id="mcp-list" style="font-size:11px;color:var(--fg3);font-family:var(--ffm)">Loading…</div>
     </div>
   </div>
 
@@ -844,11 +844,13 @@ function applyWorkspaceMeta(meta) {
   var mcpInfo = document.getElementById('mcp-info');
   var mcpList = document.getElementById('mcp-list');
   if (mcpInfo && mcpList) {
+    mcpInfo.style.display = '';
     if (meta.mcpServers && meta.mcpServers.length) {
-      mcpInfo.style.display = '';
       mcpList.textContent = meta.mcpServers.join(', ');
+      mcpList.style.color = 'var(--fg2)';
     } else {
-      mcpInfo.style.display = 'none';
+      mcpList.textContent = 'None configured — add MCP servers in localcoder.json';
+      mcpList.style.color = 'var(--fg3)';
     }
   }
   var modelSel = document.getElementById('cfg-model');

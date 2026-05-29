@@ -8,13 +8,7 @@ import * as vscode from "vscode";
 import type { ChatBackend, ChatMessage, FileAttachment, ToolCall } from "./types";
 import { directoryMatches, parseGlobalEvent, parseGlobalPushEvent, parseSseBlocks } from "./sse-events";
 
-const DEBUG_FILE = path.join(__dirname, "..", "debug.txt");
-function log(msg: string) {
-  const ts = new Date().toISOString().replace("T", " ").slice(0, 23);
-  const line = `[${ts}] ${msg}`;
-  console.log(line);
-  try { fs.appendFileSync(DEBUG_FILE, line + "\n"); } catch { /* ignore */ }
-}
+import { vscodeDebugLog as log } from "../debug-log";
 
 type StreamCallbacks = {
   onDelta: (delta: string) => void;

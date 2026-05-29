@@ -4,6 +4,7 @@ import { useNavigate } from "@solidjs/router"
 import { useSpring } from "@localcoder-ai/ui/motion-spring"
 import { PromptInput } from "@/components/prompt-input"
 import { SessionContextMeter } from "@/components/session-context-meter"
+import { SessionSubagentBar } from "@/components/session-subagent-bar"
 import { useLanguage } from "@/context/language"
 import { usePrompt } from "@/context/prompt"
 import { useSync } from "@/context/sync"
@@ -253,6 +254,7 @@ export function SessionComposerRegion(props: {
                 when={child()}
                 fallback={
                   <Show when={!props.state.blocked()}>
+                    <SessionSubagentBar />
                     <SessionContextMeter />
                     <PromptInput
                       ref={props.inputRef}

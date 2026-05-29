@@ -6,13 +6,7 @@ import type { BackendConfig } from "./backends/types";
 import { LocalcoderBackend, type WorkspaceMeta } from "./backends/localcoder";
 import { OpenAIBackend } from "./backends/openai";
 
-const DEBUG_FILE = path.join(__dirname, "..", "debug.txt");
-function log(msg: string) {
-  const ts = new Date().toISOString().replace("T", " ").slice(0, 23);
-  const line = `[${ts}] ${msg}`;
-  console.log(line);
-  try { fs.appendFileSync(DEBUG_FILE, line + "\n"); } catch { /* ignore */ }
-}
+import { vscodeDebugLog as log } from "./debug-log";
 
 // Tool names that write to the filesystem — snapshot these for undo
 const WRITE_TOOLS = new Set(["Edit", "Write", "edit", "write", "edit_file", "write_file"]);

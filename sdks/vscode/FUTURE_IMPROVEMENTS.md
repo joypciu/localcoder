@@ -34,7 +34,7 @@
 ## High priority (next)
 
 - [ ] **Native diff apply/reject** — inline accept/reject in editor (beyond snapshot undo)
-- [ ] **MCP panel** — expose configured MCP servers in extension settings
+- [x] **MCP panel** — MCP servers listed in Settings overlay (empty state when none configured)
 - [ ] **Model picker** — dropdown from connected provider model list
 - [ ] **Reliable stop-button sync** during abort
 
