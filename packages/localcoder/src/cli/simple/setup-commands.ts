@@ -1,7 +1,14 @@
-import { spawnSync } from "child_process"
 import { isCancel, select } from "@clack/prompts"
 import { UI } from "@/cli/ui"
 import type { localcoderClient } from "@localcoder-ai/sdk/v2"
+import { runLocalcoderCli } from "./cli-launch"
+import {
+  printLlamaStatus,
+  runLlamaInteractiveSetup,
+  runLlamaStart,
+  runLlamaStop,
+} from "./llama-setup-wizard"
+import { tokensFromLastAssistant } from "./session-meter"
 import { fetchProviderList, pickProvider } from "./provider-pick"
 
 const CLOUD_HINTS = [
@@ -12,29 +19,6 @@ const CLOUD_HINTS = [
   { id: "groq", label: "Groq" },
   { id: "fireworks-ai", label: "Fireworks" },
 ] as const
-
-function resolveLocalcoderBin(): string {
-  const fromPath = spawnSync(process.platform === "win32" ? "where" : "which", ["localcoder"], {
-    encoding: "utf-8",
-    shell: true,
-  })
-  const line = fromPath.stdout?.trim().split(/\r?\n/)[0]
-  if (line && line.length > 0) return line
-  return process.execPath.endsWith("bun") ? "bun" : "localcoder"
-}
-
-function runLocalcoder(args: string[]) {
-  const bin = resolveLocalcoderBin()
-  if (bin === "bun") {
-    return spawnSync(bin, ["run", "--conditions=browser", process.argv[1] ?? "src/index.ts", ...args], {
-      cwd: process.cwd(),
-      encoding: "utf-8",
-      stdio: "inherit",
-      shell: true,
-    })
-  }
-  return spawnSync(bin, args, { encoding: "utf-8", stdio: "inherit", shell: true })
-}
 
 export async function runConnectFlow(sdk: localcoderClient, currentProvider?: string) {
   UI.println(UI.Style.TEXT_INFO_BOLD + "Connect a provider" + UI.Style.TEXT_NORMAL)
@@ -64,8 +48,7 @@ export async function runConnectFlow(sdk: localcoderClient, currentProvider?: st
   if (isCancel(picked)) return
 
   if (picked === "llama") {
-    UI.println(UI.Style.TEXT_DIM + "  Starting llamacpp setup…" + UI.Style.TEXT_NORMAL)
-    runLocalcoder(["llamacpp", "setup"])
+    await runLlamaInteractiveSetup()
     return
   }
 
@@ -84,24 +67,11 @@ export async function runConnectFlow(sdk: localcoderClient, currentProvider?: st
   if (isCancel(cloud)) return
 
   UI.println(UI.Style.TEXT_DIM + `  Run: localcoder providers login ${cloud}` + UI.Style.TEXT_NORMAL)
-  runLocalcoder(["providers", "login", String(cloud)])
+  runLocalcoderCli(["providers", "login", String(cloud)])
 }
 
 export async function runLlamaFlow() {
-  UI.println(UI.Style.TEXT_INFO_BOLD + "llama.cpp" + UI.Style.TEXT_NORMAL)
-  UI.empty()
-  const status = spawnSync(resolveLocalcoderBin(), ["llamacpp", "status"], {
-    encoding: "utf-8",
-    shell: true,
-    maxBuffer: 2 * 1024 * 1024,
-  })
-  if (status.stdout?.trim()) {
-    UI.println(status.stdout.trimEnd())
-    UI.empty()
-  }
-  if (status.stderr?.trim()) {
-    UI.println(UI.Style.TEXT_WARNING + status.stderr.trimEnd() + UI.Style.TEXT_NORMAL)
-  }
+  await printLlamaStatus()
   const action = await select({
     message: "llama.cpp",
     options: [
@@ -112,27 +82,26 @@ export async function runLlamaFlow() {
     ],
   })
   if (isCancel(action) || action === "done") return
-  runLocalcoder(["llamacpp", String(action)])
+  if (action === "setup") await runLlamaInteractiveSetup()
+  else if (action === "start") await runLlamaStart()
+  else if (action === "stop") await runLlamaStop()
 }
 
 export async function showSessionContext(sdk: localcoderClient, sessionID: string, directory: string) {
   const messages = await sdk.session.messages({ sessionID, directory })
-  let tokens = 0
+  const rows = messages.data ?? []
+  const tokens = tokensFromLastAssistant(rows)
   let lastModel: string | undefined
-  for (const row of messages.data ?? []) {
-    if (row.info.role === "assistant" && "tokens" in row.info && row.info.tokens) {
-      const t = row.info.tokens as { total?: number }
-      tokens += t.total ?? 0
-      if ("providerID" in row.info && "modelID" in row.info) {
-        lastModel = `${row.info.providerID}/${row.info.modelID}`
-      }
+  for (const row of rows) {
+    if (row.info.role === "assistant" && "providerID" in row.info && "modelID" in row.info) {
+      lastModel = `${row.info.providerID}/${row.info.modelID}`
     }
   }
   UI.println(UI.Style.TEXT_INFO_BOLD + "Context" + UI.Style.TEXT_NORMAL)
   UI.println(`  session:  ${sessionID}`)
   if (lastModel) UI.println(`  model:    ${lastModel}`)
   if (tokens > 0) {
-    UI.println(`  tokens:   ~${tokens.toLocaleString()} (assistant total)`)
+    UI.println(`  tokens:   ~${tokens.toLocaleString()} (last assistant turn)`)
     UI.println(UI.Style.TEXT_DIM + "  Use /compact when context is high." + UI.Style.TEXT_NORMAL)
   } else {
     UI.println(UI.Style.TEXT_DIM + "  No token usage yet — send a message first." + UI.Style.TEXT_NORMAL)

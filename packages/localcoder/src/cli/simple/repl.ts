@@ -1,6 +1,5 @@
 import * as readline from "readline/promises"
 import { stdin as input, stdout as output } from "process"
-import { cancel, spinner } from "@clack/prompts"
 import { UI } from "@/cli/ui"
 import { createInProcessClient } from "./client"
 import { runTurn } from "./turn"
@@ -13,10 +12,14 @@ import {
   runShellCommand,
   type CommandEnv,
 } from "./commands"
-import { banner, hint } from "./display"
+import { promptLabel, turnContext, turnDivider, turnTiming, turnUser, welcome } from "./display"
+import { maybeTurnTip } from "./hints"
 import { parseModelRef } from "./provider-pick"
 import { fetchProviderList } from "./provider-pick"
 import { printFirstRunHint } from "./setup-commands"
+import { pauseReadlineForPrompts, resumeReadlineAfterPrompts } from "./repl-terminal"
+import * as Setup from "@/llamacpp/setup"
+import { applySessionMeterToContext } from "./session-meter"
 
 export type ReplConfig = {
   directory: string
@@ -44,6 +47,31 @@ async function defaultModel(sdk: ReturnType<typeof createInProcessClient>) {
   return undefined
 }
 
+function defaultThinking(model?: string, explicit?: boolean) {
+  if (explicit === true) return true
+  if (explicit === false) return false
+  const ref = model ? parseModelRef(model) : undefined
+  if (ref?.providerID === "llamacpp") {
+    const saved = Setup.loadUserLlamaConfig()
+    if (saved.thinking !== undefined) return saved.thinking
+    const path = saved.modelPath ?? Setup.resolveModelPath()
+    if (path) return Setup.resolveThinkingEnabled(path)
+  }
+  return false
+}
+
+function syncThinkingFromLlamaConfig(ctx: ReplContext) {
+  const ref = ctx.model ? parseModelRef(ctx.model) : undefined
+  if (ref?.providerID !== "llamacpp") return
+  const saved = Setup.loadUserLlamaConfig()
+  if (saved.thinking !== undefined) {
+    ctx.thinking = saved.thinking
+    return
+  }
+  const path = saved.modelPath
+  if (path) ctx.thinking = Setup.resolveThinkingEnabled(path)
+}
+
 function statusLine(ctx: ReplContext) {
   const ref = ctx.model ? parseModelRef(ctx.model) : undefined
   const modelLabel = ref ? `${ref.providerID}/${ref.modelID}` : (ctx.model ?? "model?")
@@ -51,10 +79,35 @@ function statusLine(ctx: ReplContext) {
     modelLabel,
     ctx.agent ?? "build",
     shortSession(ctx.sessionID),
+    ctx.meterShort,
     ctx.permissionMode.slice(0, 4),
     ctx.thinking ? "think" : "",
+    ctx.showTiming ? "" : "⏱off",
+    ctx.showTips ? "" : "tips off",
   ].filter(Boolean)
   return UI.Style.TEXT_DIM + parts.join(" · ") + UI.Style.TEXT_NORMAL
+}
+
+async function refreshMeter(sdk: ReturnType<typeof createInProcessClient>, ctx: ReplContext) {
+  try {
+    await applySessionMeterToContext(sdk, ctx)
+  } catch {
+    ctx.meterShort = undefined
+  }
+}
+
+/** Only these run @clack/prompts and need readline teardown on Windows. */
+function slashUsesClackPrompts(command: string) {
+  return (
+    command === "connect" ||
+    command === "llama" ||
+    command === "providers" ||
+    command === "provider" ||
+    command === "connectors" ||
+    command === "connector" ||
+    command === "model" ||
+    command === "agent"
+  )
 }
 
 export async function runRepl(config: ReplConfig) {
@@ -66,9 +119,12 @@ export async function runRepl(config: ReplConfig) {
     continueSession: config.continue ?? false,
     model: config.model,
     agent: config.agent,
-    thinking: config.thinking ?? false,
+    thinking: defaultThinking(config.model, config.thinking),
     permissionMode: config.permissionMode ?? "interactive",
     variant: undefined,
+    showTiming: true,
+    showTips: true,
+    turnCount: 0,
   }
 
   let connectedCount = 0
@@ -77,10 +133,12 @@ export async function runRepl(config: ReplConfig) {
       ctx.model = await defaultModel(sdk)
       const ref = ctx.model ? parseModelRef(ctx.model) : undefined
       if (ref) ctx.providerID = ref.providerID
+      syncThinkingFromLlamaConfig(ctx)
     } catch {
       // pick via /providers and /model
     }
   }
+
   try {
     const data = await fetchProviderList(sdk)
     connectedCount = data?.connected.length ?? 0
@@ -89,18 +147,13 @@ export async function runRepl(config: ReplConfig) {
     // non-fatal
   }
 
-  UI.empty()
   UI.println(UI.logo())
-  UI.empty()
-  UI.println(UI.Style.TEXT_DIM + `LocalCoder · ${config.directory}` + UI.Style.TEXT_NORMAL)
-  banner([
-    "Message the agent · /help · !shell · @files",
-    "/connect or /providers then /model · Ctrl+C stops the current turn",
-  ])
-  hint("/connect", "/providers", "/model", "/context", "/sessions")
-  UI.empty()
+  welcome(config.directory, ctx.thinking)
 
-  const rl = readline.createInterface({ input, output, terminal: true, history: [] as string[] })
+  const createReadline = () =>
+    readline.createInterface({ input, output, terminal: true, history: [] as string[] })
+
+  let rl = createReadline()
   let turnAbort: AbortController | undefined
   let forkNext = config.fork ?? false
   let exiting = false
@@ -109,6 +162,22 @@ export async function runRepl(config: ReplConfig) {
     sdk,
     ctx,
     ask: (p) => rl.question(p),
+  }
+
+  const bindAsk = () => {
+    env.ask = (p) => rl.question(p)
+  }
+
+  const restoreInput = (afterClack = false) => {
+    rl = resumeReadlineAfterPrompts(
+      rl,
+      () => {
+        const next = createReadline()
+        bindAsk()
+        return next
+      },
+      { afterClack },
+    )
   }
 
   const abortActiveTurn = () => {
@@ -134,11 +203,11 @@ export async function runRepl(config: ReplConfig) {
     commandArgs?: string
   }) => {
     turnAbort = new AbortController()
-    const spin = spinner()
-    spin.start("Working")
 
     const files = await resolveFileParts(sdk, input.text)
     const message = input.command ? (input.commandArgs ?? "") : stripAtRefs(input.text)
+
+    if (!input.command) turnUser(message)
 
     let result: Awaited<ReturnType<typeof runTurn>> | undefined
     try {
@@ -154,15 +223,34 @@ export async function runRepl(config: ReplConfig) {
         permissionMode: ctx.permissionMode,
         command: input.command,
         signal: turnAbort.signal,
-        onPermission: (req) => askPermission(req, ctx.permissionMode, env.ask),
+        onPermission: async (req) => {
+          if (ctx.permissionMode !== "interactive") {
+            return ctx.permissionMode === "accept" ? "once" : "reject"
+          }
+          restoreInput()
+          try {
+            return await askPermission(req, ctx.permissionMode, env.ask)
+          } finally {
+            pauseReadlineForPrompts(rl)
+          }
+        },
       })
       ctx.sessionID = result.sessionID
       ctx.continueSession = true
       forkNext = false
+      await refreshMeter(sdk, ctx)
+      if (ctx.showTiming && result && !result.error) {
+        turnTiming(result.elapsedMs, result.thinkingMs)
+      }
+      if (ctx.meterShort) {
+        turnContext(ctx.meterShort, ctx.meterShort.includes("overflow"))
+      }
+      if (!result?.error) maybeTurnTip(ctx)
+      turnDivider()
       return result
     } finally {
-      spin.stop(result?.error ? "Failed" : "Done")
       turnAbort = undefined
+      restoreInput(false)
     }
   }
 
@@ -172,10 +260,16 @@ export async function runRepl(config: ReplConfig) {
 
   try {
     while (true) {
+      UI.empty()
       UI.println(statusLine(ctx))
+      if (ctx.turnCount === 0) {
+        UI.println(UI.Style.TEXT_DIM + "  hint: /help · /session · /sessions · /history" + UI.Style.TEXT_NORMAL)
+      } else if (ctx.turnCount % 4 === 0 && ctx.showTips) {
+        UI.println(UI.Style.TEXT_DIM + "  hint: /tips" + UI.Style.TEXT_NORMAL)
+      }
       let line: string
       try {
-        line = await rl.question(UI.Style.TEXT_HIGHLIGHT + "› " + UI.Style.TEXT_NORMAL)
+        line = await rl.question(promptLabel())
       } catch {
         break
       }
@@ -184,11 +278,46 @@ export async function runRepl(config: ReplConfig) {
       if (parsed.kind === "empty") continue
 
       if (parsed.kind === "slash") {
-        const result = await handleSlashCommand(parsed.command, parsed.args, env)
+        const clack = slashUsesClackPrompts(parsed.command)
+        if (clack) pauseReadlineForPrompts(rl)
+        let result: Awaited<ReturnType<typeof handleSlashCommand>>
+        try {
+          result = await handleSlashCommand(parsed.command, parsed.args, env)
+        } finally {
+          if (clack) restoreInput(true)
+        }
         if (result === "exit") break
         if (result === "abort-turn") abortActiveTurn()
         if (result === "continue") {
           if (parsed.command === "fork") forkNext = true
+          if (parsed.command === "thinking") {
+            // ctx updated in commands
+          }
+          if (parsed.command === "connect" || parsed.command === "llama") {
+            try {
+              const data = await fetchProviderList(sdk)
+              const ref = ctx.model ? parseModelRef(ctx.model) : undefined
+              if (ref) ctx.providerID = ref.providerID
+              else if (data?.connected.includes("llamacpp")) {
+                const mid = data.default.llamacpp
+                if (mid) {
+                  ctx.model = `llamacpp/${mid}`
+                  ctx.providerID = "llamacpp"
+                }
+              }
+              syncThinkingFromLlamaConfig(ctx)
+              UI.println(
+                UI.Style.TEXT_DIM +
+                  `  thinking: ${ctx.thinking ? "on" : "off"} (from llamacpp config · /thinking to toggle)` +
+                  UI.Style.TEXT_NORMAL,
+              )
+            } catch {
+              // non-fatal
+            }
+          }
+          if (parsed.command === "context" || parsed.command === "ctx" || parsed.command === "tokens") {
+            await refreshMeter(sdk, ctx)
+          }
           continue
         }
 
@@ -217,6 +346,5 @@ export async function runRepl(config: ReplConfig) {
     exiting = true
     process.off("SIGINT", onSigint)
     rl.close()
-    cancel()
   }
 }

@@ -334,6 +334,8 @@ const live: Layer.Layer<
         : undefined
 
       return streamText({
+        // System prompts are assembled as role:system messages below; suppress AI SDK injection warning.
+        allowSystemInMessages: true,
         onError(error) {
           l.error("stream error", {
             error,

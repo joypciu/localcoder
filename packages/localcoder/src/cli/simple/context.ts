@@ -11,6 +11,14 @@ export type ReplContext = {
   thinking: boolean
   permissionMode: PermissionMode
   variant?: string
+  /** Shown on status line after a turn (e.g. 12k/65536 tok) */
+  meterShort?: string
+  /** Show turn duration in footer (toggle with /timing) */
+  showTiming: boolean
+  /** Show rotating tips after turns (toggle with /tips off) */
+  showTips: boolean
+  /** Increments each completed turn (for tip rotation) */
+  turnCount: number
 }
 
 export function shortSession(id?: string) {

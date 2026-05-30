@@ -10,7 +10,27 @@ import {
   pickProvider,
   printProviders,
 } from "./provider-pick"
+import { applySessionMeterToContext } from "./session-meter"
 import { runConnectFlow, runLlamaFlow, showSessionContext } from "./setup-commands"
+import { hint, section } from "./display"
+import { printShortcuts, printTip, randomTip } from "./hints"
+import {
+  activateSession,
+  clearSessionHistory,
+  confirmYes,
+  deleteHistoryMessage,
+  deleteSessionById,
+  fetchHistoryRows,
+  fetchSessionRows,
+  pickSessionInteractive,
+  printHistory,
+  printSearchHits,
+  printSessionTable,
+  resolveHistoryRef,
+  resolveSessionRef,
+  runSessionSearch,
+  showCurrentSession,
+} from "./session-mgmt"
 
 export type CommandEnv = {
   sdk: localcoderClient
@@ -19,34 +39,28 @@ export type CommandEnv = {
 }
 
 function printHelp() {
-  UI.println(UI.Style.TEXT_INFO_BOLD + "Commands" + UI.Style.TEXT_NORMAL)
-  UI.println(UI.Style.TEXT_DIM + "  Session" + UI.Style.TEXT_NORMAL)
-  UI.println("    /new, /clear     start a fresh session")
-  UI.println("    /sessions        list sessions")
-  UI.println("    /resume <id>     continue a session")
-  UI.println("    /fork            fork on next message")
-  UI.println("    /compact         summarize context")
-  UI.println("    /context         token usage for session")
-  UI.println("    /abort           stop the running turn")
-  UI.println(UI.Style.TEXT_DIM + "  Setup" + UI.Style.TEXT_NORMAL)
-  UI.println("    /connect         llama.cpp or cloud provider setup")
-  UI.println("    /llama           llamacpp status / setup / start")
-  UI.println("    /providers       list & pick provider")
-  UI.println("    /connectors      alias for /providers")
-  UI.println("    /model [id]      pick model (connected providers)")
-  UI.println("    /agent [name]    pick or set agent")
-  UI.println("    /status          cwd, session, model, permissions")
-  UI.println(UI.Style.TEXT_DIM + "  Other" + UI.Style.TEXT_NORMAL)
-  UI.println("    /thinking        toggle reasoning output")
-  UI.println("    /permissions     cycle ask → accept → reject")
-  UI.println("    /commands        project slash commands")
-  UI.println("    /help            this help")
-  UI.println("    /exit, /quit     leave")
-  UI.empty()
-  UI.println(UI.Style.TEXT_INFO_BOLD + "Input" + UI.Style.TEXT_NORMAL)
-  UI.println("    !cmd             run a shell command locally")
-  UI.println("    @path            attach files to your message")
-  UI.println(UI.Style.TEXT_DIM + "  Full-screen UI: localcoder tui" + UI.Style.TEXT_NORMAL)
+  section("Session")
+  hint(
+    "/new — fresh session · /session — switch (picker)",
+    "/sessions · /resume <id> · /search <query>",
+    "/history · /history-delete · /clear-history",
+    "/delete-session · /rename-session · /revert · /fork · /compact",
+  )
+  section("Setup")
+  hint(
+    "/connect · /llama · /providers · /model [id] · /agent [name] · /status",
+  )
+  section("Other")
+  hint(
+    "/thinking — reasoning panel with live seconds",
+    "/timing — show or hide turn duration footer",
+    "/tips — hints (/tips off to disable rotation)",
+    "/permissions — ask → accept → reject",
+    "/shortcuts — quick reference",
+    "/commands · /help · /exit",
+  )
+  section("Input")
+  hint("!cmd — local shell", "@path — attach files", "Full UI: localcoder tui")
   UI.empty()
 }
 
@@ -100,14 +114,53 @@ export async function handleSlashCommand(
       UI.println(`  provider: ${parsed?.providerID ?? ctx.providerID ?? "(none)"}`)
       UI.println(`  model:    ${ctx.model ?? "(default)"}`)
       UI.println(`  agent:    ${ctx.agent ?? "(default)"}`)
-      UI.println(`  think:    ${ctx.thinking ? "on" : "off"}`)
+      UI.println(`  think:    ${ctx.thinking ? "on (◆ panel)" : "off"}`)
+      UI.println(`  timing:   ${ctx.showTiming ? "on" : "off"}`)
+      UI.println(`  tips:     ${ctx.showTips ? "on" : "off"}`)
       UI.println(`  perms:    ${ctx.permissionMode}`)
       return "continue"
     }
 
     case "thinking":
+    case "think":
       ctx.thinking = !ctx.thinking
-      UI.println(UI.Style.TEXT_SUCCESS + `Thinking ${ctx.thinking ? "on" : "off"}.` + UI.Style.TEXT_NORMAL)
+      UI.println(
+        UI.Style.TEXT_SUCCESS +
+          `Thinking ${ctx.thinking ? "on" : "off"} — ${ctx.thinking ? "◆ panel with elapsed seconds" : "hidden"}.` +
+          UI.Style.TEXT_NORMAL,
+      )
+      return "continue"
+
+    case "timing": {
+      if (args === "off") ctx.showTiming = false
+      else if (args === "on") ctx.showTiming = true
+      else ctx.showTiming = !ctx.showTiming
+      UI.println(
+        UI.Style.TEXT_SUCCESS +
+          `Turn timing ${ctx.showTiming ? "on" : "off"} (footer shows ⏱ after each reply).` +
+          UI.Style.TEXT_NORMAL,
+      )
+      return "continue"
+    }
+
+    case "tips": {
+      if (args === "off") {
+        ctx.showTips = false
+        UI.println(UI.Style.TEXT_SUCCESS + "Rotating tips off." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      if (args === "on") {
+        ctx.showTips = true
+        UI.println(UI.Style.TEXT_SUCCESS + "Rotating tips on." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      printTip(args.trim() || randomTip())
+      return "continue"
+    }
+
+    case "shortcuts":
+    case "keys":
+      printShortcuts()
       return "continue"
 
     case "permissions":
@@ -214,28 +267,212 @@ export async function handleSlashCommand(
     }
 
     case "sessions": {
-      const list = await sdk.session.list({ directory: ctx.directory })
-      const rows = list.data ?? []
-      if (rows.length === 0) {
-        UI.println(UI.Style.TEXT_DIM + "  (no sessions)" + UI.Style.TEXT_NORMAL)
-      }
-      for (const s of rows) {
-        const mark = s.id === ctx.sessionID ? "*" : " "
-        UI.println(`  ${mark} ${s.id}  ${s.title ?? "(untitled)"}`)
-      }
+      const rows = await fetchSessionRows(sdk, ctx.directory, 40)
+      UI.println(UI.Style.TEXT_INFO_BOLD + "Sessions" + UI.Style.TEXT_NORMAL)
+      printSessionTable(rows, ctx.sessionID, true)
+      UI.println(UI.Style.TEXT_DIM + "  /session to switch · /delete-session <#|id>" + UI.Style.TEXT_NORMAL)
       return "continue"
     }
 
-    case "resume":
     case "session":
-      if (!args) {
-        UI.println(UI.Style.TEXT_WARNING + "Usage: /resume <session-id>" + UI.Style.TEXT_NORMAL)
+    case "switch": {
+      if (args === "info" || args === "current") {
+        await showCurrentSession(sdk, ctx)
         return "continue"
       }
-      ctx.sessionID = args.split(/\s+/)[0]
-      ctx.continueSession = true
-      UI.println(UI.Style.TEXT_SUCCESS + `Resumed ${shortSession(ctx.sessionID)}` + UI.Style.TEXT_NORMAL)
+      if (!args) {
+        const picked = await pickSessionInteractive(sdk, ctx, env.ask, {
+          message: "Switch session",
+          includeNew: true,
+        })
+        if (!picked) return "continue"
+        if (picked === "__new__") {
+          ctx.sessionID = undefined
+          ctx.continueSession = false
+          ctx.meterShort = undefined
+          UI.println(UI.Style.TEXT_SUCCESS + "New session — next message starts fresh." + UI.Style.TEXT_NORMAL)
+          return "continue"
+        }
+        await activateSession(sdk, ctx, picked)
+        UI.println(UI.Style.TEXT_SUCCESS + `Switched to ${shortSession(picked)}` + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      const rows = await fetchSessionRows(sdk, ctx.directory, 50)
+      const resolved = resolveSessionRef(args.split(/\s+/)[0]!, rows)
+      if (!resolved) {
+        UI.println(UI.Style.TEXT_WARNING + `No session matching "${args}"` + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      await activateSession(sdk, ctx, resolved.id)
+      UI.println(UI.Style.TEXT_SUCCESS + `Switched to ${shortSession(resolved.id)}` + UI.Style.TEXT_NORMAL)
       return "continue"
+    }
+
+    case "resume": {
+      if (!args) {
+        UI.println(UI.Style.TEXT_WARNING + "Usage: /resume <#|session-id> or /session to pick" + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      const rows = await fetchSessionRows(sdk, ctx.directory, 50)
+      const resolved = resolveSessionRef(args.split(/\s+/)[0]!, rows)
+      if (!resolved) {
+        UI.println(UI.Style.TEXT_WARNING + `No session matching "${args}"` + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      await activateSession(sdk, ctx, resolved.id)
+      UI.println(UI.Style.TEXT_SUCCESS + `Resumed ${shortSession(resolved.id)}` + UI.Style.TEXT_NORMAL)
+      return "continue"
+    }
+
+    case "search": {
+      if (!args.trim()) {
+        UI.println(UI.Style.TEXT_WARNING + "Usage: /search <query>" + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      const hits = runSessionSearch(args.trim(), ctx.directory, 20)
+      UI.println(UI.Style.TEXT_INFO_BOLD + `Search: ${args.trim()}` + UI.Style.TEXT_NORMAL)
+      printSearchHits(hits, ctx.directory, ctx.sessionID)
+      UI.println(UI.Style.TEXT_DIM + "  /resume <id> or /session to open" + UI.Style.TEXT_NORMAL)
+      return "continue"
+    }
+
+    case "history":
+    case "messages": {
+      if (!ctx.sessionID) {
+        UI.println(UI.Style.TEXT_WARNING + "No active session." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      const limit = args.trim() ? Math.min(Number.parseInt(args, 10) || 30, 80) : 30
+      const rows = await fetchHistoryRows(sdk, ctx, limit)
+      printHistory(rows, ctx.sessionID)
+      return "continue"
+    }
+
+    case "history-delete":
+    case "delete-history":
+    case "history-rm": {
+      if (!ctx.sessionID) {
+        UI.println(UI.Style.TEXT_WARNING + "No active session." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      const rows = await fetchHistoryRows(sdk, ctx, 80)
+      const ref = args.trim() || "last"
+      const row = resolveHistoryRef(ref, rows)
+      if (!row) {
+        UI.println(UI.Style.TEXT_WARNING + `No message matching "${ref}" (see /history)` + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      if (!(await confirmYes(env.ask, `  Delete #${row.index} ${row.role} message? (y/n): `))) {
+        UI.println(UI.Style.TEXT_DIM + "  Cancelled." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      await deleteHistoryMessage(sdk, ctx, row.id)
+      return "continue"
+    }
+
+    case "clear-history":
+    case "history-clear":
+    case "wipe-history": {
+      if (!ctx.sessionID) {
+        UI.println(UI.Style.TEXT_WARNING + "No active session." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      if (!(await confirmYes(env.ask, "  Delete ALL messages in this session? (y/n): "))) {
+        UI.println(UI.Style.TEXT_DIM + "  Cancelled." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      UI.println(UI.Style.TEXT_DIM + "  Clearing history…" + UI.Style.TEXT_NORMAL)
+      const n = await clearSessionHistory(sdk, ctx)
+      UI.println(UI.Style.TEXT_SUCCESS + `Cleared ${n} message(s). Session kept.` + UI.Style.TEXT_NORMAL)
+      return "continue"
+    }
+
+    case "delete-session":
+    case "session-delete":
+    case "del-session": {
+      const rows = await fetchSessionRows(sdk, ctx.directory, 40)
+      let target: string | undefined
+      if (!args.trim()) {
+        UI.println(UI.Style.TEXT_INFO_BOLD + "Delete session" + UI.Style.TEXT_NORMAL)
+        printSessionTable(rows, ctx.sessionID, true)
+        const raw = (await env.ask(UI.Style.TEXT_HIGHLIGHT + "  # or id to delete (empty=cancel): " + UI.Style.TEXT_NORMAL)).trim()
+        if (!raw) return "continue"
+        const num = Number.parseInt(raw, 10)
+        if (!Number.isNaN(num) && num >= 1 && num <= rows.length) {
+          target = rows[num - 1]!.id
+        } else {
+          target = resolveSessionRef(raw, rows)?.id
+        }
+      } else {
+        target = resolveSessionRef(args.split(/\s+/)[0]!, rows)?.id
+      }
+      if (!target) {
+        UI.println(UI.Style.TEXT_WARNING + "Session not found." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      if (!(await confirmYes(env.ask, `  Permanently delete ${shortSession(target)}? (y/n): `))) {
+        UI.println(UI.Style.TEXT_DIM + "  Cancelled." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      await deleteSessionById(sdk, ctx, target)
+      return "continue"
+    }
+
+    case "rename-session":
+    case "session-rename": {
+      const trimmed = args.trim()
+      if (!trimmed) {
+        if (!ctx.sessionID) {
+          UI.println(UI.Style.TEXT_WARNING + "No active session." + UI.Style.TEXT_NORMAL)
+          return "continue"
+        }
+        const newTitle = (await env.ask("  New title: ")).trim()
+        if (!newTitle) return "continue"
+        await sdk.session.update({ sessionID: ctx.sessionID, title: newTitle, directory: ctx.directory })
+        UI.println(UI.Style.TEXT_SUCCESS + `Renamed to "${newTitle}".` + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      const rows = await fetchSessionRows(sdk, ctx.directory, 50)
+      const first = trimmed.split(/\s+/)[0]!
+      const byRef = resolveSessionRef(first, rows)
+      const sessionID = byRef && trimmed.length > first.length ? byRef.id : ctx.sessionID
+      const title = byRef && trimmed.length > first.length ? trimmed.slice(first.length).trim() : trimmed
+      if (!sessionID) {
+        UI.println(UI.Style.TEXT_WARNING + "No active session — use /rename-session <ses-id> <title>" + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      if (!title) {
+        UI.println(UI.Style.TEXT_WARNING + "Missing title." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      await sdk.session.update({ sessionID, title, directory: ctx.directory })
+      UI.println(UI.Style.TEXT_SUCCESS + `Renamed to "${title}".` + UI.Style.TEXT_NORMAL)
+      return "continue"
+    }
+
+    case "revert": {
+      if (!ctx.sessionID) {
+        UI.println(UI.Style.TEXT_WARNING + "No active session." + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      const rows = await fetchHistoryRows(sdk, ctx, 80)
+      const ref = args.trim() || "last"
+      const row = resolveHistoryRef(ref, rows)
+      if (!row) {
+        UI.println(UI.Style.TEXT_WARNING + `No message matching "${ref}"` + UI.Style.TEXT_NORMAL)
+        return "continue"
+      }
+      if (!(await confirmYes(env.ask, `  Revert from message #${row.index} (undoes file changes)? (y/n): `))) {
+        return "continue"
+      }
+      await sdk.session.revert({
+        sessionID: ctx.sessionID,
+        messageID: row.id,
+        directory: ctx.directory,
+      })
+      UI.println(UI.Style.TEXT_SUCCESS + "Reverted — file changes undone for that turn." + UI.Style.TEXT_NORMAL)
+      return "continue"
+    }
 
     case "fork":
       if (!ctx.sessionID) {
@@ -252,8 +489,17 @@ export async function handleSlashCommand(
         return "continue"
       }
       UI.println(UI.Style.TEXT_DIM + "Compacting session…" + UI.Style.TEXT_NORMAL)
-      await sdk.session.summarize({ sessionID: ctx.sessionID })
+      await sdk.session.summarize({ sessionID: ctx.sessionID, directory: ctx.directory })
+      const meter = await applySessionMeterToContext(sdk, ctx)
       UI.println(UI.Style.TEXT_SUCCESS + "Session compacted." + UI.Style.TEXT_NORMAL)
+      if (meter?.short) {
+        UI.println(UI.Style.TEXT_DIM + `  context: ${meter.short}` + UI.Style.TEXT_NORMAL)
+      }
+      UI.println(
+        UI.Style.TEXT_DIM +
+          "  Token count updates on the next assistant reply (or run /context)." +
+          UI.Style.TEXT_NORMAL,
+      )
       return "continue"
 
     case "abort":
@@ -285,12 +531,16 @@ export async function askPermission(
   if (mode === "reject") return "reject"
 
   UI.empty()
-  UI.println(UI.Style.TEXT_WARNING_BOLD + "Permission" + UI.Style.TEXT_NORMAL)
+  UI.println(UI.Style.TEXT_WARNING_BOLD + "  ⚠ Permission required" + UI.Style.TEXT_NORMAL)
+  UI.println(UI.Style.TEXT_DIM + "  ────────────────────────────────────────" + UI.Style.TEXT_NORMAL)
   UI.println(`  ${req.permission}${req.patterns?.length ? ` · ${req.patterns.join(", ")}` : ""}`)
-  if (req.metadata?.filepath) UI.println(UI.Style.TEXT_DIM + `  ${req.metadata.filepath}` + UI.Style.TEXT_NORMAL)
+  if (req.metadata?.filepath) {
+    UI.println(UI.Style.TEXT_DIM + `  file: ${req.metadata.filepath}` + UI.Style.TEXT_NORMAL)
+  }
+  UI.println(UI.Style.TEXT_DIM + "  ────────────────────────────────────────" + UI.Style.TEXT_NORMAL)
   UI.empty()
 
-  const answer = (await ask("  Allow? (y)es / (n)o / (a)lways: ")).trim().toLowerCase()
+  const answer = (await ask(UI.Style.TEXT_HIGHLIGHT + "  Allow? (y/n/a): " + UI.Style.TEXT_NORMAL)).trim().toLowerCase()
   if (answer === "a" || answer === "always") return "always"
   if (answer === "y" || answer === "yes") return "once"
   return "reject"

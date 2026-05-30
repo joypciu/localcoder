@@ -25,6 +25,24 @@ localcoder tui                # legacy full-screen TUI
 
 Ctrl+C aborts the current turn (second Ctrl+C exits).
 
+## Windows shells (cmd vs PowerShell)
+
+**PowerShell** (recommended):
+
+```powershell
+cd P:\localcoder\packages\localcoder
+bun run dev
+```
+
+**Command Prompt (`cmd.exe`)** — `cd` does not switch drives unless you use `/d`. Do not paste the `PS` from a PowerShell prompt into cmd.
+
+```cmd
+cd /d P:\localcoder\packages\localcoder
+bun run dev
+```
+
+Or change drive first: `P:` then `cd \localcoder\packages\localcoder`.
+
 ## Development
 
 ```bash

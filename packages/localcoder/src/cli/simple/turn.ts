@@ -5,6 +5,9 @@ import { Permission } from "@/permission"
 import { renderTool } from "./render"
 import type { FilePart } from "./parse"
 import type { PermissionMode } from "./context"
+import { turnAgent } from "./display"
+import { TurnActivity } from "./activity-ui"
+import { ThinkingPanel } from "./thinking-panel"
 
 export type TurnOptions = {
   message: string
@@ -20,6 +23,14 @@ export type TurnOptions = {
   permissionMode?: PermissionMode
   onPermission?: (req: PermissionRequest) => Promise<"once" | "always" | "reject">
   signal?: AbortSignal
+}
+
+export type TurnResult = {
+  sessionID: string
+  error?: string
+  forked?: boolean
+  elapsedMs: number
+  thinkingMs?: number
 }
 
 const denyRules: Permission.Ruleset = [
@@ -44,12 +55,24 @@ async function resolveSessionID(sdk: localcoderClient, opts: TurnOptions): Promi
   return created.data?.id
 }
 
-export async function runTurn(
-  sdk: localcoderClient,
-  opts: TurnOptions,
-): Promise<{ sessionID: string; error?: string; forked?: boolean }> {
+function stripThinkingFromText(text: string) {
+  return text
+    .replace(/<think[^>]*>[\s\S]*?<\/think>/gi, "")
+    .replace(/<think>[\s\S]*?<\/redacted_thinking>/gi, "")
+    .trim()
+}
+
+function writeAssistant(text: string) {
+  process.stdout.write(text)
+}
+
+export async function runTurn(sdk: localcoderClient, opts: TurnOptions): Promise<TurnResult> {
+  const turnStart = Date.now()
   const sessionID = await resolveSessionID(sdk, opts)
   if (!sessionID) throw new Error("Could not create or resume a session")
+
+  const activity = new TurnActivity()
+  activity.start("Waiting for model")
 
   const eventAbort = new AbortController()
   if (opts.signal) {
@@ -62,16 +85,25 @@ export async function runTurn(
   let started = false
   let forked = Boolean(opts.fork && opts.continue)
   const textStreams = new Map<string, string>()
+  const reasoningStreams = new Map<string, string>()
+  let wroteAssistantNewline = false
+  let thinkingPanel: ThinkingPanel | undefined
+  let thinkingMs: number | undefined
+  let toolActive = false
+
+  const stopActivity = () => {
+    if (activity) activity.stop()
+  }
 
   const loop = async () => {
     for await (const event of events.stream) {
       if (event.type === "message.updated" && event.properties.info.role === "assistant" && !started) {
-        UI.empty()
-        UI.println(
-          UI.Style.TEXT_HIGHLIGHT +
-            `▸ ${event.properties.info.agent} · ${event.properties.info.modelID}` +
-            UI.Style.TEXT_NORMAL,
-        )
+        stopActivity()
+        turnAgent(event.properties.info.agent, event.properties.info.modelID)
+        if (!wroteAssistantNewline) {
+          writeAssistant("\n")
+          wroteAssistantNewline = true
+        }
         started = true
       }
 
@@ -80,11 +112,17 @@ export async function runTurn(
         if (part.sessionID !== sessionID) continue
 
         if (part.type === "tool") {
-          if (part.state.status === "running" && part.tool === "task") {
-            renderTool(part)
+          if (part.state.status === "running") {
+            if (!toolActive) {
+              toolActive = true
+              if (!thinkingPanel?.isActive()) activity.setLabel("Running tools")
+            }
+            if (part.tool === "task") renderTool(part)
           }
           if (part.state.status === "completed" || part.state.status === "error") {
             renderTool(part)
+            toolActive = false
+            if (!started && !thinkingPanel) activity.setLabel("Waiting for model")
           }
         }
 
@@ -92,26 +130,64 @@ export async function runTurn(
           const prev = textStreams.get(part.id) ?? ""
           const next = part.text
           if (next.length > prev.length) {
-            process.stdout.write(next.slice(prev.length))
+            stopActivity()
+            if (!wroteAssistantNewline) {
+              writeAssistant("\n")
+              wroteAssistantNewline = true
+            }
+            writeAssistant(next.slice(prev.length))
             textStreams.set(part.id, next)
           }
           if (part.time?.end) {
-            const trimmed = part.text.trim()
-            if (trimmed && !prev) {
-              UI.empty()
-              UI.println(trimmed)
-            } else if (prev) {
-              process.stdout.write("\n")
+            if (textStreams.has(part.id)) {
+              writeAssistant("\n")
+            } else {
+              const trimmed = stripThinkingFromText(part.text)
+              if (trimmed) {
+                if (!wroteAssistantNewline) writeAssistant("\n")
+                writeAssistant(trimmed + "\n")
+                wroteAssistantNewline = true
+              }
             }
-            UI.empty()
             textStreams.delete(part.id)
           }
         }
 
+        if (part.type === "reasoning" && !opts.thinking) {
+          if (!part.time?.end) {
+            if (!reasoningStreams.has(part.id)) {
+              activity.setLabel("Reasoning — /thinking to show")
+              reasoningStreams.set(part.id, "")
+            }
+          } else {
+            reasoningStreams.delete(part.id)
+            if (!started && !toolActive) activity.setLabel("Waiting for model")
+          }
+        }
+
         if (part.type === "reasoning" && opts.thinking) {
-          const text = part.text.trim()
-          if (text && part.time?.end) {
-            UI.println(UI.Style.TEXT_DIM + `◆ ${text}` + UI.Style.TEXT_NORMAL)
+          const prev = reasoningStreams.get(part.id) ?? ""
+          const next = part.text
+          if (next.length > prev.length && !part.time?.end) {
+            if (prev.length === 0) {
+              stopActivity()
+              thinkingPanel = new ThinkingPanel()
+              thinkingPanel.begin()
+            }
+            thinkingPanel?.append(next.slice(prev.length))
+            reasoningStreams.set(part.id, next)
+          }
+          if (part.time?.end) {
+            const text = part.text.trim()
+            if (reasoningStreams.has(part.id)) {
+              const closed = thinkingPanel?.close()
+              if (closed) thinkingMs = (thinkingMs ?? 0) + closed.ms
+              thinkingPanel = undefined
+              reasoningStreams.delete(part.id)
+            } else if (text && !text.startsWith("[REDACTED]")) {
+              stopActivity()
+              ThinkingPanel.showCollapsed(text)
+            }
           }
         }
       }
@@ -124,27 +200,32 @@ export async function runTurn(
           err = String(props.error.data.message)
         }
         error = err
+        stopActivity()
+        thinkingPanel?.close()
         UI.error(err)
         break
       }
 
       if (event.type === "session.status") {
         if (event.properties.sessionID !== sessionID) continue
-        if (event.properties.status.type === "busy" && !started) {
-          UI.println(UI.Style.TEXT_DIM + "…" + UI.Style.TEXT_NORMAL)
+        const status = event.properties.status
+        if (status.type === "busy" && !started && !thinkingPanel) {
+          activity.setLabel("Model busy")
         }
-        if (event.properties.status.type === "idle") break
+        if (status.type === "idle") break
       }
 
       if (event.type === "permission.asked") {
         const permission = event.properties
         if (permission.sessionID !== sessionID) continue
+        activity.setLabel("Waiting for permission")
         const reply = opts.onPermission
           ? await opts.onPermission(permission)
           : opts.permissionMode === "accept"
             ? ("once" as const)
             : ("reject" as const)
         await sdk.permission.reply({ requestID: permission.id, reply })
+        if (!started && !thinkingPanel) activity.setLabel("Waiting for model")
       }
     }
   }
@@ -181,9 +262,24 @@ export async function runTurn(
     eventAbort.abort()
     const msg = e instanceof Error ? e.message : String(e)
     error = msg
+    stopActivity()
+    thinkingPanel?.close()
     UI.error(msg)
   }
 
   await loopDone.catch(() => {})
-  return { sessionID, error, forked }
+  stopActivity()
+  if (thinkingPanel) {
+    const closed = thinkingPanel.close()
+    if (closed) thinkingMs = (thinkingMs ?? 0) + closed.ms
+  }
+  if (wroteAssistantNewline) writeAssistant("\n")
+
+  return {
+    sessionID,
+    error,
+    forked,
+    elapsedMs: Date.now() - turnStart,
+    thinkingMs,
+  }
 }

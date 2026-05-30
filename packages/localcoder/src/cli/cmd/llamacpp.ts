@@ -126,7 +126,7 @@ export const LlamacppSetupCommand = effectCmd({
     let thinking = args.thinking as boolean | undefined
 
     if (!llamaDir || !modelPath) {
-      const picked = yield* interactiveSetup
+      const picked = yield* interactiveSetup()
       llamaDir = llamaDir ?? picked.llamaDir
       modelPath = modelPath ?? picked.modelPath
       ctx = ctx ?? picked.ctx
