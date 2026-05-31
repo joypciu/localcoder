@@ -33,6 +33,8 @@ export function welcome(directory: string, thinking: boolean) {
     thinking
       ? "Reasoning panel on (◆ + seconds) — /thinking to hide"
       : "Reasoning off — /thinking to show (llamacpp)",
+    "Shift+Enter for newline · Enter to submit · /editor for long text",
+    "/copy — copy last assistant response · /multiline · /markdown toggle",
     "Type /tips anytime for hints",
   )
   UI.empty()

@@ -129,7 +129,7 @@ function write(info: ToolProps<typeof WriteTool>) {
 function webfetch(info: ToolProps<typeof WebFetchTool>) {
   inline({
     icon: "%",
-    title: `WebFetch ${info.input.url}`,
+    title: `WebFetch ${(info.input as any).url}`,
   })
 }
 
@@ -310,7 +310,7 @@ export const RunCommand = effectCmd({
       const parsed = Provider.parseModel(args.model)
       const providerSvc = yield* Provider.Service
       yield* providerSvc.getModel(parsed.providerID, parsed.modelID).pipe(
-        Effect.catchIf(Provider.ModelNotFoundError.isInstance, (err) => {
+        Effect.catchIf(Provider.ModelNotFoundError.isInstance, (err: any) => {
           const hint = err.data.suggestions?.length ? `\nDid you mean: ${err.data.suggestions.join(", ")}` : ""
           return fail(
             `Model not found: ${err.data.providerID}/${err.data.modelID}.${hint}\nTry: \`localcoder models\` to list available models`,
@@ -458,7 +458,7 @@ export const RunCommand = effectCmd({
         }
 
         const eventAbort = new AbortController()
-        const events = await sdk.event.subscribe({ signal: eventAbort.signal })
+        const events = await sdk.event.subscribe({ signal: eventAbort.signal } as any)
         let error: string | undefined
 
         async function loop() {

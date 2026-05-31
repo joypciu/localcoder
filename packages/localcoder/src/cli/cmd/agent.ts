@@ -127,7 +127,7 @@ const AgentCreateCommand = effectCmd({
       const spinner = prompts.spinner()
       spinner.start("Generating agent configuration...")
       const model = args.model ? Provider.parseModel(args.model) : undefined
-      const generated = await Effect.runPromise(agentSvc.generate({ description, model })).catch((error) => {
+      const generated = await (Effect.runPromise(agentSvc.generate({ description, model }) as any) as Promise<{ identifier: string; whenToUse: string; systemPrompt: string }>).catch((error: any) => {
         spinner.stop(`LLM failed to generate agent: ${error.message}`, 1)
         if (isFullyNonInteractive) process.exit(1)
         throw new UI.CancelledError()

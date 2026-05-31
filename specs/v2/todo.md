@@ -1,6 +1,13 @@
-# TODO
+# v2 Migration TODO
 
-ok we need to work towards a launch of v2 so we can get out of this rebuild phase
+Tracking remaining work to complete the v2 architecture and exit the rebuild phase.
+
+## TUI migration — Done (2026-06-01)
+
+- Migrated from broken OpenTUI to Ink + React
+- Removed `@opentui/core`, `@opentui/solid`, `opentui-spinner`
+- New components: Header, MessageList, InputBox, CommandPalette, ModelPicker, AgentPicker, SessionPicker, Toast, HelpPanel
+- Hooks: useChat, useTheme, useClient, usePlugins
 
 ## Kill Hono - Kit
 

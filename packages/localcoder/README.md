@@ -5,9 +5,10 @@ Core package: terminal agent, HTTP server, agent loop, storage, llama.cpp integr
 ## Simple CLI (default)
 
 ```bash
-localcoder                    # text REPL in cwd
+localcoder                    # full TUI (default) — mouse, Shift+Enter, rich rendering
 localcoder /path/to/project
-localcoder tui                # legacy full-screen TUI
+localcoder --simple           # lightweight text REPL (any terminal, pipe-friendly)
+localcoder tui                # alias for full TUI (explicit)
 ```
 
 | Command | Description |

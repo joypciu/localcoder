@@ -1,8 +1,11 @@
 ﻿# LocalCoder — Improvements, Fixes & Roadmap
 
-**Updated:** 2026-05-29 · **Release:** v1.14.46  
+> **Private / local only** — listed in `.gitignore` with `CONTINUATION.md`. Pair with CONTINUATION for Cursor handoff.
+
+**Updated:** 2026-05-31 (Session 9) · **Release:** v1.14.44+  
+**Git:** `main` @ `712c9c8` → pending commit  
 **VS Code tests:** `cd sdks/vscode && bun run test:unit` (fast) · `bun run test` (full)  
-**Windows E2E:** `bun run e2e:smoke` (~15s) · `bun run e2e` (~1–2 min) · `bun run e2e:full` (build + Playwright)  
+**Windows E2E:** `bun run e2e:smoke` (~47s, `E2E_SKIP_VISUAL=1`) · `bun run e2e` (standard) · `bun run e2e:full`  
 **v2 migration backlog:** [specs/v2/todo.md](specs/v2/todo.md)
 
 ---
@@ -11,6 +14,10 @@
 
 | Area | Status | Notes |
 |------|--------|-------|
+| **Full TUI (Ink)** | **Done (2026-06-01)** | Migrated from broken OpenTUI to Ink + React; slash commands, help panel, file attachments, tool details, markdown rendering — Session 10 |
+| **Simple CLI (fallback)** | **Done (2026-05-30)** | Thinking panel + seconds, session/history mgmt, tips, meter fix, AI SDK warning fix — `712c9c8` |
+| **Desktop shell UI** | **Improved (2026-05-30)** | Live Playwright (no mock); agent + model selects; permission e2e inject; empty-state hints |
+| **VS Code terminal** | **Done (2026-05-30)** | `resolve-cli.ts` — `localcoder.exe` first, then bun dev tree |
 | **Zero-config providers** | **Done (2026-05-29)** | llama.cpp + OpenRouter + OpenCode Go wizards; `auth set-api` |
 | **CLI reliability** | **Fixed** | Invalid model fail-fast (~2s); stdout progress; skip bundled plugin npm 404 |
 | **Visual regression** | **Done (2026-05-29)** | `scripts/visual-test/` — TUI + VS Code webview + app; wired into e2e:smoke |
@@ -18,11 +25,208 @@
 | **Context / compaction** | **Fixed** | 128K ctx server restart; overflow budget; summary hidden (TUI + VS Code) |
 | **Webfetch bloat** | **Fixed** | Blocked-page detection; 12K char cap — reduces premature compaction |
 | **Desktop click-to-undo** | **Fixed** | Backend restores files + syncs messages |
-| **VS Code extension** | **Strong** | 84+ tests; zero-config wizards; SecretStorage; inline actions |
+| **VS Code extension** | **Strong** | 93+ unit tests; zero-config wizards; terminal launches simple CLI via exe resolver |
 | **Portable Windows build** | **Fast** | `build:win-standalone` ~2–4 min; fast pack ~1 min |
 | **Global CLI (Windows)** | **Fixed** | `bun run install:cli` from `dist/npm/localcoder` |
 | **Multi-agent / subagents** | **Functional** | Parallel coordinator; desktop UX lagging TUI |
 | **Internal architecture** | **In migration** | Effect services + v1/v2 dual-write |
+
+---
+
+## Session 10 — Ink TUI migration + OpenTUI cleanup (2026-06-01)
+
+### Removed OpenTUI completely
+- Deleted `@opentui/core`, `@opentui/solid`, `opentui-spinner` from root catalog, `packages/localcoder`, `packages/plugin`
+- Deleted `script/upgrade-opentui.ts`, `packages/plugin/src/tui.ts`, `.localcoder/plugins/tui-smoke.tsx`
+- Removed OpenTUI preloads from `bunfig.toml`
+- Deleted obsolete Python generator scripts: `scripts/cli-mouse-e2e.py`, `finish-ux.py`, `implement-all.py`, `implement-all2.py`
+- Updated `specs/tui-plugins.md` with migration notice
+
+### New Ink-based TUI
+- Entry: `src/cli/cmd/tui/app.tsx` — full-screen React + Ink layout
+- Components: `Header`, `MessageList`, `MessageItem`, `InputBox`, `CommandPalette`, `ModelPicker`, `AgentPicker`, `SessionPicker`, `Toast`, `HelpPanel`
+- Hooks: `useChat` (streaming, tools, permissions), `useTheme` (dark/light), `useClient`, `usePlugins` (plugin registry)
+- `MessageItem` features: markdown headers/bold/code blocks, file attachments, thinking blocks, tool status cards with output preview, proper CJK text wrapping
+- `CommandPalette` — fuzzy filter, 7 commands (new session, switch, model, agent, theme, help, exit)
+- `HelpPanel` — `?` key or `/help`; shows keyboard shortcuts and all slash commands
+- Input slash commands: `/help`, `/new`, `/abort`, `/theme`, `/exit`, `/model`, `/agent`, `/session`
+
+### Simple CLI improvements
+- `tab-completion.ts` — `SlashCommand` interface with descriptions; `renderCompletionMenu()` shows descriptions and navigation footer
+- `input-area.ts` — `maybeAutoComplete()` auto-triggers completion menu on typing `/`
+
+### VS Code extension
+- `esbuild.js` converted to ESM; `package.json` scripts use `bun` instead of `node`
+
+---
+
+## Session 9 — Modern TUI as default + 2026 CLI features (2026-05-31)
+
+### TUI now default entry
+
+| Item | Files |
+|------|-------|
+| `launch.ts` | Extracted Worker + RPC TUI launch from `thread.ts`; throws on legacy console → triggers fallback |
+| `simple-cli.ts` | Adds `--simple` flag; tries `launchTui()` unless stdin is explicitly piped (`=== false`). **Key fix:** `isTTY === false` (strict) — `bun run dev` leaves `isTTY` as `undefined`, old falsy check skipped TUI. |
+| `launch.ts` (new window fix) | On Windows, spawns TUI in **new wt.exe tab** (no PowerShell intermediary) unless `LOCALCODER_IN_WT=1`. Passes env via cp.spawn `env` option (wt.exe propagates). Debug `[LocalCoder TUI]` messages on stderr throughout. |
+| `app.tsx` (**blank screen fix**) | `screenMode: "main-screen"` added to `rendererConfig`. OpenTUI defaults to `"alternate-screen"` which renders blank on Windows Terminal. Main-screen mode renders inline (same buffer, like passthrough) — this is the root cause of the long-standing blank TUI on Windows. |
+| `thread.ts` | Description updated; was "legacy fullscreen UI" → now "full TUI (alias for default)" |
+| Docs | README.md + packages/localcoder/README.md updated to show TUI as default |
+
+### Features added to full TUI
+
+| Feature | Files |
+|---------|-------|
+| **Token/context meter in status bar** | `status-bar.tsx` — `█░` progress bar + %, color-coded by level (ok/warn/high/critical) |
+| **Collapsible thinking blocks** | `routes/session/index.tsx` — `Show/fallback` on `ReasoningPart`: collapsed = `◆ Thinking · N chars (/thinking to expand)` |
+| **Fish-style inline suggestions** | `prompt/index.tsx` + `history.tsx` — dim `→ suffix` hint below input; Right→ accepts; updates after each key |
+| **Ctrl+R history search** | `prompt/index.tsx` — Ctrl+R triggers `history.move(-1, ...)`, cycling newest-first |
+| **Live activity lane** | `routes/session/index.tsx` — `LiveActivityLane` component above prompt: last 3 completed tools (dim) + current running tool (spinner) |
+| **Math/LaTeX → Unicode** | `util/math-render.ts` (new) + `routes/session/index.tsx` — Greek letters, operators, super/subscripts, fractions; applied to text parts containing `$` |
+| **Session resume toast** | `routes/home.tsx` — on mount, toasts "↩ Resume last session" for 5s if recent (<24h) session found |
+
+### Features added to Simple CLI (Phase 3 complete)
+
+| Feature | Files |
+|---------|-------|
+| **Clipboard: copy (Ctrl+C), cut (Ctrl+X), paste (Ctrl+V)** | `input-area.ts` + `clipboard.ts` (added `pasteFromClipboard()`) |
+| **Tab completion wired** | `input-area.ts` — Tab triggers `detectContext()` + `getCompletions()`; single match inlines, multiple shows menu |
+| **Inline suggestions (fish-style)** | `inline-suggest.ts` (new) + `input-area.ts` — dim ghost text; Right→ accepts |
+| **Selection rendering (ANSI reverse video)** | `input-area.ts` — `wrapTextWithIndices()` + `\x1b[7m` highlight |
+| **Ctrl+W** (delete word back), **Ctrl+K** (kill to EOL), **Ctrl+U** (kill to SOL) | `input-area.ts` |
+| **Alt+Left / Alt+Right** (word jump) | `input-area.ts` + `parseCsi()` — `1;3D` / `1;3C` sequences |
+| **Slash hints below prompt** | `input-area.ts` — when typing `/command`, shows dim description line |
+| **Ctrl+E/B/F** (readline standard) | `input-area.ts` |
+
+### Dev commands
+
+```powershell
+# Full TUI (default)
+cd P:\localcoder\packages\localcoder
+bun run dev
+
+# Simple CLI (explicit fallback)
+cd P:\localcoder\packages\localcoder
+bun run dev -- --simple
+```
+
+---
+
+## Session 8 — Simple CLI UX, session management, thinking UI (2026-05-30)
+
+**Pushed:** `712c9c8` on `main` · **Backup branch:** `backup/simple-cli-2026-05-30`
+
+### Thinking & turn feedback
+
+| Item | Files / behavior |
+|------|------------------|
+| Live thinking panel | `thinking-panel.ts` — `◆ Thinking · N.Ns · chars`, bordered `│` stream, `done · N.Ns` footer |
+| Pre-reply spinner | `activity-ui.ts` — `⠋ Waiting for model · N.Ns` (tools / permission / reasoning labels) |
+| Turn timing footer | `display.ts` + `/timing` — `⏱ total · think X` after each reply |
+| Reasoning off hint | Spinner shows `Reasoning — /thinking to show` when model thinks but panel hidden |
+| **Bug fix** | `TurnActivity`: renamed `start` field → `startedAt` (method was overwritten → crash on 2nd message) |
+
+### Session & history management
+
+| Command | Behavior |
+|---------|----------|
+| `/session` | Interactive picker (#, id prefix, `new`); `/session info` for active session |
+| `/sessions` | Numbered table + updated time + title; `*` = active |
+| `/resume <#>` | Switch by list number or id prefix |
+| `/search <q>` | `searchSessions()` — title + message body (this project dir) |
+| `/history [n]` | List user/assistant turns with # and message ids |
+| `/history-delete last\|#\|msg_id` | `session.deleteMessage` + confirm |
+| `/clear-history` | Delete all messages; keep session |
+| `/delete-session` | Picker or `#` / id; `session.delete` + confirm |
+| `/rename-session [title]` | `session.update` title |
+| `/revert last\|#` | `session.revert` — undo file changes for turn |
+
+**Module:** `session-mgmt.ts` · wired in `commands.ts`
+
+### Other CLI polish
+
+| Item | Detail |
+|------|--------|
+| AI SDK warning | `llm.ts` → `allowSystemInMessages: true` (system prompts stay in messages array for caching) |
+| Hints | `hints.ts` — `/tips`, `/shortcuts`, rotating tips every 2nd turn |
+| Token meter | `session-meter.ts` — last assistant turn + llamacpp ctx from config (not 16K catalog default) |
+| Readline | `repl-terminal.ts` — clack only for `/connect`, `/model`, etc.; not `/compact` |
+| Llama setup | `llama-setup-wizard.ts`, `cli-launch.ts` — in-process wizard, no global npm stub |
+| Display | `display.ts`, `render.ts` — cleaner tools (`$`, `→`, `←`), user/assistant labels |
+
+### Known minor issues (experiment backlog)
+
+| Issue | Notes |
+|-------|-------|
+| stdout layout | Rare: first assistant token glued to header (`hello▸ build`) — newline timing |
+| Agent cwd | Test runs wrote under `..\..\fun\` — tighten workspace in prompt or tool sandbox |
+| Permission E2E | Still skip until `build:win` or `SHELL_E2E_USE_DEV=1` |
+
+### Dev commands (Windows cmd)
+
+```cmd
+cd /d P:\localcoder\packages\localcoder
+bun run dev
+```
+
+---
+
+## Session 7 — Production polish: simple CLI, shell, VS Code, E2E (2026-05-30)
+
+### Simple CLI (`packages/localcoder/src/cli/simple/`)
+
+| Item | Detail |
+|------|--------|
+| Default entry | `localcoder` → text REPL (TUI via `localcoder tui`) |
+| Setup | `/connect` (llama setup, `providers login`, provider pick), `/llama` (status/setup/start/stop) |
+| Models | `/providers`, `/connectors`, `/model` — **connected providers only** (fixes huge catalog) |
+| Session | `/context`, `/fork`, `/compact`, `/abort` — extended in Session 8 (`/session`, `/history`, …) |
+| UX | Status line, first-run hint, **Ctrl+C** aborts turn (second exits) |
+| Files | `setup-commands.ts`, `provider-pick.ts`, `commands.ts`, `repl.ts` — see Session 8 for full simple/ tree |
+
+### Desktop shell (`packages/desktop-shell/`)
+
+| Item | Detail |
+|------|--------|
+| Mock removed | No `?mock=1`; E2E uses live `localcoder serve` + seed script |
+| Playwright | `global-setup` / `global-teardown`, Vite proxy, `live-fixture.ts` |
+| UI | Agent `<select>` (build/plan fallback), model select, perm mode cycle, richer empty state |
+| Server | `POST /permission/e2e/ask` when `LOCALCODER_CALLER` is e2e/playwright/shell-e2e |
+| E2E smoke | **11 pass** with `E2E_SKIP_VISUAL=1`; permission inject **skip** until `build:win` or `SHELL_E2E_USE_DEV=1` |
+
+```powershell
+bun run e2e:smoke
+$env:E2E_SKIP_VISUAL='1'
+cd packages/desktop-shell; bun run test:e2e
+$env:SHELL_E2E_USE_DEV='1'   # permission banner inject on dev server
+bun run build:win             # refresh localcoder.exe for e2e route + exe --help checks
+```
+
+### VS Code (`sdks/vscode/`)
+
+| Item | Detail |
+|------|--------|
+| Terminal | `resolveLocalcoderCliLaunch()` — packaged exe → `localcoder.packagePath` + bun |
+| Matching | Terminals named `localcoder` or containing `localcoder` get `@file` drops |
+
+### E2E additions
+
+| Step | Coverage |
+|------|----------|
+| `cli-simple-dev-version` | Dev tree `--version` |
+| `cli-simple-exe-version` | Built exe `--version` (standard tier) |
+| Shell Playwright | Load shell, agent select, model select (skip if no providers), perm mode |
+
+### Still open (P1) — after Session 8
+
+| Gap | Action |
+|-----|--------|
+| Permission inject on stale exe | Rebuild `localcoder.exe` or `SHELL_E2E_USE_DEV=1` |
+| Standard tier `desktop` step | Needs `LocalCoder.exe` portable build |
+| Live send-message shell test | Not in CI (needs connected model + LLM) |
+| Simple CLI vs TUI parity | Tool diff preview; readline **history** file; stdout newline edge case |
+| Agent workspace scope | Prefer writes under project cwd only |
+| `bun serve` in shell globalSetup | Often slow; default seed uses **exe** unless `SHELL_E2E_USE_DEV=1` |
 
 ---
 
@@ -37,6 +241,7 @@ Automates UI testing that unit tests cannot cover:
 | CLI TUI | `packages/localcoder/test/visual/` | OpenTUI `testRender` + char-frame snapshots + mock keyboard |
 | VS Code chat | `packages/app/e2e/visual/vscode-chat.visual.spec.ts` | Playwright + mock `acquireVsCodeApi` |
 | Windows web UI | `packages/app/e2e/visual/app-shell.visual.spec.ts` | Playwright + Vite |
+| Desktop shell | `packages/desktop-shell/e2e/shell.spec.ts` | Playwright + live `localcoder serve` (no mock UI) |
 | Desktop (optional) | `scripts/visual-test/suites/desktop/` | Electron CDP screenshot |
 
 ```powershell
@@ -120,7 +325,7 @@ Legacy wrappers: `scripts/e2e-full-windows.ts` (→ full), `scripts/readiness-wi
 
 ---
 
-## Session 2 fixes (v1.14.46 — 2026-05-29)
+## Session 2 fixes (v1.14.44 — 2026-05-29)
 
 ### Root-cause bugs found and fixed
 
@@ -362,7 +567,7 @@ LocalCoder is a Bun monorepo: **Effect-based services** in `packages/localcoder`
 
 | Item | Detail |
 |------|--------|
-| ~~Tool schema ↔ permission alignment~~ | ✅ **Done (v1.14.45)** — denied tools pre-filtered in `resolveTools()` / `registry.tools()` |
+| ~~Tool schema ↔ permission alignment~~ | ✅ **Done (v1.14.44)** — denied tools pre-filtered in `resolveTools()` / `registry.tools()` |
 | Doom-loop guard tuning | Threshold 3 in processor — configurable; user-visible explanation |
 | Tool error taxonomy | Retriable vs fatal; auto-retry read/grep; never auto-retry write/shell |
 | MCP permission granularity | Per-server, per-tool rules instead of coarse keys |
@@ -441,7 +646,7 @@ LocalCoder is a Bun monorepo: **Effect-based services** in `packages/localcoder`
 |------|--------|
 | `localcoder run` polish | JSON/stream modes; exit codes; `--timeout`, `--max-steps` |
 | Headless agent mode | `localcoder agent run --agent build --model … --prompt-file` for CI |
-| Session management CLI | `session list`, `session show`, `session export`, `session fork` |
+| Session management CLI | **Simple REPL:** `/sessions`, `/session`, `/history`, … — **yargs:** `localcoder session list\|delete\|search` |
 | Config wizard | ~~`localcoder onboard`~~ — **partial:** `llamacpp setup` + `auth set-api` + IDE wizards done; unified `onboard` TBD |
 | TUI performance | Virtualized message list in OpenTUI for long sessions |
 | Attach / multiplex | TUI + desktop + VS Code on same session with clear leader |
@@ -576,7 +781,7 @@ localcoder llamacpp setup
 | **P0** | Zero-config | ✅ llama.cpp + cloud wizards (CLI, VS Code, desktop) |
 | **P1** | Agents | Parallel subagent coordinator; desktop subagent nav; ACP permissions |
 | **P1** | Context | Model-aware budgets; proactive compaction; token UI accuracy |
-| **P1** | CLI | `onboard`, headless `agent run`, session subcommands, completions |
+| **P1** | CLI | ✅ Session subcommands done; `onboard`, headless `agent run`, shell completions TBD |
 | **P1** | Desktop UI | Timeline virtualization; review panel; undo-while-busy |
 | **P2** | Tools | Batch reads; MCP granularity; custom tool SDK |
 | **P2** | Packaging | Unified native build; delta updates; Linux AppImage |
@@ -587,13 +792,24 @@ localcoder llamacpp setup
 ## Verify locally
 
 ```powershell
+# Install CLI globally (Windows)
 bun run install:cli
+
+# Build Windows standalone binary
 bun run build:win-standalone
 
+# Run the new Ink TUI
+bun --cwd packages/localcoder dev
+
+# Run the simple CLI REPL
+bun --cwd packages/localcoder dev -- --simple
+
+# Agent tool E2E
 $env:AGENT_LIVE_E2E = "1"
 $env:AGENT_E2E_FAST = "1"
 bun run scripts/agent-tool-e2e.ts
 
+# Full E2E suite
 bun run scripts/e2e-full-windows.ts
 ```
 
@@ -614,10 +830,81 @@ See: [sdks/vscode/FUTURE_IMPROVEMENTS.md](sdks/vscode/FUTURE_IMPROVEMENTS.md) ·
 
 ---
 
+## TUI — Ink + React migration (completed 2026-06-01)
+
+**Status:** Migrated from broken OpenTUI (`@opentui/core` + `@opentui/solid`) to **Ink + React**. The old OpenTUI renderer caused terminal freezes on Windows, blank screens in Windows Terminal, and was extremely hard to debug and extend.
+
+### What changed
+- Removed all `@opentui/core`, `@opentui/solid`, `opentui-spinner` dependencies from the repo
+- Deleted legacy TUI implementation (~30 files: `app.tsx`, `component/`, `context/`, `feature-plugins/`, `routes/`, `ui/`, `util/`, `plugin/`, `asset/`)
+- New Ink-based TUI with modern React components:
+  - `Header` — directory, model, agent, session ID, status
+  - `MessageList` / `MessageItem` — markdown rendering, code blocks, file attachments, thinking blocks, tool details
+  - `InputBox` — with TextInput from `ink-text-input`
+  - `CommandPalette` — Ctrl+K fuzzy command picker
+  - `ModelPicker` / `AgentPicker` / `SessionPicker` — modals via `ink-select-input`
+  - `Toast` — notification system
+  - `HelpPanel` — `?` key or `/help` shows keyboard shortcuts and slash commands
+- `useChat` hook — streaming, tool rendering, permission handling, reasoning panels
+- `useTheme` hook — dark/light mode with proper color tokens
+- `usePlugins` hook — minimal plugin registry foundation for future TUI plugins
+- TUI `jsxImportSource` changed from `@opentui/solid` to `react`
+- `bunfig.toml` no longer preloads `@opentui/solid/preload`
+- Deleted `script/upgrade-opentui.ts`, `.localcoder/plugins/tui-smoke.tsx`, obsolete Python generator scripts
+
+### TUI slash commands
+The TUI input supports slash commands directly:
+- `/help`, `/h`, `/?` — show help panel
+- `/new`, `/clear`, `/cls` — start new session
+- `/abort`, `/stop`, `/cancel` — cancel current response
+- `/theme`, `/dark`, `/light` — toggle theme
+- `/exit`, `/quit`, `/q` — quit
+- `/model <provider/model>` — switch model
+- `/agent <name>` — switch agent
+- `/session <id>` — switch session
+
+### Keyboard shortcuts
+- `Ctrl+K` — command palette
+- `Ctrl+C` — abort turn (or exit if idle)
+- `?` — help panel
+- `Esc` — dismiss any modal
+- `Shift+Enter` — newline in input
+
+### Why Ink won
+- **JS-native** — no Go/Rust sidecars, no binary deps
+- **React ecosystem** — familiar component model, easy to maintain
+- **Works on Windows** — renders correctly in Windows Terminal, PowerShell, CMD
+- **Rich components** — `ink-select-input`, `ink-text-input` provide battle-tested widgets
+- **Easy to prototype** — adding a new modal or panel takes minutes, not hours
+- **Stable** — 7.0.5 release, actively maintained by Vadim Demedes
+
+### Remaining TUI gaps
+- Mouse support — Ink has limited mouse; not critical for chat TUI
+- Shift+Enter — use `Ctrl+Enter` / `Ctrl+J` for newline (documented)
+- Plugin system — basic registry created; full API design TBD
+- Virtualized message list — may be needed for 500+ message sessions
+
+---
+
 ## Key file index
 
 ```
+packages/localcoder/src/cli/simple/   # Default text REPL (bun run dev)
+  repl.ts                 Main loop, SIGINT, turn runner
+  commands.ts             Slash commands + help
+  turn.ts                 SDK events, activity, thinking panel
+  session-mgmt.ts         Sessions, history, search, delete
+  thinking-panel.ts       Reasoning UI + elapsed seconds
+  activity-ui.ts          Spinner while model busy
+  session-meter.ts        Context meter (last assistant tokens)
+  repl-terminal.ts        Readline pause/resume (Windows)
+  hints.ts                /tips, /shortcuts
+  display.ts, render.ts   stderr UI, tool lines
+  llama-setup-wizard.ts   In-process llamacpp setup
+  cli-launch.ts           Resolve localcoder exe / bun dev
+
 packages/localcoder/src/
+  session/llm.ts            streamText + allowSystemInMessages
   agent/agent.ts              Agent definitions
   tool/task.ts                Subagent delegation
   tool/registry.ts            Tool catalog

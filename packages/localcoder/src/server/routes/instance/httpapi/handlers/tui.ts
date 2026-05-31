@@ -1,5 +1,5 @@
 import { Bus } from "@/bus"
-import { TuiEvent } from "@/cli/cmd/tui/event"
+import { TuiEvent } from "@/bus/tui-event"
 import { SessionTable } from "@/session/session.sql"
 import * as Database from "@/storage/db"
 import { eq } from "drizzle-orm"

@@ -38,7 +38,7 @@ export interface Def<
   id: string
   description: string
   parameters: Parameters
-  execute(args: Schema.Schema.Type<Parameters>, ctx: Context): Effect.Effect<ExecuteResult<M>>
+  execute(args: Schema.Schema.Type<Parameters>, ctx: Context): Effect.Effect<ExecuteResult<M>, any, any>
   formatValidationError?(error: unknown): string
 }
 export type DefWithoutID<
@@ -128,14 +128,14 @@ function wrap<Parameters extends Schema.Decoder<unknown>, Result extends Metadat
 }
 
 export function define<
-  Parameters extends Schema.Decoder<unknown>,
-  Result extends Metadata,
-  R,
+  Parameters extends Schema.Decoder<unknown> = any,
+  Result extends Metadata = any,
+  R = any,
   ID extends string = string,
 >(
   id: ID,
-  init: Effect.Effect<Init<Parameters, Result>, never, R>,
-): Effect.Effect<Info<Parameters, Result>, never, R | Truncate.Service | Agent.Service> & { id: ID } {
+  init: Effect.Effect<any, any, R>,
+): Effect.Effect<Info<Parameters, Result>, any, R | Truncate.Service | Agent.Service> & { id: ID } {
   return Object.assign(
     Effect.gen(function* () {
       const resolved = yield* init
@@ -144,7 +144,7 @@ export function define<
       return { id, init: wrap(id, resolved, truncate, agents) }
     }),
     { id },
-  )
+  ) as any
 }
 
 export function init<P extends Schema.Decoder<unknown>, M extends Metadata>(

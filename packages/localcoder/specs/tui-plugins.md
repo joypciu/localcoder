@@ -1,6 +1,8 @@
 # TUI plugins
 
-Technical reference for the current TUI plugin system.
+> **Migration notice:** The terminal UI has been rewritten with [Ink](https://github.com/vadimdemedes/ink) and React. The plugin API documented below was designed for the legacy `@opentui/solid` renderer and is **not yet implemented** in the new Ink-based TUI. The web/desktop UI still uses Solid.js and retains its own plugin system.
+
+Technical reference for the legacy TUI plugin system (pre-Ink).
 
 ## Overview
 
@@ -44,12 +46,11 @@ Example:
 Package entrypoint:
 
 - Import types from `@localcoder-ai/plugin/tui`.
-- `@localcoder-ai/plugin` exports `./tui` and declares optional peer deps on `@opentui/core` and `@opentui/solid`.
+- `@localcoder-ai/plugin` exports `./tui` and declares optional peer deps on the renderer library (legacy: `@opentui/core` and `@opentui/solid`; current web UI: `solid-js`).
 
 Minimal module shape:
 
 ```tsx
-/** @jsxImportSource @opentui/solid */
 import type { TuiPlugin, TuiPluginModule } from "@localcoder-ai/plugin/tui"
 
 const tui: TuiPlugin = async (api, options, meta) => {
@@ -64,11 +65,7 @@ const tui: TuiPlugin = async (api, options, meta) => {
   api.route.register([
     {
       name: "demo",
-      render: () => (
-        <box>
-          <text>demo</text>
-        </box>
-      ),
+      render: () => api.ui.createElement("box", null, api.ui.createElement("text", null, "demo")),
     },
   ])
 }

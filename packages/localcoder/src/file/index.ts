@@ -502,7 +502,7 @@ export const layer = Layer.effect(
       })
     })
 
-    const read: Interface["read"] = Effect.fn("File.read")(function* (file: string) {
+    const read: Interface["read"] = Effect.fn("File.read")(function* (file: string): any {
       using _ = log.time("read", { file })
       const ctx = yield* InstanceState.context
       const full = path.join(ctx.directory, file)

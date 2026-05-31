@@ -72,7 +72,7 @@ export class Service extends Context.Service<Service, Interface>()("@localcoder/
 
 export const layer: Layer.Layer<
   Service,
-  never,
+  any,
   | Config.Service
   | Plugin.Service
   | Question.Service

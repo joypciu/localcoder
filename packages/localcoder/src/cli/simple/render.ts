@@ -72,7 +72,7 @@ export function renderTool(part: ToolPart) {
       return
     }
     if (part.tool === "webfetch") {
-      toolLine("%", `Fetch ${props<typeof WebFetchTool>(part).input.url}`)
+      toolLine("%", `Fetch ${(props<typeof WebFetchTool>(part).input as any).url}`)
       return
     }
     if (part.tool === "edit") {

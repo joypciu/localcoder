@@ -8,6 +8,7 @@ import type { PermissionMode } from "./context"
 import { turnAgent } from "./display"
 import { TurnActivity } from "./activity-ui"
 import { ThinkingPanel } from "./thinking-panel"
+import { renderInline, stripAnsi } from "./markdown-render"
 
 export type TurnOptions = {
   message: string
@@ -23,6 +24,7 @@ export type TurnOptions = {
   permissionMode?: PermissionMode
   onPermission?: (req: PermissionRequest) => Promise<"once" | "always" | "reject">
   signal?: AbortSignal
+  renderMarkdown?: boolean
 }
 
 export type TurnResult = {
@@ -31,6 +33,7 @@ export type TurnResult = {
   forked?: boolean
   elapsedMs: number
   thinkingMs?: number
+  assistantText?: string
 }
 
 const denyRules: Permission.Ruleset = [
@@ -90,6 +93,7 @@ export async function runTurn(sdk: localcoderClient, opts: TurnOptions): Promise
   let thinkingPanel: ThinkingPanel | undefined
   let thinkingMs: number | undefined
   let toolActive = false
+  let assistantText = ""
 
   const stopActivity = () => {
     if (activity) activity.stop()
@@ -135,17 +139,23 @@ export async function runTurn(sdk: localcoderClient, opts: TurnOptions): Promise
               writeAssistant("\n")
               wroteAssistantNewline = true
             }
-            writeAssistant(next.slice(prev.length))
+            const rawDelta = next.slice(prev.length)
+            const renderedDelta = opts.renderMarkdown ? renderInline(rawDelta) : rawDelta
+            writeAssistant(renderedDelta)
+            assistantText += rawDelta
             textStreams.set(part.id, next)
           }
           if (part.time?.end) {
             if (textStreams.has(part.id)) {
               writeAssistant("\n")
+              assistantText += "\n"
             } else {
               const trimmed = stripThinkingFromText(part.text)
               if (trimmed) {
                 if (!wroteAssistantNewline) writeAssistant("\n")
-                writeAssistant(trimmed + "\n")
+                const out = opts.renderMarkdown ? renderInline(trimmed) : trimmed
+                writeAssistant(out + "\n")
+                assistantText += trimmed + "\n"
                 wroteAssistantNewline = true
               }
             }
@@ -281,5 +291,6 @@ export async function runTurn(sdk: localcoderClient, opts: TurnOptions): Promise
     forked,
     elapsedMs: Date.now() - turnStart,
     thinkingMs,
+    assistantText: stripAnsi(assistantText).trim() || undefined,
   }
 }

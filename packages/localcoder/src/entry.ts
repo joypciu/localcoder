@@ -1,5 +1,5 @@
 ﻿/**
- * Minimal entry so Windows Explorer launch is handled before TUI/opentui imports load.
+ * Minimal entry so Windows Explorer launch is handled before heavy imports load.
  */
 import { hideBin } from "yargs/helpers"
 import { isWindowsGuiLaunch, openWindowsGuiLauncher } from "@/util/windows-gui"

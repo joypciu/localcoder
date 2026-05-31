@@ -943,7 +943,7 @@ export const GithubRunCommand = effectCmd({
         }
       }
 
-      async function chat(message: string, files: PromptFiles = []) {
+      async function chat(message: string, files: PromptFiles = []): Promise<string> {
         console.log("Sending message to localcoder...")
 
         return Effect.runPromise(
@@ -1026,7 +1026,7 @@ export const GithubRunCommand = effectCmd({
             const summaryText = extractResponseText(summary.parts)
             if (!summaryText) throw new Error("Failed to get summary from agent")
             return summaryText
-          }),
+          }) as any,
         )
       }
 

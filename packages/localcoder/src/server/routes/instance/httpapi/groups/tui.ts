@@ -1,4 +1,4 @@
-import { TuiEvent } from "@/cli/cmd/tui/event"
+import { TuiEvent } from "@/bus/tui-event"
 import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiError, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "../middleware/authorization"

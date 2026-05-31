@@ -3,6 +3,7 @@ import { UI } from "@/cli/ui"
 import type { localcoderClient, PermissionRequest } from "@localcoder-ai/sdk/v2"
 import type { ReplContext } from "./context"
 import { shortSession } from "./context"
+import { copyToClipboard } from "./clipboard"
 import {
   fetchProviderList,
   parseModelRef,
@@ -56,11 +57,18 @@ function printHelp() {
     "/timing — show or hide turn duration footer",
     "/tips — hints (/tips off to disable rotation)",
     "/permissions — ask → accept → reject",
+    "/copy — copy last assistant response to clipboard",
+    "/markdown — toggle ANSI markdown rendering",
     "/shortcuts — quick reference",
     "/commands · /help · /exit",
   )
   section("Input")
-  hint("!cmd — local shell", "@path — attach files", "Full UI: localcoder tui")
+  hint(
+    "!cmd — local shell",
+    "@path — attach files",
+    "/editor — open system editor for multiline",
+    "Ctrl+J or F2 for newline · /multiline toggle · /input toggle",
+  )
   UI.empty()
 }
 
@@ -80,11 +88,13 @@ export async function runShellCommand(command: string) {
   }
 }
 
+export type SlashResult = "continue" | "exit" | "abort-turn" | "unknown" | "editor"
+
 export async function handleSlashCommand(
   command: string,
   args: string,
   env: CommandEnv,
-): Promise<"continue" | "exit" | "abort-turn" | "unknown"> {
+): Promise<SlashResult> {
   const { sdk, ctx } = env
 
   switch (command) {
@@ -501,6 +511,38 @@ export async function handleSlashCommand(
           UI.Style.TEXT_NORMAL,
       )
       return "continue"
+
+    case "editor":
+      return "editor"
+
+    case "multiline": {
+      ctx.multiline = !ctx.multiline
+      UI.println(
+        UI.Style.TEXT_SUCCESS +
+          `Multiline mode ${ctx.multiline ? "on" : "off"} — ${ctx.multiline ? "Enter inserts newline, Ctrl+D submits" : "Enter submits, Ctrl+J inserts newline"}.` +
+          UI.Style.TEXT_NORMAL,
+      )
+      return "continue"
+    }
+
+    case "input": {
+      UI.println(
+        UI.Style.TEXT_SUCCESS +
+          "Input mode: raw-mode (multiline with Ctrl+J / F2, Enter submits)." +
+          UI.Style.TEXT_NORMAL,
+      )
+      return "continue"
+    }
+
+    case "markdown": {
+      ctx.renderMarkdown = !ctx.renderMarkdown
+      UI.println(
+        UI.Style.TEXT_SUCCESS +
+          `Markdown rendering ${ctx.renderMarkdown ? "on" : "off"}.` +
+          UI.Style.TEXT_NORMAL,
+      )
+      return "continue"
+    }
 
     case "abort":
     case "stop":

@@ -3,5 +3,5 @@ import { drizzle } from "drizzle-orm/better-sqlite3"
 
 export function init(path: string) {
   const sqlite = new Database(path)
-  return drizzle(sqlite)
+  return drizzle(sqlite as any)
 }

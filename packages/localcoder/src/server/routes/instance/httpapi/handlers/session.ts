@@ -291,15 +291,15 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       const instance = yield* InstanceState.context
       const workspace = yield* InstanceState.workspaceID
       return HttpServerResponse.stream(
-        Stream.fromEffect(
+        (Stream.fromEffect(
           promptSvc
             .prompt({
               ...ctx.payload,
               sessionID: ctx.params.sessionID,
             })
             .pipe(Effect.provideService(InstanceRef, instance), Effect.provideService(WorkspaceRef, workspace)),
-        ).pipe(
-          Stream.map((message) => JSON.stringify(message)),
+        ) as any).pipe(
+          Stream.map((message: any) => JSON.stringify(message)),
           Stream.encodeText,
         ),
         { contentType: "application/json" },

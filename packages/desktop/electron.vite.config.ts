@@ -1,12 +1,8 @@
 import { sentryVitePlugin } from "@sentry/vite-plugin"
 import { defineConfig } from "electron-vite"
-import appPlugin from "@localcoder-ai/app/vite"
 import solid from "vite-plugin-solid"
 import * as fs from "node:fs/promises"
 import path from "node:path"
-
-/** Legacy OpenCode-derived web app. Set LOCALCODER_LEGACY_UI=1 to restore. */
-const legacyUI = process.env.LOCALCODER_LEGACY_UI === "1"
 
 const channel = (() => {
   const raw = process.env.LOCALCODER_CHANNEL
@@ -29,7 +25,6 @@ const oauthExternals = [
   "@gitlab/opencode-gitlab-auth",
 ]
 
-
 const sentry =
   process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
     ? sentryVitePlugin({
@@ -51,7 +46,6 @@ export default defineConfig({
   main: {
     define: {
       "import.meta.env.LOCALCODER_CHANNEL": JSON.stringify(channel),
-      __LOCALCODER_LEGACY_UI__: JSON.stringify(legacyUI),
     },
     build: {
       externalizeDeps: { include: [nodePtyPkg, "better-sqlite3", ...oauthExternals] },
@@ -89,25 +83,18 @@ export default defineConfig({
     },
   },
   renderer: {
-    plugins: legacyUI ? [appPlugin, sentry].filter(Boolean) : [solid(), sentry].filter(Boolean),
-    publicDir: legacyUI ? "../../../app/public" : false,
+    plugins: [solid(), sentry].filter(Boolean),
     root: "src/renderer",
     define: {
       "import.meta.env.VITE_LOCALCODER_CHANNEL": JSON.stringify(channel),
-      "import.meta.env.VITE_LOCALCODER_LEGACY_UI": JSON.stringify(legacyUI ? "1" : "0"),
     },
     build: {
       sourcemap: !standalone,
       rollupOptions: {
-        input: legacyUI
-          ? {
-              main: "src/renderer/index.html",
-              loading: "src/renderer/loading.html",
-            }
-          : {
-              main: "src/renderer/shell.html",
-              loading: "src/renderer/loading.html",
-            },
+        input: {
+          main: "src/renderer/shell.html",
+          loading: "src/renderer/loading.html",
+        },
         external: oauthExternals,
         output: {
           manualChunks(id) {

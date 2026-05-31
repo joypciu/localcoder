@@ -1,5 +1,4 @@
 import { cmd } from "@/cli/cmd/cmd"
-import { tui } from "./app"
 import { Rpc } from "@/util/rpc"
 import { type rpc } from "./worker"
 import path from "path"
@@ -11,7 +10,6 @@ import { withTimeout } from "@/util/timeout"
 import { withNetworkOptions, resolveNetworkOptionsNoConfig } from "@/cli/network"
 import { Filesystem } from "@/util/filesystem"
 import type { GlobalEvent } from "@localcoder-ai/sdk/v2"
-import type { EventSource } from "./context/sdk"
 import { win32DisableProcessedInput, win32InstallCtrlCGuard, enableWindowsMouseTracking } from "./win32"
 import { writeHeapSnapshot } from "v8"
 import { TuiConfig } from "./config/tui"
@@ -22,6 +20,7 @@ import {
   sanitizedProcessEnv,
 } from "@localcoder-ai/core/util/localcoder-process"
 import { validateSession } from "./validate-session"
+import { tui } from "./app"
 
 declare global {
   const LOCALCODER_WORKER_PATH: string
@@ -47,7 +46,7 @@ function createWorkerFetch(client: RpcClient): typeof fetch {
   return fn as typeof fetch
 }
 
-function createEventSource(client: RpcClient): EventSource {
+function createEventSource(client: RpcClient): { subscribe: (handler: (event: GlobalEvent) => void) => Promise<() => void> } {
   return {
     subscribe: async (handler) => {
       return client.on<GlobalEvent>("global.event", (e) => {
@@ -79,7 +78,7 @@ export function resolveThreadDirectory(project?: string, envPWD = process.env.PW
 
 export const TuiThreadCommand = cmd({
   command: "tui [project]",
-  describe: "start localcoder OpenTUI (legacy fullscreen UI)",
+  describe: "start localcoder tui",
   builder: (yargs) =>
     withNetworkOptions(yargs)
       .positional("project", {
@@ -114,12 +113,8 @@ export const TuiThreadCommand = cmd({
         describe: "agent to use",
       }),
   handler: async (args) => {
-    // Keep ENABLE_PROCESSED_INPUT cleared even if other code flips it.
-    // (Important when running under `bun run` wrappers on Windows.)
     const unguard = win32InstallCtrlCGuard()
     try {
-      // Must be the very first thing — disables CTRL_C_EVENT before any Worker
-      // spawn or async work so the OS cannot kill the process group.
       win32DisableProcessedInput()
       enableWindowsMouseTracking()
 
@@ -143,8 +138,6 @@ export const TuiThreadCommand = cmd({
         return
       }
 
-      // Resolve relative --project paths from PWD, then use the real cwd after
-      // chdir so the thread and worker share the same directory key.
       const next = resolveThreadDirectory(args.project)
       const file = await target()
       try {
@@ -159,9 +152,7 @@ export const TuiThreadCommand = cmd({
         [LOCALCODER_RUN_ID]: ensureRunID(),
       })
 
-      const worker = new Worker(file, {
-        env,
-      })
+      const worker = new Worker(file, { env })
       worker.onerror = (e) => {
         Log.Default.error("thread error", {
           message: e.message,
@@ -243,24 +234,14 @@ export const TuiThreadCommand = cmd({
         client.call("checkUpgrade", { directory: cwd }).catch(() => {})
       }, 1000).unref?.()
 
-      if (process.platform === "win32" && !process.env.WT_SESSION && !process.env.LOCALCODER_IN_WT) {
-        process.stderr.write(
-          "LocalCoder TUI: Windows Terminal is recommended. If the screen stays blank, use: bun run --conditions=browser ./src/index.ts ui\n",
-        )
-      }
-
       try {
         await tui({
           url: transport.url,
-          async onSnapshot() {
-            const tui = writeHeapSnapshot("tui.heapsnapshot")
-            const server = await client.call("snapshot", undefined)
-            return [tui, server]
+          async onBeforeExit() {
+            await stop()
           },
-          config,
           directory: cwd,
           fetch: transport.fetch,
-          events: transport.events,
           args: {
             continue: args.continue,
             sessionID: args.session,
@@ -270,16 +251,12 @@ export const TuiThreadCommand = cmd({
             fork: args.fork,
           },
         })
-      } catch (error) {
-        UI.error(errorMessage(error))
-        process.exitCode = 1
       } finally {
         await stop()
       }
     } finally {
       unguard?.()
     }
-    process.exit(process.exitCode ?? 0)
+    process.exit(0)
   },
 })
-// scratch

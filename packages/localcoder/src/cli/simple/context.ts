@@ -19,6 +19,12 @@ export type ReplContext = {
   showTips: boolean
   /** Increments each completed turn (for tip rotation) */
   turnCount: number
+  /** Enter inserts newline instead of submitting (toggle with /multiline) */
+  multiline: boolean
+  /** Last assistant response text (for /copy) */
+  lastAssistantText: string
+  /** Render markdown in assistant responses (toggle with /markdown) */
+  renderMarkdown: boolean
 }
 
 export function shortSession(id?: string) {

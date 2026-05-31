@@ -5,7 +5,7 @@ Runs in your terminal, edits your code, uses your tools — with an optional des
 
 ---
 
-## Release highlights (v1.14.46)
+## Release highlights (v1.14.44)
 
 - **Zero-config providers** — llama.cpp, OpenRouter, OpenCode Go, and 50+ others via guided wizards (no manual JSON)
 - **llama.cpp** — pick any folder with `llama-server`, any `.gguf`, context size, and thinking mode; LocalCoder starts the server for you
@@ -71,8 +71,8 @@ bun run --cwd packages/localcoder dev
 
 | Surface | Best for |
 |---------|----------|
-| **CLI** (default) | Simple text REPL — `/providers`, `/model`, `!shell`, `@files` |
-| **CLI TUI** (`localcoder tui`) | Full-screen terminal UI (legacy OpenTUI) |
+| **CLI TUI** (default) | Full-screen TUI — mouse, Shift+Enter, rich rendering; falls back to text REPL if terminal unsupported |
+| **CLI simple** (`localcoder --simple`) | Lightweight text REPL — works in any terminal, pipe-friendly |
 | **Desktop** | Rich UI, llama.cpp wizard, no terminal required |
 | **VS Code** | In-editor chat, diff view, selection context |
 | **Web UI** | Browser client when `localcoder serve` is running |
@@ -208,7 +208,7 @@ localcoder/
 
 Read `CONTRIBUTING.md` before opening a pull request.
 
-- Default branch: **`dev`**
+- Default branch: **`main`**
 - Run `bun install` and `bun run typecheck` before submitting
 - Style guide: [AGENTS.md](AGENTS.md)
 

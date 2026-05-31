@@ -61,7 +61,7 @@ export interface Interface {
     identifier: string
     whenToUse: string
     systemPrompt: string
-  }>
+  }, any, any>
 }
 
 type State = Omit<Interface, "generate">

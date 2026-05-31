@@ -36,7 +36,7 @@ export const workspaceID = Effect.gen(function* () {
 export const directory = Effect.map(context, (ctx) => ctx.directory)
 
 export const make = <A, E = never, R = never>(
-  init: (ctx: InstanceContext) => Effect.Effect<A, E, R | Scope.Scope>,
+  init: (ctx: InstanceContext) => Effect.Effect<A, any, R | Scope.Scope>,
 ): Effect.Effect<InstanceState<A, E, Exclude<R, Scope.Scope>>, never, R | Scope.Scope> =>
   Effect.gen(function* () {
     const cache = yield* ScopedCache.make<string, A, E, R>({

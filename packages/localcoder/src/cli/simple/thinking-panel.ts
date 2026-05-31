@@ -76,7 +76,7 @@ export class ThinkingPanel {
     if (!t && !force) return
     process.stderr.write(this.prefix() + t + EOL)
     if (typeof (process.stderr as NodeJS.WriteStream & { flush?: () => void }).flush === "function") {
-      ;(process.stderr as NodeJS.WriteStream & { flush: () => void }).flush()
+      ;(process.stderr as unknown as { flush: () => void }).flush()
     }
   }
 

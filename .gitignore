@@ -45,8 +45,9 @@ scripts/e2e/.artifacts/
 packages/app/e2e/playwright-report/
 packages/app/e2e/test-results/
 
-# Local session handoff (personal notes — do not commit)
+# Local session handoff & internal roadmap (personal notes — do not commit)
 CONTINUATION.md
+IMPROVEMENT_AND_FIX.md
 
 # Temporary files
 *.tmp

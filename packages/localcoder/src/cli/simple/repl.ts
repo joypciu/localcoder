@@ -12,13 +12,17 @@ import {
   runShellCommand,
   type CommandEnv,
 } from "./commands"
+import { openEditor } from "./editor"
+import { readInput } from "./input-area"
+import { loadHistory, appendHistory, clearPersistedHistory } from "./history-persistence"
+import { copyToClipboard } from "./clipboard"
 import { promptLabel, turnContext, turnDivider, turnTiming, turnUser, welcome } from "./display"
 import { maybeTurnTip } from "./hints"
 import { parseModelRef } from "./provider-pick"
 import { fetchProviderList } from "./provider-pick"
 import { printFirstRunHint } from "./setup-commands"
-import { pauseReadlineForPrompts, resumeReadlineAfterPrompts } from "./repl-terminal"
 import * as Setup from "@/llamacpp/setup"
+import { stopIfManaged } from "@/llamacpp/server"
 import { applySessionMeterToContext } from "./session-meter"
 
 export type ReplConfig = {
@@ -72,21 +76,22 @@ function syncThinkingFromLlamaConfig(ctx: ReplContext) {
   if (path) ctx.thinking = Setup.resolveThinkingEnabled(path)
 }
 
-function statusLine(ctx: ReplContext) {
-  const ref = ctx.model ? parseModelRef(ctx.model) : undefined
-  const modelLabel = ref ? `${ref.providerID}/${ref.modelID}` : (ctx.model ?? "model?")
-  const parts = [
-    modelLabel,
-    ctx.agent ?? "build",
-    shortSession(ctx.sessionID),
-    ctx.meterShort,
-    ctx.permissionMode.slice(0, 4),
-    ctx.thinking ? "think" : "",
-    ctx.showTiming ? "" : "⏱off",
-    ctx.showTips ? "" : "tips off",
-  ].filter(Boolean)
-  return UI.Style.TEXT_DIM + parts.join(" · ") + UI.Style.TEXT_NORMAL
-}
+  function statusLine(ctx: ReplContext) {
+    const ref = ctx.model ? parseModelRef(ctx.model) : undefined
+    const modelLabel = ref ? `${ref.providerID}/${ref.modelID}` : (ctx.model ?? "model?")
+    const parts = [
+      modelLabel,
+      ctx.agent ?? "build",
+      shortSession(ctx.sessionID),
+      ctx.meterShort,
+      ctx.permissionMode.slice(0, 4),
+      ctx.thinking ? "think" : "",
+      ctx.multiline ? "multi" : "",
+      ctx.showTiming ? "" : "⏱off",
+      ctx.showTips ? "" : "tips off",
+    ].filter(Boolean)
+    return UI.Style.TEXT_DIM + parts.join(" · ") + UI.Style.TEXT_NORMAL
+  }
 
 async function refreshMeter(sdk: ReturnType<typeof createInProcessClient>, ctx: ReplContext) {
   try {
@@ -94,20 +99,6 @@ async function refreshMeter(sdk: ReturnType<typeof createInProcessClient>, ctx: 
   } catch {
     ctx.meterShort = undefined
   }
-}
-
-/** Only these run @clack/prompts and need readline teardown on Windows. */
-function slashUsesClackPrompts(command: string) {
-  return (
-    command === "connect" ||
-    command === "llama" ||
-    command === "providers" ||
-    command === "provider" ||
-    command === "connectors" ||
-    command === "connector" ||
-    command === "model" ||
-    command === "agent"
-  )
 }
 
 export async function runRepl(config: ReplConfig) {
@@ -125,6 +116,9 @@ export async function runRepl(config: ReplConfig) {
     showTiming: true,
     showTips: true,
     turnCount: 0,
+    multiline: false,
+    lastAssistantText: "",
+    renderMarkdown: true,
   }
 
   let connectedCount = 0
@@ -150,34 +144,25 @@ export async function runRepl(config: ReplConfig) {
   UI.println(UI.logo())
   welcome(config.directory, ctx.thinking)
 
-  const createReadline = () =>
-    readline.createInterface({ input, output, terminal: true, history: [] as string[] })
-
-  let rl = createReadline()
   let turnAbort: AbortController | undefined
   let forkNext = config.fork ?? false
   let exiting = false
+  const inputHistory: string[] = await loadHistory()
+  let lastAssistantText = ""
+
+  async function askLine(prompt: string): Promise<string> {
+    const rl = readline.createInterface({ input, output, terminal: true })
+    try {
+      return await rl.question(prompt)
+    } finally {
+      rl.close()
+    }
+  }
 
   const env: CommandEnv = {
     sdk,
     ctx,
-    ask: (p) => rl.question(p),
-  }
-
-  const bindAsk = () => {
-    env.ask = (p) => rl.question(p)
-  }
-
-  const restoreInput = (afterClack = false) => {
-    rl = resumeReadlineAfterPrompts(
-      rl,
-      () => {
-        const next = createReadline()
-        bindAsk()
-        return next
-      },
-      { afterClack },
-    )
+    ask: askLine,
   }
 
   const abortActiveTurn = () => {
@@ -186,6 +171,38 @@ export async function runRepl(config: ReplConfig) {
     UI.println(UI.Style.TEXT_WARNING + "Turn cancelled." + UI.Style.TEXT_NORMAL)
   }
 
+  /** @clack/prompts and readline may leave stdin paused / terminal broken on Windows. */
+  function restoreTerminalAfterPrompts() {
+    if (process.stdin.isPaused()) {
+      process.stdin.resume()
+    }
+    if (process.stdin.isTTY && typeof process.stdin.setRawMode === "function") {
+      try {
+        process.stdin.setRawMode(false)
+      } catch {
+        // ignore
+      }
+    }
+    if (process.stdout.isTTY) {
+      process.stdout.write("\x1b[?25h") // show cursor
+    }
+  }
+
+  function slashUsesClackPrompts(command: string) {
+    return (
+      command === "connect" ||
+      command === "llama" ||
+      command === "providers" ||
+      command === "provider" ||
+      command === "connectors" ||
+      command === "connector" ||
+      command === "model" ||
+      command === "agent"
+    )
+  }
+
+  let inputAbort = new AbortController()
+
   const onSigint = () => {
     if (exiting) return
     if (turnAbort) {
@@ -193,9 +210,15 @@ export async function runRepl(config: ReplConfig) {
       return
     }
     exiting = true
-    rl.close()
+    inputAbort.abort()
   }
   process.on("SIGINT", onSigint)
+
+  const onBeforeExit = async () => {
+    await stopIfManaged().catch(() => {})
+  }
+  process.once("beforeExit", onBeforeExit)
+  process.once("SIGTERM", onBeforeExit)
 
   const runAgentTurn = async (input: {
     text: string
@@ -223,21 +246,22 @@ export async function runRepl(config: ReplConfig) {
         permissionMode: ctx.permissionMode,
         command: input.command,
         signal: turnAbort.signal,
+        renderMarkdown: ctx.renderMarkdown,
         onPermission: async (req) => {
           if (ctx.permissionMode !== "interactive") {
             return ctx.permissionMode === "accept" ? "once" : "reject"
           }
-          restoreInput()
           try {
-            return await askPermission(req, ctx.permissionMode, env.ask)
+            return await askPermission(req, ctx.permissionMode, askLine)
           } finally {
-            pauseReadlineForPrompts(rl)
+            restoreTerminalAfterPrompts()
           }
         },
       })
       ctx.sessionID = result.sessionID
       ctx.continueSession = true
       forkNext = false
+      lastAssistantText = result.assistantText ?? ""
       await refreshMeter(sdk, ctx)
       if (ctx.showTiming && result && !result.error) {
         turnTiming(result.elapsedMs, result.thinkingMs)
@@ -250,7 +274,6 @@ export async function runRepl(config: ReplConfig) {
       return result
     } finally {
       turnAbort = undefined
-      restoreInput(false)
     }
   }
 
@@ -259,7 +282,7 @@ export async function runRepl(config: ReplConfig) {
   }
 
   try {
-    while (true) {
+    while (!exiting) {
       UI.empty()
       UI.println(statusLine(ctx))
       if (ctx.turnCount === 0) {
@@ -267,27 +290,47 @@ export async function runRepl(config: ReplConfig) {
       } else if (ctx.turnCount % 4 === 0 && ctx.showTips) {
         UI.println(UI.Style.TEXT_DIM + "  hint: /tips" + UI.Style.TEXT_NORMAL)
       }
+
+      inputAbort = new AbortController()
       let line: string
       try {
-        line = await rl.question(promptLabel())
+        const result = await readInput({ prompt: promptLabel(), history: inputHistory, signal: inputAbort.signal, multiline: ctx.multiline })
+        if (result.cancelled) {
+          if (exiting) break
+          continue
+        }
+        line = result.text
       } catch {
         break
       }
+
+      // Persist input history (async, don't await)
+      void appendHistory(line, ctx.directory)
+
       const parsed = parseLine(line)
 
       if (parsed.kind === "empty") continue
 
       if (parsed.kind === "slash") {
         const clack = slashUsesClackPrompts(parsed.command)
-        if (clack) pauseReadlineForPrompts(rl)
         let result: Awaited<ReturnType<typeof handleSlashCommand>>
         try {
           result = await handleSlashCommand(parsed.command, parsed.args, env)
+        } catch {
+          if (clack) restoreTerminalAfterPrompts()
+          continue
         } finally {
-          if (clack) restoreInput(true)
+          if (clack) restoreTerminalAfterPrompts()
         }
         if (result === "exit") break
         if (result === "abort-turn") abortActiveTurn()
+        if (result === "editor") {
+          const text = await openEditor(parsed.args)
+          if (text?.trim()) {
+            await runAgentTurn({ text: text.trim() })
+          }
+          continue
+        }
         if (result === "continue") {
           if (parsed.command === "fork") forkNext = true
           if (parsed.command === "thinking") {
@@ -345,6 +388,12 @@ export async function runRepl(config: ReplConfig) {
   } finally {
     exiting = true
     process.off("SIGINT", onSigint)
-    rl.close()
+    process.off("beforeExit", onBeforeExit)
+    process.off("SIGTERM", onBeforeExit)
+    // Stop managed llama-server to free VRAM
+    const stopped = await stopIfManaged().catch(() => false)
+    if (stopped) {
+      UI.println(UI.Style.TEXT_DIM + "  llama-server stopped (VRAM freed)." + UI.Style.TEXT_NORMAL)
+    }
   }
 }

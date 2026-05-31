@@ -21,26 +21,13 @@ User data: `%APPDATA%\ai.localcoder.desktop\`
 | **llama.cpp** | Pick folder with `llama-server`, pick `.gguf`, set context size | Saves config, starts server, registers provider |
 | **Cloud** | Paste API key (OpenRouter, etc.) | Stores in auth, lists models |
 
-### UI (default: desktop-shell)
+### UI
 
-Windows builds use **`@localcoder-ai/desktop-shell`** — a small Solid.js UI on the LocalCoder SDK (sessions, streaming chat, tools). No legacy OpenCode web-app shell unless you opt in:
-
-```powershell
-$env:LOCALCODER_LEGACY_UI = "1"
-bun run build
-```
+Windows builds use **`@localcoder-ai/desktop-shell`** — a modern Solid.js UI on the LocalCoder SDK (sessions, streaming chat, tools).
 
 - Session sidebar, model picker (connected providers only), composer (Enter send / Shift+Enter newline)
 - SDK event stream for live assistant output, tool lines, and permission prompts
 - E2E: `cd packages/desktop-shell && bun run test:e2e` — Playwright against live `localcoder serve` (no mock UI)
-- Legacy full IDE UI: set `LOCALCODER_LEGACY_UI=1` at build time
-
-### UI highlights (legacy IDE)
-
-- Cursor-style default theme, flat IDE layout
-- **Undo change** on each Write/Edit/Patch tool
-- **Undo all changes** on turn diff summaries
-- llama.cpp dialog: browse paths, discovered GGUF list, context tokens, thinking toggle
 
 ---
 

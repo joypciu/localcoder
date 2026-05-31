@@ -13,7 +13,13 @@ export type FilePart = { type: "file"; url: string; filename: string; mime: stri
 
 const AT_REF = /@([^\s@]+)/g
 
-export function parseLine(line: string): Omit<ParsedInput, "files"> & { raw: string } {
+export type ParsedLine =
+  | { kind: "empty"; raw: string }
+  | { kind: "slash"; command: string; args: string; raw: string }
+  | { kind: "shell"; command: string; raw: string }
+  | { kind: "prompt"; text: string; raw: string }
+
+export function parseLine(line: string): ParsedLine {
   const trimmed = line.trim()
   if (!trimmed) return { kind: "empty", raw: line }
   if (trimmed.startsWith("/")) {

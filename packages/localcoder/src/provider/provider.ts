@@ -128,7 +128,7 @@ type CustomLoader = (provider: Info) => Effect.Effect<{
   vars?: CustomVarsLoader
   options?: Record<string, any>
   discoverModels?: CustomDiscoverModels
-}>
+}, any, any>
 
 type CustomDep = {
   auth: (id: string) => Effect.Effect<Auth.Info | undefined>
@@ -1047,7 +1047,7 @@ export interface Interface {
     query: string[],
   ) => Effect.Effect<{ providerID: ProviderID; modelID: string } | undefined>
   readonly getSmallModel: (providerID: ProviderID) => Effect.Effect<Model | undefined>
-  readonly defaultModel: () => Effect.Effect<{ providerID: ProviderID; modelID: ModelID }>
+  readonly defaultModel: () => Effect.Effect<{ providerID: ProviderID; modelID: ModelID }, any, any>
 }
 
 interface State {
@@ -1223,7 +1223,7 @@ const layer: Layer.Layer<
     const modelsDevSvc = yield* ModelsDev.Service
 
     const state = yield* InstanceState.make<State>(() =>
-      Effect.gen(function* () {
+      Effect.gen(function* (): any {
         using _ = log.time("state")
         const bridge = yield* EffectBridge.make()
         const cfg = yield* config.get()

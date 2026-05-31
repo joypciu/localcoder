@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { getConfig, probe } from "../../src/cli/cmd/tui/llama-server"
+import { getConfig, probe } from "../../src/llamacpp/server"
 
 describe("llama-server", () => {
   test("getConfig returns paths and api url", () => {

@@ -22,9 +22,8 @@ import { McpCommand } from "./cli/cmd/mcp"
 import { GithubCommand } from "./cli/cmd/github"
 import { ExportCommand } from "./cli/cmd/export"
 import { ImportCommand } from "./cli/cmd/import"
-import { AttachCommand } from "./cli/cmd/tui/attach"
+import { SimpleCliCommand, ReplCommand } from "./cli/cmd/simple-cli"
 import { TuiThreadCommand } from "./cli/cmd/tui/thread"
-import { SimpleCliCommand } from "./cli/cmd/simple-cli"
 import { AcpCommand } from "./cli/cmd/acp"
 import { EOL } from "os"
 import { WebCommand, UiCommand } from "./cli/cmd/web"
@@ -157,11 +156,11 @@ const cli = yargs(args)
   })
   .usage("")
   .completion("completion", "generate shell completion script")
+  .command(SimpleCliCommand)
+  .command(ReplCommand)
+  .command(TuiThreadCommand)
   .command(AcpCommand)
   .command(McpCommand)
-  .command(SimpleCliCommand)
-  .command(TuiThreadCommand)
-  .command(AttachCommand)
   .command(RunCommand)
   .command(GenerateCommand)
   .command(DebugCommand)

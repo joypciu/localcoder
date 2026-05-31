@@ -28,4 +28,4 @@ declare module "virtual:localcoder-server" {
   export const bootstrap: typeof import("../../../localcoder/dist/types/src/node").bootstrap
 }
 
-declare const __LOCALCODER_LEGACY_UI__: boolean
+// Legacy UI support removed — desktop-shell is the only renderer

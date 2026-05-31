@@ -34,7 +34,7 @@ const app = (upgrade: UpgradeWebSocket) =>
           remote = new WebSocket(url, ProxyUtil.websocketProtocols(c.req.raw))
           remote.binaryType = "arraybuffer"
           remote.onopen = () => {
-            for (const item of queue) remote?.send(item)
+            for (const item of queue) remote?.send(item as any)
             queue.length = 0
           }
           remote.onmessage = (event) => {

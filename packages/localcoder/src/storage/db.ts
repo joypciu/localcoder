@@ -58,7 +58,7 @@ function applyBundledMigrations(db: SQLiteBunDatabase, entries: Journal) {
     created_at numeric
   )`)
 
-  const last = db.$client
+  const last = (db as any).$client
     .query("SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1")
     .get() as { created_at: number } | null
   const lastMillis = last?.created_at ?? 0

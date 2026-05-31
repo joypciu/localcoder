@@ -1,6 +1,6 @@
 ﻿# LocalCoder VS Code Extension — Changelog & Roadmap
 
-**Last updated:** 2026-05-29  
+**Last updated:** 2026-05-30  
 **Test status:** 93+ unit contract tests (`bun run test:unit` ~5s); full `bun run test` includes Electron; webview visual tests in repo `packages/app/e2e/visual/`
 
 ---
@@ -31,6 +31,11 @@
 
 ---
 
+## Simple CLI (terminal) — 2026-05-30
+
+- Extension terminal uses `resolve-cli.ts` → `localcoder.exe` or bun dev tree → **default simple REPL** (`bun run dev` in `packages/localcoder`)
+- Feature parity lag vs webview: session picker (`/session`), history delete, thinking panel — see repo-local `IMPROVEMENT_AND_FIX.md` Session 8 (not committed)
+
 ## High priority (next)
 
 - [x] **Native diff apply/reject** — Accept/Reject in chat changes bar, diff editor title, CodeLens, Ctrl+Shift+Y/N
@@ -42,6 +47,7 @@
 - [x] **Visual webview regression** — Playwright specs under `packages/app/e2e/visual/`
 - [ ] **Model picker** — persist last model per workspace folder
 - [ ] **Reliable stop-button sync** during slow abort on server
+- [x] **TUI / Ink re-integration** — Migrated from broken OpenTUI to Ink + React; modern components, slash commands, help panel, file attachments, tool details
 
 ## Medium priority
 
