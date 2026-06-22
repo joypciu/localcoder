@@ -3,8 +3,20 @@ import * as Log from "@localcoder-ai/core/util/log"
 import * as Setup from "./setup"
 import * as Server from "./server"
 import { configure } from "./bootstrap"
+import { createServer } from "net"
 
 const log = Log.create({ service: "llamacpp.autostart" })
+
+function findFreePort(preferred: number): Promise<number> {
+  return new Promise((resolve) => {
+    const server = createServer()
+    server.once("error", () => resolve(findFreePort(preferred + 1)))
+    server.once("listening", () => {
+      server.close(() => resolve(preferred))
+    })
+    server.listen(preferred, "127.0.0.1")
+  })
+}
 
 export async function maybeAutoStartLlamaCpp() {
   const saved = Setup.loadUserLlamaConfig()
@@ -22,6 +34,15 @@ export async function maybeAutoStartLlamaCpp() {
   if (probed.ok) {
     process.env.LLAMACPP_API_URL = Server.getConfig().apiUrl
     return
+  }
+
+  // If the default port is in use, pick a free one so autostart doesn't hang
+  // when another service already owns 8080.
+  const preferredPort = Server.getConfig().port
+  const freePort = await findFreePort(preferredPort)
+  if (freePort !== preferredPort) {
+    process.env.LLAMACPP_API_URL = `http://127.0.0.1:${freePort}/v1`
+    log.info("default llama.cpp port in use, using free port", { preferredPort, freePort })
   }
 
   log.info("starting llama-server (autostart)")
