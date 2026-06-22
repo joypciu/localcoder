@@ -502,7 +502,7 @@ export const layer = Layer.effect(
       })
     })
 
-    const read: Interface["read"] = Effect.fn("File.read")(function* (file: string): any {
+    const read: Interface["read"] = Effect.fn("File.read")(function* (file: string) {
       using _ = log.time("read", { file })
       const ctx = yield* InstanceState.context
       const full = path.join(ctx.directory, file)
@@ -559,10 +559,11 @@ export const layer = Layer.effect(
         }
         if (diff.trim()) {
           const original = yield* git.show(ctx.directory, "HEAD", file)
-          const patch = structuredPatch(file, file, original, content, "old", "new", {
+          const rawPatch = structuredPatch(file, file, original, content, "old", "new", {
             context: Infinity,
             ignoreWhitespace: true,
           })
+          const patch = { ...rawPatch, oldFileName: rawPatch.oldFileName || file, newFileName: rawPatch.newFileName || file }
           return { type: "text" as const, content, patch, diff: formatPatch(patch) }
         }
         return { type: "text" as const, content }

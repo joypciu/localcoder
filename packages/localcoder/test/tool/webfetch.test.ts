@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import path from "path"
-import { Effect, Layer } from "effect"
+import { Effect, Layer, ManagedRuntime } from "effect"
 import { FetchHttpClient } from "effect/unstable/http"
 import { Agent } from "../../src/agent/agent"
 import { Truncate } from "@/tool/truncate"
@@ -27,13 +27,15 @@ async function withFetch(fetch: (req: Request) => Response | Promise<Response>, 
   await fn(server.url)
 }
 
+const runtime = ManagedRuntime.make(Layer.mergeAll(FetchHttpClient.layer, Truncate.defaultLayer, Agent.defaultLayer))
+
 function exec(args: { url: string; format: "text" | "markdown" | "html" }) {
-  return WebFetchTool.pipe(
-    Effect.flatMap((info) => info.init()),
-    Effect.flatMap((tool) => tool.execute(args, ctx)),
-    Effect.provide(Layer.mergeAll(FetchHttpClient.layer, Truncate.defaultLayer, Agent.defaultLayer)),
-    Effect.runPromise,
-  )
+  const effect = Effect.gen(function* () {
+    const info = yield* WebFetchTool
+    const tool = yield* info.init()
+    return yield* tool.execute(args, ctx)
+  })
+  return runtime.runPromise(effect)
 }
 
 describe("tool.webfetch", () => {

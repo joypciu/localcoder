@@ -1602,7 +1602,7 @@ function withContext<A, E>(scenario: ActiveScenario, use: (ctx: SeededContext<un
             )
           : undefined
         const run = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-          effect.pipe(Effect.provideService(modules.InstanceRef, instance), Effect.provide(modules.AppLayer))
+          effect.pipe(Effect.provideService(modules.InstanceRef, instance), Effect.provide(modules.AppLayer), Effect.orDie)
         const directory = () => {
           if (!context.dir?.path) throw new Error("scenario needs a project directory")
           return context.dir.path

@@ -19,12 +19,12 @@ import { makeRuntime } from "../../src/effect/run-service"
 const env = makeRuntime(Env.Service, Env.defaultLayer)
 const set = (k: string, v: string) => env.runSync((svc) => svc.set(k, v))
 
-async function run<A, E>(fn: (provider: Provider.Interface) => Effect.Effect<A, E, never>) {
+async function run<A, E, R>(fn: (provider: Provider.Interface) => Effect.Effect<A, E, R>) {
   return AppRuntime.runPromise(
     Effect.gen(function* () {
       const provider = yield* Provider.Service
       return yield* fn(provider)
-    }),
+    }) as Effect.Effect<A, E, never>,
   )
 }
 
@@ -52,7 +52,7 @@ async function getSmallModel(providerID: ProviderID) {
   return run((provider) => provider.getSmallModel(providerID))
 }
 
-async function defaultModel() {
+async function defaultModel(): Promise<{ providerID: ProviderID; modelID: ModelID }> {
   return run((provider) => provider.defaultModel())
 }
 

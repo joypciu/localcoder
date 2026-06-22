@@ -27,9 +27,9 @@ describe("Tool.define", () => {
 
     const info = await runtime.runPromise(Tool.define("test-tool", Effect.succeed(original)))
 
-    await Effect.runPromise(info.init())
-    await Effect.runPromise(info.init())
-    await Effect.runPromise(info.init())
+    await runtime.runPromise(info.init())
+    await runtime.runPromise(info.init())
+    await runtime.runPromise(info.init())
 
     expect(original.execute).toBe(originalExecute)
   })
@@ -42,8 +42,8 @@ describe("Tool.define", () => {
       ),
     )
 
-    const first = await Effect.runPromise(info.init())
-    const second = await Effect.runPromise(info.init())
+    const first = await runtime.runPromise(info.init())
+    const second = await runtime.runPromise(info.init())
 
     expect(first).not.toBe(second)
   })
@@ -51,8 +51,8 @@ describe("Tool.define", () => {
   test("object-defined tool returns distinct objects per init() call", async () => {
     const info = await runtime.runPromise(Tool.define("test-copy", Effect.succeed(makeTool("test"))))
 
-    const first = await Effect.runPromise(info.init())
-    const second = await Effect.runPromise(info.init())
+    const first = await runtime.runPromise(info.init())
+    const second = await runtime.runPromise(info.init())
 
     expect(first).not.toBe(second)
   })
@@ -88,11 +88,11 @@ describe("Tool.define", () => {
         return Effect.void
       },
     }
-    const tool = await Effect.runPromise(info.init())
+    const tool = await runtime.runPromise(info.init())
     const execute = tool.execute as unknown as (args: unknown, ctx: Tool.Context) => ReturnType<typeof tool.execute>
 
-    await Effect.runPromise(execute({}, ctx))
-    await Effect.runPromise(execute({ count: "7" }, ctx))
+    await runtime.runPromise(execute({}, ctx))
+    await runtime.runPromise(execute({ count: "7" }, ctx))
 
     expect(calls).toEqual([{ count: 5 }, { count: 7 }])
   })

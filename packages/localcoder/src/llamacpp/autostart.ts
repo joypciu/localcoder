@@ -1,3 +1,4 @@
+import path from "path"
 import * as Log from "@localcoder-ai/core/util/log"
 import * as Setup from "./setup"
 import * as Server from "./server"
@@ -33,6 +34,25 @@ export async function maybeAutoStartLlamaCpp() {
     })
     log.info("llama-server ready")
   } catch (error) {
-    log.warn("llamacpp autostart failed", { error: error instanceof Error ? error.message : String(error) })
+    const msg = error instanceof Error ? error.message : String(error)
+    log.warn("llamacpp autostart failed", { error: msg })
+    // If the configured model is missing, try to find a fallback
+    if (msg.includes("not found") || msg.includes("No GGUF model")) {
+      const fallback = Setup.findGgufFiles(1)[0]
+      if (fallback) {
+        log.info("autostart fallback: trying discovered model", { model: path.basename(fallback) })
+        try {
+          await configure({
+            llamaDir: saved.llamaDir,
+            modelPath: fallback,
+            autoStart: true,
+            ctx: saved.ctx,
+          })
+          log.info("llama-server ready (fallback model)")
+        } catch (fallbackError) {
+          log.warn("llamacpp autostart fallback also failed", { error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError) })
+        }
+      }
+    }
   }
 }

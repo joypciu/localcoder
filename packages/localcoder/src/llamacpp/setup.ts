@@ -47,6 +47,8 @@ function findVersionedLlamaDirs(): string[] {
   const roots = [
     path.join("C:", "llama cpp"),
     path.join("C:", "llama.cpp"),
+    path.join("P:", "llama cpp"),
+    path.join("P:", "llama.cpp"),
   ]
   const found: { dir: string; build: number }[] = []
   for (const root of roots) {
@@ -76,6 +78,8 @@ export function resolveLlamaDir(): string {
     candidates.push(
       path.join("C:", "llama.cpp"),
       path.join("C:", "llama cpp"),
+      path.join("P:", "llama.cpp"),
+      path.join("P:", "llama cpp"),
       path.join(os.homedir(), "llama.cpp"),
       path.join(os.homedir(), "AppData", "Local", "llama.cpp"),
     )
@@ -102,6 +106,7 @@ export function ggufSearchDirs(): string[] {
   for (const d of [
     path.join(os.homedir(), "models"),
     path.join(os.homedir(), "gguf models"),
+    path.join("P:", "gguf models"),
     path.join(os.homedir(), ".cache", "huggingface"),
     path.join(process.cwd(), "models"),
     path.join(process.cwd(), "gguf models"),

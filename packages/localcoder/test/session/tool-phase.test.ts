@@ -58,7 +58,7 @@ describe("session/tool-phase", () => {
           type: "tool",
           tool: "bash",
           callID: "c1",
-          state: { status: "completed", input: {}, output: "ok", time: { start: 1, end: 2 } },
+          state: { status: "completed", input: {}, output: "ok", title: "bash", metadata: {}, time: { start: 1, end: 2 } },
         }],
       },
     })).toBe(false)

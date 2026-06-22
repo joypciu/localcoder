@@ -80,18 +80,9 @@ function createTestDb() {
 
   // Apply schema migrations using drizzle migrate
   const dir = path.join(import.meta.dirname, "../../migration")
-  const entries = readdirSync(dir, { withFileTypes: true })
-  const migrations = entries
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => ({
-      sql: readFileSync(path.join(dir, entry.name, "migration.sql"), "utf-8"),
-      timestamp: Number(entry.name.split("_")[0]),
-      name: entry.name,
-    }))
-    .sort((a, b) => a.timestamp - b.timestamp)
 
   const db = drizzle({ client: sqlite })
-  migrate(db, migrations)
+  migrate(db, { migrationsFolder: dir })
 
   return [sqlite, db] as const
 }

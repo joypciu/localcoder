@@ -145,7 +145,7 @@ describe("tool.shell", () => {
       directory: projectRoot,
       fn: async () => {
         const bash = await initShell()
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: "echo test",
@@ -172,7 +172,7 @@ describe("tool.shell", () => {
         expect(fallback).not.toBe("fish")
         expect(bash.description).toContain(fallback)
 
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: "echo fallback",
@@ -196,7 +196,7 @@ describe("tool.shell permissions", () => {
       fn: async () => {
         const bash = await initShell()
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-        await Effect.runPromise(
+        await runtime.runPromise(
           bash.execute(
             {
               command: "echo hello",
@@ -219,7 +219,7 @@ describe("tool.shell permissions", () => {
       fn: async () => {
         const bash = await initShell()
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-        await Effect.runPromise(
+        await runtime.runPromise(
           bash.execute(
             {
               command: "echo foo && echo bar",
@@ -245,7 +245,7 @@ describe("tool.shell permissions", () => {
           fn: async () => {
             const bash = await initShell()
             const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-            await Effect.runPromise(
+            await runtime.runPromise(
               bash.execute(
                 {
                   command: "Write-Host foo; if ($?) { Write-Host bar }",
@@ -277,7 +277,7 @@ describe("tool.shell permissions", () => {
             const err = new Error("stop after permission")
             const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
             await expect(
-              Effect.runPromise(
+              runtime.runPromise(
                 bash.execute(
                   {
                     command: "Remove-Item -Recurse tmp",
@@ -307,7 +307,7 @@ describe("tool.shell permissions", () => {
         const file = process.platform === "win32" ? `${process.env.WINDIR!.replaceAll("\\", "/")}/*` : "/etc/*"
         const want = process.platform === "win32" ? glob(path.join(process.env.WINDIR!, "*")) : "/etc/*"
         await expect(
-          Effect.runPromise(
+          runtime.runPromise(
             bash.execute(
               {
                 command: `cat ${file}`,
@@ -340,7 +340,7 @@ describe("tool.shell permissions", () => {
               const bash = await initShell()
               const file = path.join(outerTmp.path, "outside.txt").replaceAll("\\", "/")
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-              await Effect.runPromise(
+              await runtime.runPromise(
                 bash.execute(
                   {
                     command: `echo $(cat "${file}")`,
@@ -374,7 +374,7 @@ describe("tool.shell permissions", () => {
               const err = new Error("stop after permission")
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: `Copy-Item -PassThru "${process.env.WINDIR!.replaceAll("\\", "/")}/win.ini" ./out`,
@@ -403,7 +403,7 @@ describe("tool.shell permissions", () => {
               const bash = await initShell()
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               const file = `${process.env.WINDIR!.replaceAll("\\", "/")}/win.ini`
-              await Effect.runPromise(
+              await runtime.runPromise(
                 bash.execute(
                   {
                     command: `Write-Output $(Get-Content ${file})`,
@@ -436,7 +436,7 @@ describe("tool.shell permissions", () => {
               const err = new Error("stop after permission")
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: 'Get-Content "C:../outside.txt"',
@@ -466,7 +466,7 @@ describe("tool.shell permissions", () => {
               const err = new Error("stop after permission")
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: 'Get-Content "$HOME/.ssh/config"',
@@ -497,7 +497,7 @@ describe("tool.shell permissions", () => {
               const err = new Error("stop after permission")
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: 'Get-Content "$PWD/../outside.txt"',
@@ -527,7 +527,7 @@ describe("tool.shell permissions", () => {
               const err = new Error("stop after permission")
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: 'Get-Content "$PSHOME/outside.txt"',
@@ -562,7 +562,7 @@ describe("tool.shell permissions", () => {
                 const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
                 const root = path.parse(process.env.WINDIR!).root.replace(/[\\/]+$/, "")
                 await expect(
-                  Effect.runPromise(
+                  runtime.runPromise(
                     bash.execute(
                       {
                         command: `Get-Content -Path "${root}$env:${key}\\Windows\\win.ini"`,
@@ -594,7 +594,7 @@ describe("tool.shell permissions", () => {
             fn: async () => {
               const bash = await initBash()
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-              await Effect.runPromise(
+              await runtime.runPromise(
                 bash.execute(
                   {
                     command: "Get-Content $env:WINDIR/win.ini",
@@ -625,7 +625,7 @@ describe("tool.shell permissions", () => {
               const err = new Error("stop after permission")
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: `Get-Content -Path FileSystem::${process.env.WINDIR!.replaceAll("\\", "/")}/win.ini`,
@@ -657,7 +657,7 @@ describe("tool.shell permissions", () => {
               const err = new Error("stop after permission")
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: "Get-Content ${env:WINDIR}/win.ini",
@@ -687,7 +687,7 @@ describe("tool.shell permissions", () => {
             fn: async () => {
               const bash = await initBash()
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-              await Effect.runPromise(
+              await runtime.runPromise(
                 bash.execute(
                   {
                     command: "Set-Location C:/Windows",
@@ -718,7 +718,7 @@ describe("tool.shell permissions", () => {
             fn: async () => {
               const bash = await initShell()
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-              await Effect.runPromise(
+              await runtime.runPromise(
                 bash.execute(
                   {
                     command: "Write-Output ('a' * 3)",
@@ -747,7 +747,7 @@ describe("tool.shell permissions", () => {
           fn: async () => {
             const bash = await initShell()
             const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-            await Effect.runPromise(
+            await runtime.runPromise(
               bash.execute(
                 {
                   command: `TYPE "${path.join(process.env.WINDIR!, "win.ini")}"`,
@@ -774,7 +774,7 @@ describe("tool.shell permissions", () => {
         const err = new Error("stop after permission")
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
         await expect(
-          Effect.runPromise(
+          runtime.runPromise(
             bash.execute(
               {
                 command: "cd ../",
@@ -799,7 +799,7 @@ describe("tool.shell permissions", () => {
         const err = new Error("stop after permission")
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
         await expect(
-          Effect.runPromise(
+          runtime.runPromise(
             bash.execute(
               {
                 command: "echo ok",
@@ -831,7 +831,7 @@ describe("tool.shell permissions", () => {
           for (const dir of forms(outerTmp.path)) {
             const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
             await expect(
-              Effect.runPromise(
+              runtime.runPromise(
                 bash.execute(
                   {
                     command: "echo ok",
@@ -866,7 +866,7 @@ describe("tool.shell permissions", () => {
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               const want = glob(path.join(os.tmpdir(), "*"))
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: "echo ok",
@@ -898,7 +898,7 @@ describe("tool.shell permissions", () => {
               const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
               const want = glob(path.join(os.tmpdir(), "*"))
               await expect(
-                Effect.runPromise(
+                runtime.runPromise(
                   bash.execute(
                     {
                       command: "cat /tmp/localcoder-does-not-exist",
@@ -935,7 +935,7 @@ describe("tool.shell permissions", () => {
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
         const filepath = path.join(outerTmp.path, "outside.txt")
         await expect(
-          Effect.runPromise(
+          runtime.runPromise(
             bash.execute(
               {
                 command: `cat ${filepath}`,
@@ -965,7 +965,7 @@ describe("tool.shell permissions", () => {
       fn: async () => {
         const bash = await initBash()
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-        await Effect.runPromise(
+        await runtime.runPromise(
           bash.execute(
             {
               command: `rm -rf ${path.join(tmp.path, "nested")}`,
@@ -987,7 +987,7 @@ describe("tool.shell permissions", () => {
       fn: async () => {
         const bash = await initBash()
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-        await Effect.runPromise(
+        await runtime.runPromise(
           bash.execute(
             {
               command: "git log --oneline -5",
@@ -1010,7 +1010,7 @@ describe("tool.shell permissions", () => {
       fn: async () => {
         const bash = await initShell()
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-        await Effect.runPromise(
+        await runtime.runPromise(
           bash.execute(
             {
               command: "cd .",
@@ -1034,7 +1034,7 @@ describe("tool.shell permissions", () => {
         const err = new Error("stop after permission")
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
         await expect(
-          Effect.runPromise(
+          runtime.runPromise(
             bash.execute(
               { command: "echo test > output.txt", description: "Redirect test output" },
               capture(requests, err),
@@ -1055,7 +1055,7 @@ describe("tool.shell permissions", () => {
       fn: async () => {
         const bash = await initBash()
         const requests: Array<Omit<Permission.Request, "id" | "sessionID" | "tool">> = []
-        await Effect.runPromise(bash.execute({ command: "ls -la", description: "List" }, capture(requests)))
+        await runtime.runPromise(bash.execute({ command: "ls -la", description: "List" }, capture(requests)))
         const bashReq = requests.find((r) => r.permission === "bash")
         expect(bashReq).toBeDefined()
         expect(bashReq!.always[0]).toBe("ls *")
@@ -1072,7 +1072,7 @@ describe("tool.shell abort", () => {
         const bash = await initShell()
         const controller = new AbortController()
         const collected: string[] = []
-        const res = await Effect.runPromise(
+        const res = await runtime.runPromise(
           bash.execute(
             {
               command: `echo before && sleep 30`,
@@ -1104,7 +1104,7 @@ describe("tool.shell abort", () => {
       directory: projectRoot,
       fn: async () => {
         const bash = await initShell()
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: `echo started && sleep 60`,
@@ -1126,7 +1126,7 @@ describe("tool.shell abort", () => {
       directory: projectRoot,
       fn: async () => {
         const bash = await initShell()
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: `echo stdout_msg && echo stderr_msg >&2`,
@@ -1147,7 +1147,7 @@ describe("tool.shell abort", () => {
       directory: projectRoot,
       fn: async () => {
         const bash = await initShell()
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: `exit 42`,
@@ -1167,7 +1167,7 @@ describe("tool.shell abort", () => {
       fn: async () => {
         const bash = await initBash()
         const updates: string[] = []
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: `echo first && sleep 0.1 && echo second`,
@@ -1198,7 +1198,7 @@ describe("tool.shell truncation", () => {
       fn: async () => {
         const bash = await initShell()
         const lineCount = Truncate.MAX_LINES + 500
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: fill("lines", lineCount),
@@ -1220,7 +1220,7 @@ describe("tool.shell truncation", () => {
       fn: async () => {
         const bash = await initShell()
         const byteCount = Truncate.MAX_BYTES + 10000
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: fill("bytes", byteCount),
@@ -1241,7 +1241,7 @@ describe("tool.shell truncation", () => {
       directory: projectRoot,
       fn: async () => {
         const bash = await initShell()
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: "echo hello",
@@ -1262,7 +1262,7 @@ describe("tool.shell truncation", () => {
       fn: async () => {
         const bash = await initShell()
         const lineCount = Truncate.MAX_LINES + 100
-        const result = await Effect.runPromise(
+        const result = await runtime.runPromise(
           bash.execute(
             {
               command: fill("lines", lineCount),

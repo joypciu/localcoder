@@ -78,7 +78,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          const result = await Effect.runPromise(
+          const result = await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -107,7 +107,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          const result = await Effect.runPromise(
+          const result = await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -136,7 +136,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          await Effect.runPromise(
+          await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -166,7 +166,7 @@ describe("tool.edit", () => {
 
           try {
             const edit = await resolve()
-            await Effect.runPromise(
+            await runtime.runPromise(
               edit.execute(
                 {
                   filePath: filepath,
@@ -196,7 +196,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          const result = await Effect.runPromise(
+          const result = await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -225,7 +225,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          const result = await Effect.runPromise(
+          const result = await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -256,7 +256,7 @@ describe("tool.edit", () => {
         fn: async () => {
           const edit = await resolve()
           await expect(
-            Effect.runPromise(
+            runtime.runPromise(
               edit.execute(
                 {
                   filePath: filepath,
@@ -281,7 +281,7 @@ describe("tool.edit", () => {
         fn: async () => {
           const edit = await resolve()
           await expect(
-            Effect.runPromise(
+            runtime.runPromise(
               edit.execute(
                 {
                   filePath: filepath,
@@ -306,7 +306,7 @@ describe("tool.edit", () => {
         fn: async () => {
           const edit = await resolve()
           await expect(
-            Effect.runPromise(
+            runtime.runPromise(
               edit.execute(
                 {
                   filePath: filepath,
@@ -330,7 +330,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          await Effect.runPromise(
+          await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -362,7 +362,7 @@ describe("tool.edit", () => {
 
           try {
             const edit = await resolve()
-            await Effect.runPromise(
+            await runtime.runPromise(
               edit.execute(
                 {
                   filePath: filepath,
@@ -392,7 +392,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          await Effect.runPromise(
+          await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -418,7 +418,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          await Effect.runPromise(
+          await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -445,7 +445,7 @@ describe("tool.edit", () => {
         fn: async () => {
           const edit = await resolve()
           await expect(
-            Effect.runPromise(
+            runtime.runPromise(
               edit.execute(
                 {
                   filePath: filepath,
@@ -470,7 +470,7 @@ describe("tool.edit", () => {
         fn: async () => {
           const edit = await resolve()
           await expect(
-            Effect.runPromise(
+            runtime.runPromise(
               edit.execute(
                 {
                   filePath: dirpath,
@@ -494,7 +494,7 @@ describe("tool.edit", () => {
         directory: tmp.path,
         fn: async () => {
           const edit = await resolve()
-          const result = await Effect.runPromise(
+          const result = await runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -564,7 +564,7 @@ describe("tool.edit", () => {
         fn: async () => {
           const edit = await resolve()
           const filePath = path.join(tmp.path, "test.txt")
-          await Effect.runPromise(
+          await runtime.runPromise(
             edit.execute(
               {
                 filePath,
@@ -720,7 +720,7 @@ describe("tool.edit", () => {
               }),
           }
 
-          const promise1 = Effect.runPromise(
+          const promise1 = runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,
@@ -733,7 +733,7 @@ describe("tool.edit", () => {
 
           await firstAsk.promise
 
-          const promise2 = Effect.runPromise(
+          const promise2 = runtime.runPromise(
             edit.execute(
               {
                 filePath: filepath,

@@ -61,7 +61,7 @@ type ToolCtx = typeof baseCtx & {
 const execute = async (params: { patchText: string }, ctx: ToolCtx) => {
   const info = await runtime.runPromise(ApplyPatchTool)
   const tool = await runtime.runPromise(info.init())
-  return Effect.runPromise(tool.execute(params, ctx))
+  return runtime.runPromise(tool.execute(params, ctx))
 }
 
 const makeCtx = () => {

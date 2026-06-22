@@ -135,7 +135,7 @@ const npmPkg = {
 const embedded = !forRegistry && embedLocalBinary(outDir, distDir)
 if (embedded) {
   delete (npmPkg as { optionalDependencies?: Record<string, string> }).optionalDependencies
-  npmPkg.scripts = {}
+  npmPkg.scripts = { postinstall: "node ./postinstall.mjs" }
 }
 
 fs.writeFileSync(path.join(outDir, "package.json"), JSON.stringify(npmPkg, null, 2) + "\n")

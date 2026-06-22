@@ -44,6 +44,7 @@ scripts/visual-test/snapshots/**/*.diff.txt
 scripts/e2e/.artifacts/
 packages/app/e2e/playwright-report/
 packages/app/e2e/test-results/
+packages/desktop-shell/e2e/test-results/
 
 # Local session handoff & internal roadmap (personal notes — do not commit)
 CONTINUATION.md
