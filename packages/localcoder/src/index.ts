@@ -36,6 +36,7 @@ import { Database } from "@/storage/db"
 import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
 import { LlamacppCommand } from "./cli/cmd/llamacpp"
+import { DoctorCommand } from "./cli/cmd/doctor"
 import { Heap } from "./cli/heap"
 import { drizzle } from "drizzle-orm/bun-sqlite"
 import { ensureProcessMetadata } from "@localcoder-ai/core/util/localcoder-process"
@@ -182,6 +183,7 @@ const cli = yargs(args)
   .command(PluginCommand)
   .command(DbCommand)
   .command(LlamacppCommand)
+  .command(DoctorCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||

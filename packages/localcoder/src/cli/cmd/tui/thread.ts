@@ -111,6 +111,11 @@ export const TuiThreadCommand = cmd({
       .option("agent", {
         type: "string",
         describe: "agent to use",
+      })
+      .option("no-fallback", {
+        type: "boolean",
+        describe: "do not auto-fallback to REPL on unsupported terminals",
+        default: false,
       }),
   handler: async (args) => {
     const unguard = win32InstallCtrlCGuard()
@@ -124,11 +129,20 @@ export const TuiThreadCommand = cmd({
           process.stderr.write("Opening LocalCoder in Windows Terminal...\n")
           return
         }
-        if (isLegacyWindowsConsole()) {
+        if (isLegacyWindowsConsole() && !args["no-fallback"]) {
           UI.println(
             UI.Style.TEXT_WARNING_BOLD +
-              "  Tip: use `localcoder ui` for the modern web UI, or run from Windows Terminal (wt.exe).",
+              "  Legacy console detected. Falling back to text REPL." +
+              UI.Style.TEXT_NORMAL,
           )
+          UI.println("  Tip: use `localcoder ui` for the modern web UI, or run from Windows Terminal (wt.exe).")
+          const { spawn } = await import("child_process")
+          const proc = spawn(process.argv[0], [process.argv[1], "repl", ...(args.project ? [args.project] : [])], {
+            stdio: "inherit",
+          })
+          return new Promise<void>((resolve) => {
+            proc.on("exit", () => resolve())
+          })
         }
       }
 
