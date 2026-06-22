@@ -17,6 +17,7 @@
         "db": "bun drizzle-kit",
         "build:desktop": "bun run script/build.ts -- --platforms=windows,darwin --skip-embed-web-ui",
         "build:win": "bun run script/build.ts -- --single --skip-embed-web-ui",
+        "build:win-fast": "bun run script/build.ts -- --single --skip-embed-web-ui --incremental --skip-install",
         "build:mac": "bun run script/build.ts -- --platforms=darwin --skip-embed-web-ui",
         "prepare:npm": "bun run script/prepare-npm-package.ts",
         "prepare:npm:registry": "NPM_PREPARE_REGISTRY=1 bun run script/prepare-npm-package.ts",

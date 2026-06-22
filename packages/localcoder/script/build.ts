@@ -249,6 +249,12 @@ for (const item of targetsFiltered) {
   }
 
   await $`rm -rf ./dist/${name}/bin/tui`
+  if (item.os === "win32") {
+    const launcher = path.join(__dirname, "localcoder-dist.bat")
+    if (fs.existsSync(launcher)) {
+      fs.copyFileSync(launcher, `dist/${name}/bin/localcoder.bat`)
+    }
+  }
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {

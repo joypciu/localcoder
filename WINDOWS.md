@@ -65,6 +65,29 @@ Common Windows paths:
 
 ## Build a Windows CLI binary
 
+### Fast build (for development)
+
+```powershell
+cd P:\localcoder\packages\localcoder
+bun run build:win-fast
+```
+
+This skips dependency re-installation and reuses the existing `dist/` folder. Output:
+
+```
+dist/localcoder-windows-x64/bin/localcoder.exe
+dist/localcoder-windows-x64/bin/localcoder.bat
+```
+
+Run it directly:
+
+```powershell
+.\dist\localcoder-windows-x64\bin\localcoder.bat --version
+.\dist\localcoder-windows-x64\bin\localcoder.bat doctor
+```
+
+### Full build (for distribution)
+
 ```powershell
 cd P:\localcoder\packages\localcoder
 bun run build:win
