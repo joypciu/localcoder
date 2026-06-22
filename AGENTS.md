@@ -101,3 +101,7 @@ const table = sqliteTable("session", {
 ## Type Checking
 
 - Always run `bun typecheck` from package directories (e.g., `packages/localcoder`), never `tsc` directly.
+
+## Local AI Agents Workspace
+
+This repo lives under `P:\local_ai_agents\localcoder` and integrates with Plex (mcp_gguf_agent) and jclaw. A standalone real-server smoke test is at `P:\local_ai_agents\localcoder\test_localcoder_standalone.py`.

@@ -212,6 +212,15 @@ Read `CONTRIBUTING.md` before opening a pull request.
 - Run `bun install` and `bun run typecheck` before submitting
 - Style guide: [AGENTS.md](AGENTS.md)
 
+## Local AI Agents Integration
+
+LocalCoder participates in the `P:\local_ai_agents` unified workspace alongside Plex and jclaw.
+
+- Standalone real-server test: [`test_localcoder_standalone.py`](test_localcoder_standalone.py)
+- Shared orchestration (run from `P:\local_ai_agents`): `python orchestrate_build_robust.py`
+- Shared model registry: `P:/local_ai_agents/.shared_model_registry.json`
+- The orchestrator writes `~/.localcoder/localcoder.json` to point LocalCoder at the shared llama-server.
+
 ---
 
 ## FAQ
