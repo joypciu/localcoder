@@ -123,16 +123,18 @@ export const TuiThreadCommand = cmd({
       win32DisableProcessedInput()
       enableWindowsMouseTracking()
 
+      const noTty = !process.stdin.isTTY
       if (process.platform === "win32") {
         const { tryRelaunchInWindowsTerminal, isLegacyWindowsConsole } = await import("@/util/windows-terminal")
         if (tryRelaunchInWindowsTerminal(process.argv)) {
           process.stderr.write("Opening LocalCoder in Windows Terminal...\n")
           return
         }
-        if (isLegacyWindowsConsole() && !args["no-fallback"]) {
+        if ((isLegacyWindowsConsole() || noTty) && !args["no-fallback"]) {
+          const reason = noTty ? "non-interactive stdin" : "legacy console"
           UI.println(
             UI.Style.TEXT_WARNING_BOLD +
-              "  Legacy console detected. Falling back to text REPL." +
+              `  ${reason} detected. Falling back to text REPL.` +
               UI.Style.TEXT_NORMAL,
           )
           UI.println("  Tip: use `localcoder ui` for the modern web UI, or run from Windows Terminal (wt.exe).")
@@ -144,6 +146,19 @@ export const TuiThreadCommand = cmd({
             proc.on("exit", () => resolve())
           })
         }
+      } else if (noTty && !args["no-fallback"]) {
+        UI.println(
+          UI.Style.TEXT_WARNING_BOLD +
+            "  Non-interactive stdin detected. Falling back to text REPL." +
+            UI.Style.TEXT_NORMAL,
+        )
+        const { spawn } = await import("child_process")
+        const proc = spawn(process.argv[0], [process.argv[1], "repl", ...(args.project ? [args.project] : [])], {
+          stdio: "inherit",
+        })
+        return new Promise<void>((resolve) => {
+          proc.on("exit", () => resolve())
+        })
       }
 
       if (args.fork && !args.continue && !args.session) {

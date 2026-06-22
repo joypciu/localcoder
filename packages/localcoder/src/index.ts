@@ -37,6 +37,7 @@ import { errorMessage } from "./util/error"
 import { PluginCommand } from "./cli/cmd/plug"
 import { LlamacppCommand } from "./cli/cmd/llamacpp"
 import { DoctorCommand } from "./cli/cmd/doctor"
+import { ShortcutsCommand } from "./cli/cmd/shortcuts"
 import { Heap } from "./cli/heap"
 import { drizzle } from "drizzle-orm/bun-sqlite"
 import { ensureProcessMetadata } from "@localcoder-ai/core/util/localcoder-process"
@@ -184,6 +185,7 @@ const cli = yargs(args)
   .command(DbCommand)
   .command(LlamacppCommand)
   .command(DoctorCommand)
+  .command(ShortcutsCommand)
   .fail((msg, err) => {
     if (
       msg?.startsWith("Unknown argument") ||
