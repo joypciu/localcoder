@@ -4,14 +4,14 @@
 
 - OS: Windows 11
 - Terminal: Windows Terminal / PowerShell
-- LocalCoder source: `P:\local_ai_agents\localcoder\packages\localcoder`
+- LocalCoder source: this repo (`packages/localcoder`)
 
 ## TUI
 
 ### How to launch
 
 ```powershell
-cd P:\local_ai_agents\localcoder\packages\localcoder
+cd packages\localcoder
 .\localcoder.bat tui
 ```
 

@@ -15,7 +15,7 @@ Restart your terminal after installation.
 ### 2. Install dependencies
 
 ```powershell
-cd P:\localcoder
+cd /d <LOCALCODER_REPO_PATH>
 bun install
 ```
 
@@ -24,7 +24,7 @@ bun install
 From the `packages/localcoder` folder, use the included Windows launcher:
 
 ```powershell
-cd P:\localcoder\packages\localcoder
+cd /d <LOCALCODER_REPO_PATH>\packages\localcoder
 .\localcoder.bat
 ```
 
@@ -59,16 +59,16 @@ The wizard asks for:
 
 LocalCoder saves this to `~/.localcoder/llamacpp.json` and starts the server automatically.
 
-Common Windows paths:
-- llama.cpp binaries: `P:\llama cpp\llama-b9534-bin-win-cuda-13.3-x64`
-- Models: `P:\gguf models`
+Common Windows paths (adjust to your system):
+- llama.cpp binaries: `C:\tools\llama.cpp\llama-b9534-bin-win-cuda-13.3-x64`
+- Models: `C:\models`
 
 ## Build a Windows CLI binary
 
 ### Fast build (for development)
 
 ```powershell
-cd P:\localcoder\packages\localcoder
+cd /d <LOCALCODER_REPO_PATH>\packages\localcoder
 bun run build:win-fast
 ```
 
@@ -89,7 +89,7 @@ Run it directly:
 ### Full build (for distribution)
 
 ```powershell
-cd P:\localcoder\packages\localcoder
+cd /d <LOCALCODER_REPO_PATH>\packages\localcoder
 bun run build:win
 ```
 
@@ -103,7 +103,7 @@ localcoder
 ## Build a Windows portable GUI app
 
 ```powershell
-cd P:\localcoder
+cd /d <LOCALCODER_REPO_PATH>
 bun run build:win-standalone
 ```
 
@@ -134,7 +134,7 @@ Use the simple REPL instead:
 Run the fix script:
 
 ```powershell
-cd P:\localcoder\packages\localcoder
+cd /d <LOCALCODER_REPO_PATH>\packages\localcoder
 bun run fix-node-pty
 ```
 

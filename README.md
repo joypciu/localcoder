@@ -219,15 +219,15 @@ Read `CONTRIBUTING.md` before opening a pull request.
 
 ## Local AI Agents Integration
 
-LocalCoder participates in the `P:\local_ai_agents` unified workspace alongside Plex and jclaw.
+LocalCoder participates in the `local_ai_agents` unified workspace alongside Plex and jclaw. Place this repo next to the other workspace projects and run orchestrators from the workspace root.
 
 - Standalone real-server test: [`test_localcoder_standalone.py`](test_localcoder_standalone.py)
-- Shared orchestration (run from `P:\local_ai_agents`): `python orchestrate_build_robust.py`
-- Shared model registry: `P:/local_ai_agents/.shared_model_registry.json`
+- Shared orchestration: `python orchestrate_build_robust.py`
+- Shared model registry: `../.shared_model_registry.json`
 - The orchestrator writes `~/.localcoder/localcoder.json` to point LocalCoder at the shared llama-server.
-- Easy launchers (no terminal expertise needed):
-  - GUI: `python P:\local_ai_agents\launcher_gui.py` → click **LocalCoder Desktop** or **LocalCoder CLI**
-  - CLI: `python P:\local_ai_agents\launcher_cli.py tool localcoder-desktop`
+- Easy launchers (run from the workspace root):
+  - GUI: `python launcher_gui.py` → click **LocalCoder Desktop** or **LocalCoder CLI**
+  - CLI: `python launcher_cli.py tool localcoder-desktop`
 
 ---
 

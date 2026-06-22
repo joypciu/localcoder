@@ -31,18 +31,18 @@ Ctrl+C aborts the current turn (second Ctrl+C exits).
 **PowerShell** (recommended):
 
 ```powershell
-cd P:\localcoder\packages\localcoder
+cd packages\localcoder
 bun run dev
 ```
 
 **Command Prompt (`cmd.exe`)** — `cd` does not switch drives unless you use `/d`. Do not paste the `PS` from a PowerShell prompt into cmd.
 
 ```cmd
-cd /d P:\localcoder\packages\localcoder
+cd /d <LOCALCODER_REPO_PATH>\packages\localcoder
 bun run dev
 ```
 
-Or change drive first: `P:` then `cd \localcoder\packages\localcoder`.
+Or change drive first, then `cd \path\to\localcoder\packages\localcoder`.
 
 ## Development
 
