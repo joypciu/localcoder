@@ -220,6 +220,9 @@ LocalCoder participates in the `P:\local_ai_agents` unified workspace alongside 
 - Shared orchestration (run from `P:\local_ai_agents`): `python orchestrate_build_robust.py`
 - Shared model registry: `P:/local_ai_agents/.shared_model_registry.json`
 - The orchestrator writes `~/.localcoder/localcoder.json` to point LocalCoder at the shared llama-server.
+- Easy launchers (no terminal expertise needed):
+  - GUI: `python P:\local_ai_agents\launcher_gui.py` → click **LocalCoder Desktop** or **LocalCoder CLI**
+  - CLI: `python P:\local_ai_agents\launcher_cli.py tool localcoder-desktop`
 
 ---
 

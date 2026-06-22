@@ -104,4 +104,4 @@ const table = sqliteTable("session", {
 
 ## Local AI Agents Workspace
 
-This repo lives under `P:\local_ai_agents\localcoder` and integrates with Plex (mcp_gguf_agent) and jclaw. A standalone real-server smoke test is at `P:\local_ai_agents\localcoder\test_localcoder_standalone.py`.
+This repo lives under `P:\local_ai_agents\localcoder` and integrates with Plex (mcp_gguf_agent) and jclaw. A standalone real-server smoke test is at `P:\local_ai_agents\localcoder\test_localcoder_standalone.py`.\n\nEnd users can launch LocalCoder from the shared workspace launchers:\n- GUI: `python P:\local_ai_agents\launcher_gui.py`\n- CLI: `python P:\local_ai_agents\launcher_cli.py tool localcoder-desktop`
