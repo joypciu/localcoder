@@ -65,6 +65,8 @@ bun run install:cli          # Windows: build CLI + global install
 bun run --cwd packages/localcoder dev
 ```
 
+**Windows users:** see [WINDOWS.md](WINDOWS.md) for a complete Windows guide, including the `localcoder.bat` launcher.
+
 ---
 
 ## Surfaces
@@ -98,6 +100,9 @@ localcoder llamacpp setup
 
 # Or with paths
 localcoder llamacpp setup --dir "C:\path\to\llama.cpp\bin" --model "D:\models\model.gguf" --ctx 16384
+
+# From source on Windows
+.\packages\localcoder\localcoder.bat llamacpp setup
 ```
 
 Config is saved to `~/.localcoder/llamacpp.json`. The server auto-starts on next launch.
